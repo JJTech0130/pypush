@@ -39,6 +39,7 @@ COMMANDS = {
     0x8: "ConnectResponse",
     0x9: "PushTopics",
     0x0A: "PushNotification",
+    0x0B: "Acknowledge",
 }
 
 class Payload:
