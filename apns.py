@@ -82,6 +82,31 @@ class Payload:
     def __str__(self) -> str:
         return f"{COMMANDS[self.command]}: {self.fields}"
     
+import courier
+
+class APNSConnection(): 
+    def __init__(self, token: bytes=None, private_key=None, cert=None):
+        self.sock, self.private_key, self.cert = courier.connect(private_key, cert)
+        self.token = token
+
+        self._connect()
+    
+    def _connect(self):
+        if self.token is None:
+            payload = Payload(7, Fields({2: 0x01.to_bytes()}))
+        else:
+            payload = Payload(7, Fields({1: self.token, 2: 0x01.to_bytes()}))
+        
+        self.sock.write(payload.to_bytes())
+
+        resp = Payload.from_stream(self.sock)
+
+        if resp.command != 8 or resp.fields.fields[1] != 0x00.to_bytes():
+            raise Exception("Failed to connect")
+        
+        if 3 in resp.fields.fields:
+            self.token = resp.fields.fields[3]
+
 if __name__ == "__main__":
     import courier
     import base64
@@ -110,4 +135,6 @@ if __name__ == "__main__":
     # If there's a new token, save it
     if 3 in resp.fields.fields:
         with open("token", "wb") as f:
-            f.write(base64.b64encode(resp.fields.fields[3]))    
+            f.write(base64.b64encode(resp.fields.fields[3]))
+
+    # Send the push topics request

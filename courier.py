@@ -7,25 +7,10 @@ COURIER_PORT = 5223
 #ALPN = [b"apns-security-v2"]
 ALPN = None
 
-# Check if we have already generated a push certificate
-# If not, generate one
-def _setup_push_cert():
-    try:
-        with open("push.key", "r") as f:
-            private_key = f.read()
-        with open("push.crt", "r") as f:
-            cert = f.read()
-    except FileNotFoundError:
+def connect(private_key=None, cert=None):
+    # If we don't have a private key or certificate, generate one
+    if private_key is None or cert is None:
         private_key, cert = albert.generate_push_cert()
-        with open("push.key", "w") as f:
-            f.write(private_key)
-        with open("push.crt", "w") as f:
-            f.write(cert)
-    
-    return private_key, cert
-
-def connect():
-    private_key, cert = _setup_push_cert()
 
     # Connect to the courier server
     sock = socket.create_connection((COURIER_HOST, COURIER_PORT))
@@ -37,7 +22,7 @@ def connect():
     # Handshake with the server
     sock.handshakeClientCert(cert, private_key, alpn=ALPN)
 
-    return sock
+    return sock, private_key, cert
 
 if __name__ == "__main__":
     sock = connect()
