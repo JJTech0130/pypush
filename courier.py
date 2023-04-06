@@ -17,10 +17,10 @@ def connect(private_key=None, cert=None):
     # Wrap the socket in TLS
     sock = tlslite.TLSConnection(sock)
     # Parse the certificate and private key
-    cert = tlslite.X509CertChain([tlslite.X509().parse(cert)])
-    private_key = tlslite.parsePEMKey(private_key, private=True)
+    cert_parsed = tlslite.X509CertChain([tlslite.X509().parse(cert)])
+    private_key_parsed = tlslite.parsePEMKey(private_key, private=True)
     # Handshake with the server
-    sock.handshakeClientCert(cert, private_key, alpn=ALPN)
+    sock.handshakeClientCert(cert_parsed, private_key_parsed, alpn=ALPN)
 
     return sock, private_key, cert
 
