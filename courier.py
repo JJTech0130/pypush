@@ -4,8 +4,8 @@ import socket
 
 COURIER_HOST = "10-courier.push.apple.com"
 COURIER_PORT = 5223
-#ALPN = [b"apns-security-v2"]
-ALPN = None
+ALPN = [b"apns-security-v2"]
+#ALPN = None
 
 def connect(private_key=None, cert=None):
     # If we don't have a private key or certificate, generate one
