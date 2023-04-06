@@ -8,11 +8,8 @@ print(f"Push Token 1: {b64encode(conn1.token).decode()}")
 conn2 = apns.APNSConnection()
 print(f"Push Token 2: {b64encode(conn2.token).decode()}")
 
-# Create a topic filter payload with SHA1 hash of the topic
-payload = apns.Payload(9, apns.Fields({1: conn2.token, 2: sha1(b"com.apple.madrid").digest()}))
-# Send the payload
-#conn1.sock.write(payload.to_bytes())
-conn2.sock.write(payload.to_bytes())
+conn1.filter(["com.apple.madrid"])
+conn2.filter(["com.apple.madrid"])
 
 #print(sha1(b"com.apple.madrid").digest())
 # Send a notification

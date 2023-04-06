@@ -84,6 +84,7 @@ class Payload:
         return f"{COMMANDS[self.command]}: {self.fields}"
     
 import courier
+from hashlib import sha1
 
 class APNSConnection(): 
     def __init__(self, token: bytes=None, private_key=None, cert=None):
@@ -107,6 +108,13 @@ class APNSConnection():
         
         if 3 in resp.fields.fields:
             self.token = resp.fields.fields[3]
+
+    def filter(self, topics: list[str]):
+        payload = Payload(9, Fields({1: self.token, 2: b"".join([sha1(topic.encode()).digest() for topic in topics])}))
+
+        self.sock.write(payload.to_bytes())
+
+    
 
 if __name__ == "__main__":
     import courier
