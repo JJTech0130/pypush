@@ -84,18 +84,30 @@ class Payload:
     
 if __name__ == "__main__":
     import courier
+    import base64
+
     sock = courier.connect()
-    payload = Payload(7, Fields({2: 0x01.to_bytes()}))
+
+    # Try and read the token from the file
+    try:
+        with open("token", "r") as f:
+            r = f.read()
+            if r == "":
+                raise FileNotFoundError
+            payload = Payload(7, Fields({1: base64.b64decode(r), 2: 0x01.to_bytes()}))
+    except FileNotFoundError:
+        payload = Payload(7, Fields({2: 0x01.to_bytes()}))
+
+    # Send the connect request (with or without the token)
     sock.write(payload.to_bytes())
-    print("recieved: ", Payload.from_stream(sock))
-    print("recieved: ", Payload.from_stream(sock))
-    sock.close()
-# with socket.create_connection((COURIER_HOST, COURIER_PORT)) as sock:
-#     with context.wrap_socket(sock, server_hostname=COURIER_HOST) as ssock:
-#         payload = Payload(7, Fields({2: 0x01.to_bytes()}))
-#         #print(payload)
-#         #print(payload.to_bytes())
-#         #print(Payload.from_bytes(payload.to_bytes()))
-#         ssock.write(payload.to_bytes())
-#         print("recieved: ", Payload.from_stream(ssock))
-#         print("recieved: ", Payload.from_stream(ssock))
+
+    # Read the response
+    resp = Payload.from_stream(sock)
+    # Check if the response is valid
+    if resp.command != 8 or resp.fields.fields[1] != 0x00.to_bytes():
+        raise Exception("Failed to connect")
+    
+    # If there's a new token, save it
+    if 3 in resp.fields.fields:
+        with open("token", "wb") as f:
+            f.write(base64.b64encode(resp.fields.fields[3]))    

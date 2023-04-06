@@ -1,6 +1,7 @@
-# APNS keys
+# APNS
 push.crt
 push.key
+token
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
