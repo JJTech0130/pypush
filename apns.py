@@ -1,149 +1,89 @@
 from __future__ import annotations
 
-class Fields:
-    @staticmethod
-    def from_bytes(data: bytes) -> Fields:
-        fields = {}
-
-        while len(data) > 0:
-            field = data[0]
-            length = int.from_bytes(data[1:3], "big")
-            value = data[3:3 + length]
-
-            fields[field] = value
-
-            data = data[3 + length:]
-
-        return Fields(fields)
-
-    def __init__(self, fields: dict[int, bytes]):
-        self.fields = fields
-
-    def to_bytes(self) -> bytes:
-        buffer = bytearray()
-
-        for field, value in self.fields.items():
-            buffer.append(field)
-            buffer.extend(len(value).to_bytes(2, "big"))
-            buffer.extend(value)
-
-        return buffer
-
-    # Debug formating
-    def __str__(self) -> str:
-        return f"{self.fields}"
-
-# Define number to command name mapping
-COMMANDS = {
-    0x7: "Connect",
-    0x8: "ConnectResponse",
-    0x9: "PushTopics",
-    0x0A: "PushNotification",
-    0x0B: "Acknowledge",
-}
-
-class Payload:
-    @staticmethod
-    def from_stream(stream) -> Payload|None:
-        command = int.from_bytes(stream.read(1), "big")
-        if command == 0:
-            return None # We reached the end of the stream
-        length = int.from_bytes(stream.read(4), "big")
-        fields = Fields.from_bytes(stream.read(length))
-
-        return Payload(command, fields)
-    
-    @staticmethod
-    def from_bytes(data: bytes) -> Payload:
-        # Convert it to bytes for cleaner printing
-        data = bytes(data)
-        command = data[0]
-        length = int.from_bytes(data[1:5], "big")
-        fields = Fields.from_bytes(data[5:5 + length])
-
-        return Payload(command, fields)
-    
-    def __init__(self, command: int, fields: Fields):
-        self.command = command
-        self.fields = fields
-
-    def to_bytes(self) -> bytes:
-        buffer = bytearray()
-
-        buffer.append(self.command)
-
-        fields = self.fields.to_bytes()
-
-        buffer.extend(len(fields).to_bytes(4, "big"))
-        buffer.extend(fields)
-
-        return buffer
-
-    # Debug formating
-    def __str__(self) -> str:
-        return f"{COMMANDS[self.command]}: {self.fields}"
-    
-import courier
+import courier, albert
 from hashlib import sha1
 
-class APNSConnection(): 
-    def __init__(self, token: bytes=None, private_key=None, cert=None):
-        self.sock, self.private_key, self.cert = courier.connect(private_key, cert)
-        self.token = token
 
-        self._connect()
-    
-    def _connect(self):
-        if self.token is None:
-            payload = Payload(7, Fields({2: 0x01.to_bytes()}))
+def _serialize_field(id: int, value: bytes) -> bytes:
+    return id.to_bytes() + len(value).to_bytes(2, "big") + value
+
+
+def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
+    payload = b""
+
+    for fid, value in fields:
+        payload += _serialize_field(fid, value)
+
+    return id.to_bytes() + len(payload).to_bytes(4, "big") + payload
+
+
+def _deserialize_field(stream: bytes) -> tuple[int, bytes]:
+    id = int.from_bytes(stream[:1], "big")
+    length = int.from_bytes(stream[1:3], "big")
+    value = stream[3 : 3 + length]
+    return id, value
+
+
+# Note: Takes a stream, not a buffer, as we do not know the length of the payload
+def _deserialize_payload(stream) -> tuple[int, list[tuple[int, bytes]]] | None:
+    id = int.from_bytes(stream.read(1), "big")
+
+    if id == 0x0:
+        return None
+
+    length = int.from_bytes(stream.read(4), "big")
+
+    buffer = stream.read(length)
+
+    fields = []
+
+    while len(buffer) > 0:
+        fid, value = _deserialize_field(buffer)
+        fields.append((fid, value))
+        buffer = buffer[3 + len(value) :]
+
+    return id, fields
+
+
+# Returns the value of the first field with the given id
+def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes:
+    for field_id, value in fields:
+        if field_id == id:
+            return value
+    return None
+
+
+class APNSConnection:
+    def __init__(self, private_key=None, cert=None):
+        # Generate the private key and certificate if they're not provided
+        if private_key is None or cert is None:
+            self.private_key, self.cert = albert.generate_push_cert()
         else:
-            payload = Payload(7, Fields({1: self.token, 2: 0x01.to_bytes()}))
-        
-        self.sock.write(payload.to_bytes())
+            self.private_key, self.cert = private_key, cert
 
-        resp = Payload.from_stream(self.sock)
+        self.sock = courier.connect(self.private_key, self.cert)
 
-        if resp.command != 8 or resp.fields.fields[1] != 0x00.to_bytes():
+    def connect(self, token: bytes = None):
+        if token is None:
+            payload = _serialize_payload(7, [(2, 0x01.to_bytes())])
+        else:
+            payload = _serialize_payload(7, [(1, token), (2, 0x01.to_bytes())])
+
+        self.sock.write(payload)
+
+        payload = _deserialize_payload(self.sock)
+
+        if payload == None or payload[0] != 8 or _get_field(payload[1], 1) != 0x00.to_bytes():
             raise Exception("Failed to connect")
         
-        if 3 in resp.fields.fields:
-            self.token = resp.fields.fields[3]
+        self.token = _get_field(payload[1], 3)
 
     def filter(self, topics: list[str]):
-        payload = Payload(9, Fields({1: self.token, 2: b"".join([sha1(topic.encode()).digest() for topic in topics])}))
+        fields = [(1, self.token)]
 
-        self.sock.write(payload.to_bytes())
+        for topic in topics:
+            fields.append((2, sha1(topic.encode()).digest()))
 
-    
+        payload = _serialize_payload(9, fields)
 
-if __name__ == "__main__":
-    import courier
-    import base64
-
-    sock = courier.connect()
-
-    # Try and read the token from the file
-    try:
-        with open("token", "r") as f:
-            r = f.read()
-            if r == "":
-                raise FileNotFoundError
-            payload = Payload(7, Fields({1: base64.b64decode(r), 2: 0x01.to_bytes()}))
-    except FileNotFoundError:
-        payload = Payload(7, Fields({2: 0x01.to_bytes()}))
-
-    # Send the connect request (with or without the token)
-    sock.write(payload.to_bytes())
-
-    # Read the response
-    resp = Payload.from_stream(sock)
-    # Check if the response is valid
-    if resp.command != 8 or resp.fields.fields[1] != 0x00.to_bytes():
-        raise Exception("Failed to connect")
-    
-    # If there's a new token, save it
-    if 3 in resp.fields.fields:
-        with open("token", "wb") as f:
-            f.write(base64.b64encode(resp.fields.fields[3]))
-
-    # Send the push topics request
+        self.sock.write(payload)
