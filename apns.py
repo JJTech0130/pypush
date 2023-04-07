@@ -12,7 +12,8 @@ def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
     payload = b""
 
     for fid, value in fields:
-        payload += _serialize_field(fid, value)
+        if fid is not None:
+            payload += _serialize_field(fid, value)
 
     return id.to_bytes() + len(payload).to_bytes(4, "big") + payload
 

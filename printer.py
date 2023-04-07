@@ -93,10 +93,11 @@ def _p_filter(prefix, fields: list[tuple[int, bytes]]):
     if len(paused) > 100:
         paused = paused[:100] + "..."
     # (Token: {token.decode()})
-    print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Filter{bcolors.ENDC} {bcolors.WARNING}Enabled:{bcolors.ENDC} {enabled} {bcolors.FAIL}Ignored:{bcolors.ENDC} {ignored} {bcolors.OKBLUE}Oppertunistic:{bcolors.ENDC} {oppertunistic} {bcolors.OKGREEN}Paused:{bcolors.ENDC} {paused}")       
+    print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Filter{bcolors.ENDC} {bcolors.WARNING}Enabled{bcolors.ENDC}: {enabled} {bcolors.FAIL}Ignored{bcolors.ENDC}: {ignored} {bcolors.OKBLUE}Oppertunistic{bcolors.ENDC}: {oppertunistic} {bcolors.OKGREEN}Paused{bcolors.ENDC}: {paused}")       
 
+import apns
 
-def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]):
+def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -> bytes | None:
     id = payload[0]
 
     if id == 9:
@@ -104,10 +105,24 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]):
     elif id == 8:
         token_str = ""
         if _get_field(payload[1], 3):
-            token_str = f"New token: {b64encode(_get_field(payload[1], 3)).decode()}"
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connected{bcolors.ENDC} {token_str}")
+            token_str = f"{bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 3)).decode()}"
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connected{bcolors.ENDC} {token_str} {bcolors.OKBLUE}{_get_field(payload[1], 1).hex()}{bcolors.ENDC}")
     elif id == 7:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connect Request{bcolors.ENDC}")
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connect Request{bcolors.ENDC}", end="")
+        if _get_field(payload[1], 1):
+            print(f" {bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 1)).decode()}", end="")
+        if _get_field(payload[1], 0x0c):
+            print(f" {bcolors.OKBLUE}SIGNED{bcolors.ENDC}", end="")
+        print()
+        
+        for i in range(len(payload[1])):
+            if payload[1][i][0] == 1:
+                pass
+                #payload[1][i] = (None, None)
+                #payload[1][i] = (1, b64decode("D3MtN3e18QE8rve3n92wp+CwK7u/bWk/5WjQUOBN640="))
+
+        out = apns._serialize_payload(payload[0], payload[1])
+        return out
     elif id == 0xc:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive{bcolors.ENDC}")
     elif id == 0xd:
@@ -126,7 +141,7 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]):
         else: 
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}")
     elif id == 0xb:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification Ack{bcolors.ENDC}")
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification Ack{bcolors.ENDC} {bcolors.OKBLUE}{_get_field(payload[1], 8).hex()}{bcolors.ENDC}")
     else:
         print(prefix, f"Payload ID: {hex(payload[0])}")
         for field in payload[1]:

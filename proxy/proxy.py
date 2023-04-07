@@ -37,18 +37,25 @@ import printer
 
 
 def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: str = ""):
-    while True:
-        # Read data from the first connection
-        data = conn1.read()
-        # If there is no data, the connection has closed
-        if not data:
-            break
+    try:
+        while True:
+            # Read data from the first connection
+            data = conn1.read()
+            # If there is no data, the connection has closed
+            if not data:
+                break
 
-        printer.pretty_print_payload(prefix, apns._deserialize_payload_from_buffer(data))
+            override = printer.pretty_print_payload(prefix, apns._deserialize_payload_from_buffer(data))
+            if override is not None:
+                data = override
+                print("OVERRIDE: ", end="")
+                printer.pretty_print_payload(prefix, apns._deserialize_payload_from_buffer(data))
 
-        #print(prefix, data)
-        # Write the data to the second connection
-        conn2.write(data)
+            #print(prefix, data)
+            # Write the data to the second connection
+            conn2.write(data)
+    except Exception as e:
+        pass # Probably a connection closed error
     print("Connection closed")
     # Close the connections
     conn1.close()
