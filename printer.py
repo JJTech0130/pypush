@@ -61,7 +61,8 @@ def _p_filter(prefix, fields: list[tuple[int, bytes]]):
         elif field[0] == 5:
             paused.append(_lookup_topic(field[1]))
         else:
-            print(f"Unknown field ID: {field[0]}")
+            pass # whatever, there's a 6 but it's not documented
+            #print(f"Unknown field ID: {field[0]}")
 
     # Remove None values
     enabled = [topic.strip() for topic in enabled if topic is not None]
@@ -144,10 +145,8 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive Ack{bcolors.ENDC}")
     elif id == 0x14:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Set State{bcolors.ENDC}: {_get_field(payload[1], 1).hex()}")
-    elif id == 0x1d:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.FAIL}Unknown 0x1D{bcolors.ENDC}")
-    elif id == 0x20:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.FAIL}Unknown 0x20{bcolors.ENDC}")
+    elif id == 0x1d or id == 0x20:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub{bcolors.ENDC}")
     elif id == 0xe:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.FAIL}Unknown 0xe{bcolors.ENDC}")
     elif id == 0xa:

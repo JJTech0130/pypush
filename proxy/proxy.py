@@ -5,7 +5,7 @@ import tlslite
 import threading
 
 # APNs server to proxy traffic to
-APNS_HOST = "1-courier.push.apple.com"
+APNS_HOST = "windows.courier.push.apple.com"
 APNS_PORT = 5223
 ALPN = b"apns-security-v3"
 #ALPN = b"apns-pack-v1"
@@ -57,6 +57,8 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
     except OSError as e:
         if e.errno == 9:
             pass # Probably a connection closed error
+    except tlslite.TLSAbruptCloseError:
+        pass
     print("Connection closed")
     # Close the connections
     conn1.close()
