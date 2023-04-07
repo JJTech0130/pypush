@@ -44,6 +44,28 @@ def _deserialize_payload(stream) -> tuple[int, list[tuple[int, bytes]]] | None:
 
     return id, fields
 
+def _deserialize_payload_from_buffer(buffer: bytes) -> tuple[int, list[tuple[int, bytes]]] | None:
+    id = int.from_bytes(buffer[:1], "big")
+
+    if id == 0x0:
+        return None
+
+    length = int.from_bytes(buffer[1:5], "big")
+
+    buffer = buffer[5:]
+
+    if len(buffer) < length:
+        raise Exception("Buffer is too short")
+
+    fields = []
+
+    while len(buffer) > 0:
+        fid, value = _deserialize_field(buffer)
+        fields.append((fid, value))
+        buffer = buffer[3 + len(value) :]
+
+    return id, fields
+
 
 # Returns the value of the first field with the given id
 def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes:

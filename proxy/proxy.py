@@ -26,6 +26,16 @@ def connect() -> tlslite.TLSConnection:
 cert:str = None
 key:str = None
 
+
+import sys
+ 
+# setting path
+sys.path.append('../')
+
+import apns
+import printer
+
+
 def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: str = ""):
     while True:
         # Read data from the first connection
@@ -34,7 +44,9 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
         if not data:
             break
 
-        print(prefix, data)
+        printer.pretty_print_payload(prefix, apns._deserialize_payload_from_buffer(data))
+
+        #print(prefix, data)
         # Write the data to the second connection
         conn2.write(data)
     print("Connection closed")
