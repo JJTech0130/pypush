@@ -12,8 +12,8 @@ sys.path.append('../')
 # APNs server to proxy traffic to
 APNS_HOST = "windows.courier.push.apple.com"
 APNS_PORT = 5223
-#ALPN = b"apns-security-v3"
-ALPN = b"apns-security-v2"
+ALPN = b"apns-security-v3"
+#ALPN = b"apns-security-v2"
 #ALPN = b"apns-pack-v1"
 
 global_cnt = 0
@@ -27,6 +27,7 @@ def connect() -> tlslite.TLSConnection:
     #print("Handshaking with APNs")
     # Handshake with the server
     if ALPN == b"apns-security-v3":
+        print("Using v3")
         ssock.handshakeClientCert(alpn=[ALPN])
     else:
         import albert
@@ -51,8 +52,10 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
         while True:
             # Read data from the first connection
             data = conn1.read()
+            #print(prefix, "data: ", data)
             # If there is no data, the connection has closed
             if not data:
+                print(prefix, "Connection closed due to no data")
                 break
 
             override = printer.pretty_print_payload(prefix, apns._deserialize_payload_from_buffer(data))
@@ -66,9 +69,12 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
             conn2.write(data)
     except OSError as e:
         if e.errno == 9:
+            print(prefix, "Connection closed due to OSError 9")
             pass # Probably a connection closed error
-    except tlslite.TLSAbruptCloseError:
-        pass
+        else:
+            raise e
+    except tlslite.TLSAbruptCloseError as e:
+        print(prefix, "Connection closed abruptly: ", e)
     print("Connection closed")
     # Close the connections
     conn1.close()
@@ -103,6 +109,8 @@ def serve():
 
     # Create a socket to listen for connections
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Allow the socket to be reused
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("localhost", 5223))
     sock.listen()
 
@@ -120,14 +128,22 @@ def serve():
         global key
         key = f.read()
 
+    conns = []
     # Accept connections
-    while True:
-        # Accept a connection
-        conn, addr = sock.accept()
-        # Create a thread to handle the connection
-        #handle(conn)
-        thread = threading.Thread(target=handle, args=(conn,))
-        thread.start()
+    try:
+        while True:
+            # Accept a connection
+            conn, addr = sock.accept()
+            conns.append(conn)
+            # Create a thread to handle the connection
+            #handle(conn)
+            thread = threading.Thread(target=handle, args=(conn,))
+            thread.start()
+    except KeyboardInterrupt:
+        print("Keyboard interrupt, closing sockets")
+        for conn in conns:
+            conn.close()
+        sock.close()
 
 if __name__ == "__main__":
     serve()
