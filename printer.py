@@ -113,16 +113,31 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
             print(f" {bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 1)).decode()}", end="")
         if _get_field(payload[1], 0x0c):
             print(f" {bcolors.OKBLUE}SIGNED{bcolors.ENDC}", end="")
+        if _get_field(payload[1], 0x5) and int.from_bytes(_get_field(payload[1], 0x5)) & 0x4:
+            print(f" {bcolors.FAIL}ROOT{bcolors.ENDC}", end="")
         print()
+
+        #for field in payload[1]:
+        #    print(f"Field ID: {field[0]}")
+        #    print(f"Field Value: {field[1]}")
+
+            # 65 (user) or 69 (root)
         
         for i in range(len(payload[1])):
+            #if payload[1][i][0] == 5:
+                #if payload[1][i][1] == b'\x00\x00\x00A': # user
+                #    payload[1][i][1] = b'\x00\x00\x00E'
+                #elif payload[1][i][1] == b'\x00\x00\x00E': # root
+                #    payload[1][i][1] = b'\x00\x00\x00A'
+                #else:
+                #    print("Unknown field value: ", payload[1][i][1])
             if payload[1][i][0] == 1:
                 pass
                 #payload[1][i] = (None, None)
                 #payload[1][i] = (1, b64decode("D3MtN3e18QE8rve3n92wp+CwK7u/bWk/5WjQUOBN640="))
 
         out = apns._serialize_payload(payload[0], payload[1])
-        return out
+        #return out
     elif id == 0xc:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive{bcolors.ENDC}")
     elif id == 0xd:

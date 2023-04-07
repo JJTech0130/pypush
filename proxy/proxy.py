@@ -54,8 +54,9 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
             #print(prefix, data)
             # Write the data to the second connection
             conn2.write(data)
-    except Exception as e:
-        pass # Probably a connection closed error
+    except OSError as e:
+        if e.errno == 9:
+            pass # Probably a connection closed error
     print("Connection closed")
     # Close the connections
     conn1.close()
