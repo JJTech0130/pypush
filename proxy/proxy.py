@@ -16,10 +16,10 @@ def connect() -> tlslite.TLSConnection:
     sock = socket.create_connection((APNS_HOST, APNS_PORT))
     # Wrap the socket in TLS
     ssock = tlslite.TLSConnection(sock)
-    print("Handshaking with APNs")
+    #print("Handshaking with APNs")
     # Handshake with the server
     ssock.handshakeClientCert(alpn=[b"apns-security-v3"])
-    print("Handshaked with APNs")
+    #print("Handshaked with APNs")
 
     return ssock
 
@@ -60,10 +60,10 @@ def handle(conn: socket.socket):
     global cert, key
     chain = tlslite.X509CertChain()
     chain.parsePemList(cert)
-    print(chain)
+    #print(chain)
     #cert = tlslite.X509CertChain([tlslite.X509().parse(cert)])
     key_parsed  = tlslite.parsePEMKey(key, private=True)
-    print(key_parsed)
+    #print(key_parsed)
     s_conn.handshakeServer(certChain=chain, privateKey=key_parsed, reqCert=False, alpn=[ALPN])
 
     print("Handling connection")

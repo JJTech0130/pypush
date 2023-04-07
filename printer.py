@@ -108,6 +108,25 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]):
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connected{bcolors.ENDC} {token_str}")
     elif id == 7:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connect Request{bcolors.ENDC}")
+    elif id == 0xc:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive{bcolors.ENDC}")
+    elif id == 0xd:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive Ack{bcolors.ENDC}")
+    elif id == 0x14:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Set State{bcolors.ENDC}: {_get_field(payload[1], 1).hex()}")
+    elif id == 0x1d:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.FAIL}Unknown 0x1D{bcolors.ENDC}")
+    elif id == 0x20:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.FAIL}Unknown 0x20{bcolors.ENDC}")
+    elif id == 0xe:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.FAIL}Unknown 0xe{bcolors.ENDC}")
+    elif id == 0xa:
+        if prefix == "apsd -> APNs":
+            print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}")
+        else: 
+            print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}")
+    elif id == 0xb:
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification Ack{bcolors.ENDC}")
     else:
         print(prefix, f"Payload ID: {hex(payload[0])}")
         for field in payload[1]:
