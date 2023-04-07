@@ -23,8 +23,8 @@ def _deserialize_field(stream: bytes) -> tuple[int, bytes]:
     value = stream[3 : 3 + length]
     return id, value
 
-
 # Note: Takes a stream, not a buffer, as we do not know the length of the payload
+# WILL BLOCK IF THE STREAM IS EMPTY
 def _deserialize_payload(stream) -> tuple[int, list[tuple[int, bytes]]] | None:
     id = int.from_bytes(stream.read(1), "big")
 
@@ -87,3 +87,32 @@ class APNSConnection:
         payload = _serialize_payload(9, fields)
 
         self.sock.write(payload)
+
+    def send_message(self, token: bytes, topic: str, payload: str):
+        # Current time in UNIX nanoseconds
+        import time 
+        # Expire in 5 minutes
+        expiry = int(time.time()) + 500
+
+        payload = _serialize_payload(0x0a, 
+                                     [(1, sha1(topic.encode()).digest()),
+                                      (2, token),
+                                      (3, payload.encode("utf-8")),
+                                      (4, (3864024149).to_bytes(4, "big")),
+                                      (5, expiry.to_bytes(4, "big")),
+                                      (6, time.time_ns().to_bytes(8, "big")),
+                                      (7, 0x00.to_bytes()),
+                                      (0xf, self.token)])
+        
+        print(payload)
+        
+        self.sock.write(payload)
+
+        payload = _deserialize_payload(self.sock)
+
+        print(payload)
+
+
+    # TODO: Find a way to make this non-blocking
+    def expect_message(self) -> tuple[int, list[tuple[int, bytes]]] | None:
+        return _deserialize_payload(self.sock)

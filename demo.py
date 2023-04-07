@@ -13,6 +13,10 @@ print(f"Push Token 2: {b64encode(conn2.token).decode()}")
 conn1.filter(["com.apple.madrid"])
 conn2.filter(["com.apple.madrid"])
 
+conn1.send_message(conn2.token, "com.apple.madrid", "\{'hello': 'world'\}")
+
+#print(conn1.expect_message())
+#print(conn2.expect_message())
 # #print(sha1(b"com.apple.madrid").digest())
 # # Send a notification
 # # expiry timestamp in UNIX epoch
