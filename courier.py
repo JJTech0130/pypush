@@ -1,7 +1,7 @@
 import tlslite
 import socket
 
-COURIER_HOST = "10-courier.push.apple.com" # TODO: Get this from config
+COURIER_HOST = "windows.courier.push.apple.com" # TODO: Get this from config
 COURIER_PORT = 5223
 ALPN = [b"apns-security-v2"]
 
