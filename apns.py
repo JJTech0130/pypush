@@ -75,8 +75,32 @@ def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes:
             return value
     return None
 
+import threading,time
 
 class APNSConnection:
+    incoming_queue = []
+
+    def _queue_filler(self):
+        while True and not self.sock.closed:
+            #print(self.sock.closed)
+            #print("QUEUE: Waiting for payload...")
+            #self.sock.read(1)
+            print("QUEUE: Got payload?")
+            payload = _deserialize_payload(self.sock)
+            #print("QUEUE: Got payload?")
+
+            if payload is not None:
+                print("QUEUE: Received payload: " + str(payload))
+                self.incoming_queue.append(payload)
+        print("QUEUE: Thread ended")
+
+    def _pop_by_id(self, id: int) -> tuple[int, list[tuple[int, bytes]]] | None:
+        print("QUEUE: Looking for id " + str(id) + " in " + str(self.incoming_queue))
+        for i in range(len(self.incoming_queue)):
+            if self.incoming_queue[i][0] == id:
+                return self.incoming_queue.pop(i)
+        return None
+    
     def __init__(self, private_key=None, cert=None):
         # Generate the private key and certificate if they're not provided
         if private_key is None or cert is None:
@@ -85,6 +109,10 @@ class APNSConnection:
             self.private_key, self.cert = private_key, cert
 
         self.sock = courier.connect(self.private_key, self.cert)
+
+        # Start the queue filler thread
+        self.queue_filler_thread = threading.Thread(target=self._queue_filler)
+        self.queue_filler_thread.start()
 
     def connect(self, root: bool = True, token: bytes = None):
         flags = 0b01000001
@@ -98,7 +126,11 @@ class APNSConnection:
 
         self.sock.write(payload)
 
-        payload = _deserialize_payload(self.sock)
+        payload = self._pop_by_id(8)
+        while payload is None:
+            payload = self._pop_by_id(8)
+            print(f"Found {payload}")
+            time.sleep(0.5)
 
         if payload == None or payload[0] != 8 or _get_field(payload[1], 1) != 0x00.to_bytes():
             raise Exception("Failed to connect")
@@ -162,6 +194,11 @@ Field Value: b'bplist00\xdd\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0
 
         print(payload)
 
+    def set_state(self, state: int):
+        self.sock.write(_serialize_payload(0x14, [(1, state.to_bytes(1)), (2, 0x7FFFFFFF.to_bytes(4))]))
+
+    def keep_alive(self):
+        self.sock.write(_serialize_payload(0x0c, []))
 
     # TODO: Find a way to make this non-blocking
     def expect_message(self) -> tuple[int, list[tuple[int, bytes]]] | None:
