@@ -146,14 +146,18 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
     elif id == 0x14:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Set State{bcolors.ENDC}: {_get_field(payload[1], 1).hex()}")
     elif id == 0x1d or id == 0x20:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub{bcolors.ENDC}")
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub ??{bcolors.ENDC}")
     elif id == 0xe:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.FAIL}Unknown 0xe{bcolors.ENDC}")
+        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}Token Confirmation{bcolors.ENDC}")
     elif id == 0xa:
-        if prefix == "apsd -> APNs":
+        # if it has apsd -> APNs in the prefix, it's an outgoing notification
+        if "apsd -> APNs" in prefix:
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}")
         else: 
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}")
+        for field in payload[1]:
+            print(f"Field ID: {field[0]}")
+            print(f"Field Value: {field[1]}")
     elif id == 0xb:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification Ack{bcolors.ENDC} {bcolors.OKBLUE}{_get_field(payload[1], 8).hex()}{bcolors.ENDC}")
     else:

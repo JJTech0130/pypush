@@ -4,11 +4,19 @@ import socket
 import tlslite
 import threading
 
+import sys
+ 
+# setting path
+sys.path.append('../')
+
 # APNs server to proxy traffic to
 APNS_HOST = "windows.courier.push.apple.com"
 APNS_PORT = 5223
-ALPN = b"apns-security-v3"
+#ALPN = b"apns-security-v3"
+ALPN = b"apns-security-v2"
 #ALPN = b"apns-pack-v1"
+
+global_cnt = 0
 
 # Connect to the APNs server
 def connect() -> tlslite.TLSConnection:
@@ -18,19 +26,21 @@ def connect() -> tlslite.TLSConnection:
     ssock = tlslite.TLSConnection(sock)
     #print("Handshaking with APNs")
     # Handshake with the server
-    ssock.handshakeClientCert(alpn=[b"apns-security-v3"])
-    #print("Handshaked with APNs")
-
+    if ALPN == b"apns-security-v3":
+        ssock.handshakeClientCert(alpn=[ALPN])
+    else:
+        import albert
+        private_key, cert = albert.generate_push_cert()
+        cert = tlslite.X509CertChain([tlslite.X509().parse(cert)])
+        private_key = tlslite.parsePEMKey(private_key, private=True)
+        # Handshake with the server
+        ssock.handshakeClientCert(cert, private_key, alpn=[ALPN])
+    
     return ssock
 
 cert:str = None
 key:str = None
 
-
-import sys
- 
-# setting path
-sys.path.append('../')
 
 import apns
 import printer
@@ -80,11 +90,14 @@ def handle(conn: socket.socket):
     # Connect to the APNs server
     apns = connect()
     print("Connected to APNs")
+
+    global global_cnt
+    global_cnt += 1
     # Proxy data between the connections
     # Create a thread to proxy data from the APNs server to the client
-    threading.Thread(target=proxy, args=(s_conn, apns, "apsd -> APNs")).start()
+    threading.Thread(target=proxy, args=(s_conn, apns, f"{global_cnt} apsd -> APNs")).start()
     # Just proxy data from the client to the APNs server in this thread
-    proxy(apns, s_conn, "APNs -> apsd")
+    proxy(apns, s_conn, f"{global_cnt} APNs -> apsd")
 
 def serve():
 
