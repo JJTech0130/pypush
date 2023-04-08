@@ -94,68 +94,15 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
     conn1.close()
     conn2.close()
 
+repl_lock = False
 def repl(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection):
-    while True:
-        i = input(">>> ")
-        if "ro" in i:
-            #print("Replaying outgoing packet")
-            try:
-                index = int(i[2:])
-            except ValueError:
-                print("Invalid index")
-                continue
-            if index >= len(outgoing_list):
-                print("Invalid index")
-                continue
-            print("Replaying outgoing packet")
-            conn2.write(outgoing_list[index])
-            # Print the packet
-            printer.pretty_print_payload("[REPLAY] apsd -> APNs", apns._deserialize_payload_from_buffer(outgoing_list[index]))
-
-        elif "io" in i:
-            try:
-                index = int(i[2:])
-            except ValueError:
-                print("Invalid index")
-                continue
-            if index >= len(outgoing_list):
-                print("Invalid index")
-                continue
-            print("Inspecting outgoing packet")
-            payload = apns._deserialize_payload_from_buffer(outgoing_list[index])
-            print(f"ID: {payload[0]}")
-            for i in range(len(payload[1])):
-                print(f" {payload[1][i][0]}: {payload[1][i][1]}")
-
-        elif "ri" in i:
-            #print("Replaying incoming packet")
-            try:
-                index = int(i[2:])
-            except ValueError:
-                print("Invalid index")
-                continue
-            if index >= len(incoming_list):
-                print("Invalid index")
-                continue
-            print("Replaying incoming packet")
-            conn1.write(incoming_list[index])
-            # Print the packet
-            printer.pretty_print_payload("[REPLAY] APNs -> apsd", apns._deserialize_payload_from_buffer(incoming_list[index]))
-
-        elif "ii" in i:
-            try:
-                index = int(i[2:])
-            except ValueError:
-                print("Invalid index")
-                continue
-            if index >= len(incoming_list):
-                print("Invalid index")
-                continue
-            print("Inspecting incoming packet")
-            payload = apns._deserialize_payload_from_buffer(incoming_list[index])
-            print(f"ID: {payload[0]}")
-            for i in range(len(payload[1])):
-                print(f" {payload[1][i][0]}: {payload[1][i][1]}")
+    global repl_lock
+    if repl_lock:
+        print("REPL already running")
+        return
+    repl_lock = True
+    import IPython
+    IPython.embed()
 
 def handle(conn: socket.socket):
     # Wrap the socket in TLS
