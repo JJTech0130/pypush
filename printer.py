@@ -153,8 +153,15 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
         # if it has apsd -> APNs in the prefix, it's an outgoing notification
         if "apsd -> APNs" in prefix:
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}", end="")
+            topic = _lookup_topic(_get_field(payload[1], 1))
             if b"bplist" in _get_field(payload[1], 3):
                 print(f" {bcolors.OKCYAN}Binary{bcolors.ENDC}", end="")
+            if topic == "com.apple.madrid":
+                print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
+                import plistlib
+                plist = plistlib.loads(_get_field(payload[1], 3))
+                for key in plist:
+                    print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {plist[key]}", end="")
             print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {_lookup_topic(_get_field(payload[1], 1))}")
             
         else: 

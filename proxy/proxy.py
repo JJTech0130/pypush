@@ -61,7 +61,14 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
                 print(prefix, "Connection closed due to no data")
                 break
 
-            override = printer.pretty_print_payload(prefix, apns._deserialize_payload_from_buffer(data))
+            try:
+                override = printer.pretty_print_payload(prefix, apns._deserialize_payload_from_buffer(data))
+            except Exception as e:
+                if e == "Buffer is too short":
+                    print("Buffer is too short to parse, ignoring")
+                   # print("Buffer is too short, trying to read more")
+                   # data += conn1.read()
+                    pass
             if override is not None:
                 data = override
                 print("OVERRIDE: ", end="")
