@@ -153,6 +153,18 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
         # if it has apsd -> APNs in the prefix, it's an outgoing notification
         if "apsd -> APNs" in prefix:
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}")
+            # Duplicate the payload to send it twice, but with a different ID
+            payload1 = apns._serialize_payload(payload[0], payload[1])
+            for i in range(len(payload[1])):
+                if payload[1][i][0] == 0x4:
+                    payload[1][i] = (0x4, (int.from_bytes(payload[1][i][1]) + 1).to_bytes(4, "big"))
+                    #payload[1][i] = (None, None)
+            payload2 = apns._serialize_payload(payload[0], payload[1])
+            for i in range(len(payload[1])):
+                if payload[1][i][0] == 0x4:
+                    payload[1][i] = (0x4, (int.from_bytes(payload[1][i][1]) + 1).to_bytes(4, "big"))
+            payload3 = apns._serialize_payload(payload[0], payload[1])
+            return (payload1 + payload2 + payload3)
         else: 
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}")
         for field in payload[1]:
