@@ -94,11 +94,11 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
     conn1.close()
     conn2.close()
 
-def repl(conn: tlslite.TLSConnection):
+def repl(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection):
     while True:
         i = input(">>> ")
         if "ro" in i:
-            print("Replaying last outgoing packet")
+            #print("Replaying outgoing packet")
             try:
                 index = int(i[2:])
             except ValueError:
@@ -108,7 +108,7 @@ def repl(conn: tlslite.TLSConnection):
                 print("Invalid index")
                 continue
             print("Replaying outgoing packet")
-            conn.write(outgoing_list[index])
+            conn2.write(outgoing_list[index])
             # Print the packet
             printer.pretty_print_payload("[REPLAY] apsd -> APNs", apns._deserialize_payload_from_buffer(outgoing_list[index]))
 
@@ -128,7 +128,7 @@ def repl(conn: tlslite.TLSConnection):
                 print(f" {payload[1][i][0]}: {payload[1][i][1]}")
 
         elif "ri" in i:
-            print("Replaying last outgoing packet")
+            #print("Replaying incoming packet")
             try:
                 index = int(i[2:])
             except ValueError:
@@ -137,8 +137,8 @@ def repl(conn: tlslite.TLSConnection):
             if index >= len(incoming_list):
                 print("Invalid index")
                 continue
-            print("Replaying outgoing packet")
-            conn.write(incoming_list[index])
+            print("Replaying incoming packet")
+            conn1.write(incoming_list[index])
             # Print the packet
             printer.pretty_print_payload("[REPLAY] APNs -> apsd", apns._deserialize_payload_from_buffer(incoming_list[index]))
 
@@ -174,7 +174,7 @@ def handle(conn: socket.socket):
     apns = connect()
     print("Connected to APNs")
 
-    threading.Thread(target=repl, args=(s_conn,)).start()
+    threading.Thread(target=repl, args=(s_conn,apns)).start()
 
     global global_cnt
     global_cnt += 1
