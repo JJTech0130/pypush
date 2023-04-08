@@ -164,12 +164,12 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
                 if payload[1][i][0] == 0x4:
                     payload[1][i] = (0x4, (int.from_bytes(payload[1][i][1]) + 1).to_bytes(4, "big"))
             payload3 = apns._serialize_payload(payload[0], payload[1])
-            return (payload1 + payload2 + payload3)
+            #return (payload1 + payload2 + payload3)
         else: 
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}")
-        for field in payload[1]:
-            print(f"Field ID: {field[0]}")
-            print(f"Field Value: {field[1]}")
+        #for field in payload[1]:
+        #    print(f"Field ID: {field[0]}")
+        #    print(f"Field Value: {field[1]}")
     elif id == 0xb:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification Ack{bcolors.ENDC} {bcolors.OKBLUE}{_get_field(payload[1], 8).hex()}{bcolors.ENDC}")
     else:
