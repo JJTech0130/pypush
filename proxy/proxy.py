@@ -69,6 +69,8 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
                    # print("Buffer is too short, trying to read more")
                    # data += conn1.read()
                     pass
+                else:
+                    raise e
             if override is not None:
                 data = override
                 print("OVERRIDE: ", end="")

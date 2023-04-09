@@ -1,5 +1,6 @@
 from base64 import b64encode, b64decode
 from hashlib import sha1
+import plistlib, zlib
 
 # Taken from debug logs of apsd
 enabled_topics = "(com.apple.icloud-container.com.apple.avatarsd, com.icloud.askpermission, com.apple.icloud-container.com.apple.Safari, com.apple.itunesstored, com.apple.icloud-container.clouddocs.com.apple.CloudDocs.health, com.apple.passd.usernotifications, com.apple.icloud-container.com.apple.donotdisturbd, com.apple.icloud-container.clouddocs.iCloud.com.reddit.reddit, com.apple.mobileme.fmf3, com.apple.icloud-container.com.apple.cloudpaird, com.apple.icloud-container.clouddocs.com.apple.Pages, com.apple.appstored-testflight, com.apple.askpermissiond, com.apple.icloud-container.com.apple.willowd, com.me.cal, com.apple.icloud-container.com.apple.suggestd, com.apple.icloud-container.clouddocs.F3LWYJ7GM7.com.apple.garageband10, com.apple.icloud-container.clouddocs.com.apple.CloudDocs.container-metadata, com.apple.icloud-container.com.apple.callhistory.sync-helper, com.apple.icloud-container.com.apple.syncdefaultsd, com.apple.icloud-container.com.apple.SafariShared.Settings, com.apple.pay.services.products.prod, com.apple.icloud-container.com.apple.StatusKitAgent, com.apple.icloud-container.com.apple.siriknowledged, com.me.contacts, com.apple.icloud-container.com.apple.TrustedPeersHelper, com.apple.icloud-container.clouddocs.iCloud.com.apple.iBooks, com.apple.icloud-container.clouddocs.iCloud.dk.simonbs.Scriptable, com.apple.icloud-container.clouddocs.com.apple.ScriptEditor2, com.icloud.family, com.apple.idmsauth, com.apple.watchList, com.apple.icloud-container.clouddocs.com.apple.TextEdit, com.apple.icloud-container.com.apple.VoiceMemos, com.apple.sharedstreams, com.apple.pay.services.apply.prod, com.apple.icloud-container.com.apple.SafariShared.CloudTabs, com.apple.wallet.sharing.qa, com.apple.appstored, com.apple.icloud-container.clouddocs.3L68KQB4HG.com.readdle.CommonDocuments, com.apple.icloud-container.clouddocs.com.apple.CloudDocs.pp-metadata, com.me.setupservice, com.apple.icloud-container.com.apple.amsengagementd, com.apple.icloud-container.com.apple.appleaccount.beneficiary.private, com.apple.icloud-container.com.apple.appleaccount.beneficiary, com.apple.icloud-container.clouddocs.com.apple.mail, com.apple.icloud-container.com.apple.appleaccount.custodian, com.apple.icloud-container.com.apple.securityd, com.apple.icloud-container.com.apple.iBooksX, com.apple.icloud-container.clouddocs.com.apple.QuickTimePlayerX, com.apple.icloud-container.clouddocs.com.apple.TextInput, com.apple.icloud-container.com.apple.icloud.fmfd, com.apple.tv.favoriteTeams, com.apple.pay.services.ownershipTokens.prod, com.apple.icloud-container.com.apple.passd, com.apple.amsaccountsd, com.apple.pay.services.devicecheckin.prod.us, com.apple.storekit, com.apple.icloud-container.com.apple.keyboardservicesd, paymentpass.com.apple, com.apple.aa.setupservice, com.apple.icloud-container.clouddocs.com.apple.shoebox, com.apple.icloud-container.clouddocs.F3LWYJ7GM7.com.apple.mobilegarageband, com.apple.icloud-container.com.apple.icloud.searchpartyuseragent, com.apple.icloud-container.clouddocs.iCloud.com.apple.configurator.ui, com.apple.icloud-container.com.apple.gamed, com.apple.icloud-container.clouddocs.com.apple.Keynote, com.apple.icloud-container.com.apple.willowd.homekit, com.apple.amsengagementd.notifications, com.apple.icloud.presence.mode.status, com.apple.aa.idms, com.apple.icloud-container.clouddocs.iCloud.com.apple.MobileSMS, com.apple.gamed, com.apple.icloud-container.clouddocs.iCloud.is.workflow.my.workflows, com.apple.icloud-container.clouddocs.iCloud.md.obsidian, com.apple.icloud-container.clouddocs.com.apple.CloudDocs, com.apple.wallet.sharing, com.apple.icloud-container.clouddocs.iCloud.com.apple.iBooks.iTunesU, com.apple.icloud.presence.shared.experience, com.apple.icloud-container.com.apple.imagent, com.apple.icloud-container.com.apple.financed, com.apple.pay.services.account.prod, com.apple.icloud-container.com.apple.assistant.assistantd, com.apple.pay.services.ck.zone.prod, com.apple.icloud-container.com.apple.security.cuttlefish, com.apple.icloud-container.clouddocs.com.apple.iBooks.cloudData, com.apple.peerpayment, com.icloud.quota, com.apple.pay.provision, com.apple.icloud-container.com.apple.upload-request-proxy.com.apple.photos.cloud, com.apple.icloud-container.com.apple.appleaccount.custodian.private, com.apple.icloud-container.clouddocs.com.apple.Preview, com.apple.maps.icloud, com.apple.icloud-container.com.apple.reminders, com.apple.icloud-container.com.apple.SafariShared.WBSCloudBookmarksStore, com.apple.idmsauthagent, com.apple.icloud-container.clouddocs.com.apple.Numbers, com.apple.bookassetd, com.apple.pay.auxiliary.registration.requirement.prod, com.apple.icloud.fmip.voiceassistantsync)"
@@ -150,25 +151,61 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
     elif id == 0xe:
         print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}Token Confirmation{bcolors.ENDC}")
     elif id == 0xa:
+        topic = ""
+        #topic = _lookup_topic(_get_field(payload[1], 1))
         # if it has apsd -> APNs in the prefix, it's an outgoing notification
         if "apsd -> APNs" in prefix:
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}", end="")
             topic = _lookup_topic(_get_field(payload[1], 1))
-            if b"bplist" in _get_field(payload[1], 3):
-                print(f" {bcolors.OKCYAN}Binary{bcolors.ENDC}", end="")
-            if topic == "com.apple.madrid":
-                print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
-                import plistlib
-                plist = plistlib.loads(_get_field(payload[1], 3))
-                for key in plist:
-                    print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {plist[key]}", end="")
-            print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {_lookup_topic(_get_field(payload[1], 1))}")
+            # topic = _lookup_topic(_get_field(payload[1], 1))
+            # if b"bplist" in _get_field(payload[1], 3):
+            #     print(f" {bcolors.OKCYAN}Binary{bcolors.ENDC}", end="")
+            # if topic == "com.apple.madrid":
+            #     print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
+            #     import plistlib
+            #     plist = plistlib.loads(_get_field(payload[1], 3))
+            #     #payload = plist["P"]
+            #     #print(f" {bcolors.WARNING}Payload{bcolors.ENDC}: {payload}", end="")
+
+            #     for key in plist:
+            #         print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {plist[key]}", end="")
             
         else: 
             print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}", end="")
-            if b"bplist" in _get_field(payload[1], 3):
-                print(f" {bcolors.OKBLUE}Binary{bcolors.ENDC}", end="")
-            print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {_lookup_topic(_get_field(payload[1], 2))}")
+            topic = _lookup_topic(_get_field(payload[1], 2))
+            #if b"bplist" in _get_field(payload[1], 3):
+            #    print(f" {bcolors.OKBLUE}Binary{bcolors.ENDC}", end="")
+            #print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {_lookup_topic(_get_field(payload[1], 2))}")
+        
+        print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {topic}", end="")
+
+        if topic == "com.apple.madrid":
+            print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
+            payload = plistlib.loads(_get_field(payload[1], 3))
+            #print(payload)
+            if "cT" in payload:
+                # It's HTTP over APNs
+                if "hs" in payload:
+                    print(f" {bcolors.WARNING}HTTP Response{bcolors.ENDC}: {payload['hs']}", end="")
+                else:
+                    print(f" {bcolors.WARNING}HTTP Request{bcolors.ENDC}", end="")
+                #print(f" {bcolors.WARNING}HTTP{bcolors.ENDC} {payload['hs']}", end="")
+                if "u" in payload:
+                    print(f" {bcolors.OKCYAN}URL{bcolors.ENDC}: {payload['u']}", end="")
+                print(f" {bcolors.FAIL}Content Type{bcolors.ENDC}: {payload['cT']}", end="")
+                if "h" in payload:
+                    print(f" {bcolors.FAIL}Headers{bcolors.ENDC}: {payload['h']}", end="")
+                if "b" in payload:
+                    # What am I really supposed to put in WBITS? Got this from a random SO answer
+                    #print(payload["b"])
+                    body = zlib.decompress(payload['b'], 16+zlib.MAX_WBITS)
+                    if b'plist' in body:
+                        body = plistlib.loads(body)
+                    print(f" {bcolors.FAIL}Body{bcolors.ENDC}: {body}", end="")
+        
+        print()
+                
+                #print(f" {bcolors.WARNING}{bcolors.ENDC}: {payload['cT']}")
 
         #for field in payload[1]:
         #    print(f"Field ID: {field[0]}")
