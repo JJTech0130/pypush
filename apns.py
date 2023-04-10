@@ -14,17 +14,17 @@ class APNSConnection:
             #print(self.sock.closed)
             #print("QUEUE: Waiting for payload...")
             #self.sock.read(1)
-            print("QUEUE: Got payload?")
+            #print("QUEUE: Got payload?")
             payload = _deserialize_payload(self.sock)
             #print("QUEUE: Got payload?")
 
             if payload is not None:
-                print("QUEUE: Received payload: " + str(payload))
+                #print("QUEUE: Received payload: " + str(payload))
                 self.incoming_queue.append(payload)
-        print("QUEUE: Thread ended")
+        #print("QUEUE: Thread ended")
 
     def _pop_by_id(self, id: int) -> tuple[int, list[tuple[int, bytes]]] | None:
-        print("QUEUE: Looking for id " + str(id) + " in " + str(self.incoming_queue))
+        #print("QUEUE: Looking for id " + str(id) + " in " + str(self.incoming_queue))
         for i in range(len(self.incoming_queue)):
             if self.incoming_queue[i][0] == id:
                 return self.incoming_queue.pop(i)
@@ -81,9 +81,12 @@ class APNSConnection:
 
         self.sock.write(payload)
     
-    def send_message(self, topic: str, payload: str):
+    def send_message(self, topic: str, payload: str, id = None):
+        if id is None:
+            id = random.randbytes(4)
+        
         payload = _serialize_payload(0x0a,
-                                     [(4, random.randbytes(4)),
+                                     [(4, id),
                                       (1, sha1(topic.encode()).digest()),
                                       (2, self.token),
                                       (3, payload)])
@@ -93,9 +96,13 @@ class APNSConnection:
 
         payload = self.wait_for_packet(0x0b)
 
+        if payload[1][0][1] != 0x00.to_bytes():
+            raise Exception("Failed to send message")
+            #raise Exception("Failed to send message, got error code " + str(payload[1][1].hex()))
+
         #payload = _deserialize_payload(self.sock)
 
-        print(payload)
+        #print(payload)
 
     def set_state(self, state: int):
         self.sock.write(_serialize_payload(0x14, [(1, state.to_bytes(1)), (2, 0x7FFFFFFF.to_bytes(4))]))

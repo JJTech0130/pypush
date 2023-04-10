@@ -1,7 +1,6 @@
-# APNS
-push.crt
-push.key
-token
+# IDS
+ids.key
+ids.crt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
