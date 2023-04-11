@@ -90,11 +90,14 @@ def generate_push_cert() -> tuple[str, str]:
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
             encryption_algorithm=serialization.NoEncryption(),
-        ).decode("utf-8").strip(),
-        protocol["device-activation"]["activation-record"]["DeviceCertificate"].decode(
-            "utf-8"
-        ).strip(),
+        )
+        .decode("utf-8")
+        .strip(),
+        protocol["device-activation"]["activation-record"]["DeviceCertificate"]
+        .decode("utf-8")
+        .strip(),
     )
+
 
 if __name__ == "__main__":
     private_key, cert = generate_push_cert()

@@ -1,6 +1,7 @@
-from base64 import b64encode, b64decode
+import plistlib
+import zlib
+from base64 import b64decode, b64encode
 from hashlib import sha1
-import plistlib, zlib
 
 # Taken from debug logs of apsd
 enabled_topics = "(com.apple.icloud-container.com.apple.avatarsd, com.icloud.askpermission, com.apple.icloud-container.com.apple.Safari, com.apple.itunesstored, com.apple.icloud-container.clouddocs.com.apple.CloudDocs.health, com.apple.passd.usernotifications, com.apple.icloud-container.com.apple.donotdisturbd, com.apple.icloud-container.clouddocs.iCloud.com.reddit.reddit, com.apple.mobileme.fmf3, com.apple.icloud-container.com.apple.cloudpaird, com.apple.icloud-container.clouddocs.com.apple.Pages, com.apple.appstored-testflight, com.apple.askpermissiond, com.apple.icloud-container.com.apple.willowd, com.me.cal, com.apple.icloud-container.com.apple.suggestd, com.apple.icloud-container.clouddocs.F3LWYJ7GM7.com.apple.garageband10, com.apple.icloud-container.clouddocs.com.apple.CloudDocs.container-metadata, com.apple.icloud-container.com.apple.callhistory.sync-helper, com.apple.icloud-container.com.apple.syncdefaultsd, com.apple.icloud-container.com.apple.SafariShared.Settings, com.apple.pay.services.products.prod, com.apple.icloud-container.com.apple.StatusKitAgent, com.apple.icloud-container.com.apple.siriknowledged, com.me.contacts, com.apple.icloud-container.com.apple.TrustedPeersHelper, com.apple.icloud-container.clouddocs.iCloud.com.apple.iBooks, com.apple.icloud-container.clouddocs.iCloud.dk.simonbs.Scriptable, com.apple.icloud-container.clouddocs.com.apple.ScriptEditor2, com.icloud.family, com.apple.idmsauth, com.apple.watchList, com.apple.icloud-container.clouddocs.com.apple.TextEdit, com.apple.icloud-container.com.apple.VoiceMemos, com.apple.sharedstreams, com.apple.pay.services.apply.prod, com.apple.icloud-container.com.apple.SafariShared.CloudTabs, com.apple.wallet.sharing.qa, com.apple.appstored, com.apple.icloud-container.clouddocs.3L68KQB4HG.com.readdle.CommonDocuments, com.apple.icloud-container.clouddocs.com.apple.CloudDocs.pp-metadata, com.me.setupservice, com.apple.icloud-container.com.apple.amsengagementd, com.apple.icloud-container.com.apple.appleaccount.beneficiary.private, com.apple.icloud-container.com.apple.appleaccount.beneficiary, com.apple.icloud-container.clouddocs.com.apple.mail, com.apple.icloud-container.com.apple.appleaccount.custodian, com.apple.icloud-container.com.apple.securityd, com.apple.icloud-container.com.apple.iBooksX, com.apple.icloud-container.clouddocs.com.apple.QuickTimePlayerX, com.apple.icloud-container.clouddocs.com.apple.TextInput, com.apple.icloud-container.com.apple.icloud.fmfd, com.apple.tv.favoriteTeams, com.apple.pay.services.ownershipTokens.prod, com.apple.icloud-container.com.apple.passd, com.apple.amsaccountsd, com.apple.pay.services.devicecheckin.prod.us, com.apple.storekit, com.apple.icloud-container.com.apple.keyboardservicesd, paymentpass.com.apple, com.apple.aa.setupservice, com.apple.icloud-container.clouddocs.com.apple.shoebox, com.apple.icloud-container.clouddocs.F3LWYJ7GM7.com.apple.mobilegarageband, com.apple.icloud-container.com.apple.icloud.searchpartyuseragent, com.apple.icloud-container.clouddocs.iCloud.com.apple.configurator.ui, com.apple.icloud-container.com.apple.gamed, com.apple.icloud-container.clouddocs.com.apple.Keynote, com.apple.icloud-container.com.apple.willowd.homekit, com.apple.amsengagementd.notifications, com.apple.icloud.presence.mode.status, com.apple.aa.idms, com.apple.icloud-container.clouddocs.iCloud.com.apple.MobileSMS, com.apple.gamed, com.apple.icloud-container.clouddocs.iCloud.is.workflow.my.workflows, com.apple.icloud-container.clouddocs.iCloud.md.obsidian, com.apple.icloud-container.clouddocs.com.apple.CloudDocs, com.apple.wallet.sharing, com.apple.icloud-container.clouddocs.iCloud.com.apple.iBooks.iTunesU, com.apple.icloud.presence.shared.experience, com.apple.icloud-container.com.apple.imagent, com.apple.icloud-container.com.apple.financed, com.apple.pay.services.account.prod, com.apple.icloud-container.com.apple.assistant.assistantd, com.apple.pay.services.ck.zone.prod, com.apple.icloud-container.com.apple.security.cuttlefish, com.apple.icloud-container.clouddocs.com.apple.iBooks.cloudData, com.apple.peerpayment, com.icloud.quota, com.apple.pay.provision, com.apple.icloud-container.com.apple.upload-request-proxy.com.apple.photos.cloud, com.apple.icloud-container.com.apple.appleaccount.custodian.private, com.apple.icloud-container.clouddocs.com.apple.Preview, com.apple.maps.icloud, com.apple.icloud-container.com.apple.reminders, com.apple.icloud-container.com.apple.SafariShared.WBSCloudBookmarksStore, com.apple.idmsauthagent, com.apple.icloud-container.clouddocs.com.apple.Numbers, com.apple.bookassetd, com.apple.pay.auxiliary.registration.requirement.prod, com.apple.icloud.fmip.voiceassistantsync)"
@@ -17,16 +18,18 @@ topics = enabled_topics + opportunistic_topics + paused_topics
 # Calculate the SHA1 hash of each topic
 topics_lookup = [(topic, sha1(topic.encode()).digest()) for topic in topics]
 
+
 class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+
 
 def _lookup_topic(hash: bytes):
     for topic_lookup in topics_lookup:
@@ -34,12 +37,14 @@ def _lookup_topic(hash: bytes):
             return topic_lookup[0]
     return None
 
+
 # Returns the value of the first field with the given id
 def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes:
     for field_id, value in fields:
         if field_id == id:
             return value
     return None
+
 
 def _p_filter(prefix, fields: list[tuple[int, bytes]]):
     enabled = []
@@ -52,7 +57,7 @@ def _p_filter(prefix, fields: list[tuple[int, bytes]]):
     for field in fields:
         if field[0] == 1:
             token = b64encode(field[1])
-            #print(f"Push Token: {b64encode(field[1])}")
+            # print(f"Push Token: {b64encode(field[1])}")
         elif field[0] == 2:
             enabled.append(_lookup_topic(field[1]))
         elif field[0] == 3:
@@ -62,8 +67,8 @@ def _p_filter(prefix, fields: list[tuple[int, bytes]]):
         elif field[0] == 5:
             paused.append(_lookup_topic(field[1]))
         else:
-            pass # whatever, there's a 6 but it's not documented
-            #print(f"Unknown field ID: {field[0]}")
+            pass  # whatever, there's a 6 but it's not documented
+            # print(f"Unknown field ID: {field[0]}")
 
     # Remove None values
     enabled = [topic.strip() for topic in enabled if topic is not None]
@@ -95,11 +100,17 @@ def _p_filter(prefix, fields: list[tuple[int, bytes]]):
     if len(paused) > 100:
         paused = paused[:100] + "..."
     # (Token: {token.decode()})
-    print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Filter{bcolors.ENDC} {bcolors.WARNING}Enabled{bcolors.ENDC}: {enabled} {bcolors.FAIL}Ignored{bcolors.ENDC}: {ignored} {bcolors.OKBLUE}Oppertunistic{bcolors.ENDC}: {oppertunistic} {bcolors.OKGREEN}Paused{bcolors.ENDC}: {paused}")       
+    print(
+        f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Filter{bcolors.ENDC} {bcolors.WARNING}Enabled{bcolors.ENDC}: {enabled} {bcolors.FAIL}Ignored{bcolors.ENDC}: {ignored} {bcolors.OKBLUE}Oppertunistic{bcolors.ENDC}: {oppertunistic} {bcolors.OKGREEN}Paused{bcolors.ENDC}: {paused}"
+    )
+
 
 import apns
 
-def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -> bytes | None:
+
+def pretty_print_payload(
+    prefix, payload: tuple[int, list[tuple[int, bytes]]]
+) -> bytes | None:
     id = payload[0]
 
     if id == 9:
@@ -108,54 +119,78 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
         token_str = ""
         if _get_field(payload[1], 3):
             token_str = f"{bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 3)).decode()}"
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connected{bcolors.ENDC} {token_str} {bcolors.OKBLUE}{_get_field(payload[1], 1).hex()}{bcolors.ENDC}")
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connected{bcolors.ENDC} {token_str} {bcolors.OKBLUE}{_get_field(payload[1], 1).hex()}{bcolors.ENDC}"
+        )
     elif id == 7:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connect Request{bcolors.ENDC}", end="")
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connect Request{bcolors.ENDC}",
+            end="",
+        )
         if _get_field(payload[1], 1):
-            print(f" {bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 1)).decode()}", end="")
-        if _get_field(payload[1], 0x0c):
+            print(
+                f" {bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 1)).decode()}",
+                end="",
+            )
+        if _get_field(payload[1], 0x0C):
             print(f" {bcolors.OKBLUE}SIGNED{bcolors.ENDC}", end="")
-        if _get_field(payload[1], 0x5) and int.from_bytes(_get_field(payload[1], 0x5)) & 0x4:
+        if (
+            _get_field(payload[1], 0x5)
+            and int.from_bytes(_get_field(payload[1], 0x5)) & 0x4
+        ):
             print(f" {bcolors.FAIL}ROOT{bcolors.ENDC}", end="")
         print()
 
-        #for field in payload[1]:
+        # for field in payload[1]:
         #    print(f"Field ID: {field[0]}")
         #    print(f"Field Value: {field[1]}")
 
-            # 65 (user) or 69 (root)
-        
+        # 65 (user) or 69 (root)
+
         for i in range(len(payload[1])):
-            #if payload[1][i][0] == 5:
-                #if payload[1][i][1] == b'\x00\x00\x00A': # user
-                #    payload[1][i][1] = b'\x00\x00\x00E'
-                #elif payload[1][i][1] == b'\x00\x00\x00E': # root
-                #    payload[1][i][1] = b'\x00\x00\x00A'
-                #else:
-                #    print("Unknown field value: ", payload[1][i][1])
+            # if payload[1][i][0] == 5:
+            # if payload[1][i][1] == b'\x00\x00\x00A': # user
+            #    payload[1][i][1] = b'\x00\x00\x00E'
+            # elif payload[1][i][1] == b'\x00\x00\x00E': # root
+            #    payload[1][i][1] = b'\x00\x00\x00A'
+            # else:
+            #    print("Unknown field value: ", payload[1][i][1])
             if payload[1][i][0] == 1:
                 pass
-                #payload[1][i] = (None, None)
-                #payload[1][i] = (1, b64decode("D3MtN3e18QE8rve3n92wp+CwK7u/bWk/5WjQUOBN640="))
+                # payload[1][i] = (None, None)
+                # payload[1][i] = (1, b64decode("D3MtN3e18QE8rve3n92wp+CwK7u/bWk/5WjQUOBN640="))
 
         out = apns._serialize_payload(payload[0], payload[1])
-        #return out
-    elif id == 0xc:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive{bcolors.ENDC}")
-    elif id == 0xd:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive Ack{bcolors.ENDC}")
+        # return out
+    elif id == 0xC:
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive{bcolors.ENDC}"
+        )
+    elif id == 0xD:
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive Ack{bcolors.ENDC}"
+        )
     elif id == 0x14:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Set State{bcolors.ENDC}: {_get_field(payload[1], 1).hex()}")
-    elif id == 0x1d or id == 0x20:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub ??{bcolors.ENDC}")
-    elif id == 0xe:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}Token Confirmation{bcolors.ENDC}")
-    elif id == 0xa:
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Set State{bcolors.ENDC}: {_get_field(payload[1], 1).hex()}"
+        )
+    elif id == 0x1D or id == 0x20:
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub ??{bcolors.ENDC}"
+        )
+    elif id == 0xE:
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}Token Confirmation{bcolors.ENDC}"
+        )
+    elif id == 0xA:
         topic = ""
-        #topic = _lookup_topic(_get_field(payload[1], 1))
+        # topic = _lookup_topic(_get_field(payload[1], 1))
         # if it has apsd -> APNs in the prefix, it's an outgoing notification
         if "apsd -> APNs" in prefix:
-            print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}", end="")
+            print(
+                f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}",
+                end="",
+            )
             topic = _lookup_topic(_get_field(payload[1], 1))
             # topic = _lookup_topic(_get_field(payload[1], 1))
             # if b"bplist" in _get_field(payload[1], 3):
@@ -169,54 +204,68 @@ def pretty_print_payload(prefix, payload: tuple[int, list[tuple[int, bytes]]]) -
 
             #     for key in plist:
             #         print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {plist[key]}", end="")
-            
-        else: 
-            print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}", end="")
+
+        else:
+            print(
+                f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}",
+                end="",
+            )
             topic = _lookup_topic(_get_field(payload[1], 2))
-            #if b"bplist" in _get_field(payload[1], 3):
+            # if b"bplist" in _get_field(payload[1], 3):
             #    print(f" {bcolors.OKBLUE}Binary{bcolors.ENDC}", end="")
-            #print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {_lookup_topic(_get_field(payload[1], 2))}")
-        
+            # print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {_lookup_topic(_get_field(payload[1], 2))}")
+
         print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {topic}", end="")
 
         if topic == "com.apple.madrid":
             print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
             payload = plistlib.loads(_get_field(payload[1], 3))
-            #print(payload)
+            # print(payload)
             if "cT" in payload:
                 # It's HTTP over APNs
                 if "hs" in payload:
-                    print(f" {bcolors.WARNING}HTTP Response{bcolors.ENDC}: {payload['hs']}", end="")
+                    print(
+                        f" {bcolors.WARNING}HTTP Response{bcolors.ENDC}: {payload['hs']}",
+                        end="",
+                    )
                 else:
                     print(f" {bcolors.WARNING}HTTP Request{bcolors.ENDC}", end="")
-                #print(f" {bcolors.WARNING}HTTP{bcolors.ENDC} {payload['hs']}", end="")
+                # print(f" {bcolors.WARNING}HTTP{bcolors.ENDC} {payload['hs']}", end="")
                 if "u" in payload:
                     print(f" {bcolors.OKCYAN}URL{bcolors.ENDC}: {payload['u']}", end="")
-                print(f" {bcolors.FAIL}Content Type{bcolors.ENDC}: {payload['cT']}", end="")
+                print(
+                    f" {bcolors.FAIL}Content Type{bcolors.ENDC}: {payload['cT']}",
+                    end="",
+                )
                 if "h" in payload:
-                    print(f" {bcolors.FAIL}Headers{bcolors.ENDC}: {payload['h']}", end="")
+                    print(
+                        f" {bcolors.FAIL}Headers{bcolors.ENDC}: {payload['h']}", end=""
+                    )
                 if "b" in payload:
                     # What am I really supposed to put in WBITS? Got this from a random SO answer
-                    #print(payload["b"])
-                    body = zlib.decompress(payload['b'], 16+zlib.MAX_WBITS)
-                    if b'plist' in body:
+                    # print(payload["b"])
+                    body = zlib.decompress(payload["b"], 16 + zlib.MAX_WBITS)
+                    if b"plist" in body:
                         body = plistlib.loads(body)
                     print(f" {bcolors.FAIL}Body{bcolors.ENDC}: {body}", end="")
-        
-        print()
-                
-                #print(f" {bcolors.WARNING}{bcolors.ENDC}: {payload['cT']}")
 
-        #for field in payload[1]:
+        print()
+
+        # print(f" {bcolors.WARNING}{bcolors.ENDC}: {payload['cT']}")
+
+        # for field in payload[1]:
         #    print(f"Field ID: {field[0]}")
         #    print(f"Field Value: {field[1]}")
-    elif id == 0xb:
-        print(f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification Ack{bcolors.ENDC} {bcolors.OKBLUE}{_get_field(payload[1], 8).hex()}{bcolors.ENDC}")
+    elif id == 0xB:
+        print(
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification Ack{bcolors.ENDC} {bcolors.OKBLUE}{_get_field(payload[1], 8).hex()}{bcolors.ENDC}"
+        )
     else:
         print(prefix, f"Payload ID: {hex(payload[0])}")
         for field in payload[1]:
             print(f"Field ID: {field[0]}")
             print(f"Field Value: {field[1]}")
+
 
 if __name__ == "__main__":
     print(f"{bcolors.OKGREEN}Enabled:{bcolors.ENDC}")

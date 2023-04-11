@@ -1,9 +1,11 @@
-import tlslite
 import socket
 
-COURIER_HOST = "windows.courier.push.apple.com" # TODO: Get this from config
+import tlslite
+
+COURIER_HOST = "windows.courier.push.apple.com"  # TODO: Get this from config
 COURIER_PORT = 5223
 ALPN = [b"apns-security-v2"]
+
 
 # Connect to the courier server
 def connect(private_key: str, cert: str) -> tlslite.TLSConnection:
@@ -19,9 +21,9 @@ def connect(private_key: str, cert: str) -> tlslite.TLSConnection:
 
     return sock
 
+
 if __name__ == "__main__":
     sock = connect()
     sock.write(b"Hello World!")
     print(sock.read())
     sock.close()
-
