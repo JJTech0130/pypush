@@ -105,4 +105,17 @@ body = response['b']
 body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
 body = plistlib.loads(body)
 
-print(f"Body: {body}")
+# Recurse over the entire body, replacing all bytes with base64 encoded strings
+def recurse(obj):
+    if isinstance(obj, bytes):
+        return b64encode(obj).decode()
+    elif isinstance(obj, dict):
+        return {k: recurse(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [recurse(v) for v in obj]
+    return obj
+
+body = recurse(body)
+
+import json
+print(json.dumps(body, indent=4))
