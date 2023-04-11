@@ -7,7 +7,12 @@ from hashlib import sha1
 import zlib
 
 USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
+# NOTE: The push token MUST be registered with the account for self-uri!
+# This is an actual valid one for my account, since you can look it up anyway.
 PUSH_TOKEN = "5V7AY+ikHr4DiSfq1W2UBa71G3FLGkpUSKTrOLg81yk="
+SELF_URI = "mailto:jjtech@jjtech.dev"
+
+TO_LOOKUP = ['mailto:jjtech@jjtech.dev']
 
 # Nonce Format:
 # 01000001876bd0a2c0e571093967fce3d7
@@ -52,7 +57,7 @@ def sign_payload(private_key: str, bag_key: str, query_string: str, push_token: 
 
     return sig, nonce
 
-body = {'uris': ['mailto:jjtech@jjtech.dev']}
+body = {'uris': TO_LOOKUP}
 body = plistlib.dumps(body)
 body = zlib.compress(body, wbits=16 + zlib.MAX_WBITS)
 
@@ -64,7 +69,7 @@ headers = {
     'x-id-nonce': b64encode(nonce).decode(),
     'x-id-sig': signature,
     'x-push-token': PUSH_TOKEN,
-    'x-id-self-uri': 'mailto:jjtech@jjtech.dev',
+    'x-id-self-uri': SELF_URI,
     'User-Agent': USER_AGENT,
     'x-protocol-version': '1630',
 }
@@ -84,7 +89,7 @@ print(conn1.token)
 to_send = {'cT': 'application/x-apple-plist',
  'U': b'\x16%D\xd5\xcd:D1\xa1\xa7z6\xa9\xe2\xbc\x8f', # Just random bytes?
  'c': 96,
- 'ua': '[macOS,13.2.1,22D68,MacBookPro18,3]',
+ 'ua': USER_AGENT,
  'u': 'https://query.ess.apple.com/WebObjects/QueryService.woa/wa/query',
  'h': headers,
  'v': 2, # breaks lookup

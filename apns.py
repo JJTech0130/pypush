@@ -90,19 +90,13 @@ class APNSConnection:
                                       (1, sha1(topic.encode()).digest()),
                                       (2, self.token),
                                       (3, payload)])
-        #print(payload)
         
         self.sock.write(payload)
 
         payload = self.wait_for_packet(0x0b)
 
         if payload[1][0][1] != 0x00.to_bytes():
-            raise Exception("Failed to send message")
-            #raise Exception("Failed to send message, got error code " + str(payload[1][1].hex()))
-
-        #payload = _deserialize_payload(self.sock)
-
-        #print(payload)
+            raise Exception("Failed to send message")   
 
     def set_state(self, state: int):
         self.sock.write(_serialize_payload(0x14, [(1, state.to_bytes(1)), (2, 0x7FFFFFFF.to_bytes(4))]))
