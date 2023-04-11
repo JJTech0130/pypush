@@ -91,8 +91,6 @@ def _send_request(conn: apns.APNSConnection, type: str, body: bytes) -> bytes:
     # Sign the request
     signature, nonce = sign_payload(global_key, type, "", PUSH_TOKEN, body)
 
-    print(signature)
-
     headers = {
         "x-id-cert": global_cert.replace("-----BEGIN CERTIFICATE-----", "")
         .replace("-----END CERTIFICATE-----", "")
@@ -119,12 +117,12 @@ def _send_request(conn: apns.APNSConnection, type: str, body: bytes) -> bytes:
     conn.send_message("com.apple.madrid", plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
     resp = conn.wait_for_packet(0x0A)
 
-    resp2 = apns._get_field(resp[1], 3)
+    resp_body = apns._get_field(resp[1], 3)
 
-    if resp2 is None:
-        print(f"Got invalid response: {resp}")
+    if resp_body is None:
+        raise (Exception(f"Got invalid response: {resp}"))
 
-    return resp2
+    return resp_body
 
 
 def lookup(conn: apns.APNSConnection, query: list[str]) -> any:
