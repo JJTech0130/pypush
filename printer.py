@@ -221,7 +221,7 @@ def pretty_print_payload(
             print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
             payload = plistlib.loads(_get_field(payload[1], 3))
             # print(payload)
-            if "cT" in payload:
+            if "cT" in payload and False:
                 # It's HTTP over APNs
                 if "hs" in payload:
                     print(
@@ -248,6 +248,9 @@ def pretty_print_payload(
                     if b"plist" in body:
                         body = plistlib.loads(body)
                     print(f" {bcolors.FAIL}Body{bcolors.ENDC}: {body}", end="")
+            if not "cT" in payload:
+                for key in payload:
+                    print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {payload[key]}")
 
         print()
 

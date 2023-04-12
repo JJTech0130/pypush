@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 import apns
+import bags
 
 USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
 # NOTE: The push token MUST be registered with the account for self-uri!
@@ -78,18 +79,14 @@ def sign_payload(
     return sig, nonce
 
 
-BAG_KEYS = {
-    "id-query": "https://query.ess.apple.com/WebObjects/QueryService.woa/wa/query"
-}
-
 global_key, global_cert = load_keys()
 
 
-def _send_request(conn: apns.APNSConnection, type: str, body: bytes) -> bytes:
+def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes) -> bytes:
     body = zlib.compress(body, wbits=16 + zlib.MAX_WBITS)
 
     # Sign the request
-    signature, nonce = sign_payload(global_key, type, "", PUSH_TOKEN, body)
+    signature, nonce = sign_payload(global_key, bag_key, "", PUSH_TOKEN, body)
 
     headers = {
         "x-id-cert": global_cert.replace("-----BEGIN CERTIFICATE-----", "")
@@ -108,7 +105,7 @@ def _send_request(conn: apns.APNSConnection, type: str, body: bytes) -> bytes:
         "U": b"\x16%D\xd5\xcd:D1\xa1\xa7z6\xa9\xe2\xbc\x8f",  # Just random bytes?
         "c": 96,
         "ua": USER_AGENT,
-        "u": BAG_KEYS[type],
+        "u": bags.ids_bag()[bag_key],
         "h": headers,
         "v": 2,
         "b": body,
