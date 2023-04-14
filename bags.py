@@ -45,5 +45,11 @@ if __name__ == "__main__":
     # config = get_config()
     # print(config)
     # print(apns_init_bag_2())
-    print(apns_init_bag_2() == apns_init_bag())
-    # print(ids_bag())
+    #print(apns_init_bag_2() == apns_init_bag())
+    bag = ids_bag()
+    for key in bag:
+        #print(key)
+        #print(bag[key])
+        if type(bag[key]) == str:
+            if 'http' in bag[key]:
+                print(key, bag[key])
