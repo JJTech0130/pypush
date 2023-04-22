@@ -42,10 +42,15 @@ def load_keys() -> tuple[str, str]:
 
 
 def _create_payload(
-    bag_key: str, query_string: str, push_token: str, payload: bytes
+    bag_key: str,
+    query_string: str,
+    push_token: str,
+    payload: bytes,
+    nonce: bytes = None,
 ) -> tuple[str, bytes]:
     # Generate the nonce
-    nonce = generate_nonce()
+    if nonce is None:
+        nonce = generate_nonce()
     push_token = b64decode(push_token)
 
     return (
@@ -79,7 +84,7 @@ def sign_payload(
     return sig, nonce
 
 
-global_key, global_cert = load_keys()
+#global_key, global_cert = load_keys()
 
 
 def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes) -> bytes:
@@ -129,3 +134,33 @@ def lookup(conn: apns.APNSConnection, query: list[str]) -> any:
     resp = zlib.decompress(resp["b"], 16 + zlib.MAX_WBITS)
     resp = plistlib.loads(resp)
     return resp
+
+def get_auth_token(username: str, password: str) -> str:
+    # Get a PET from GSA
+    import gsa
+    g = gsa.authenticate(username, password, gsa.Anisette())
+    #print(g['t']['com.apple.gs.idms.pet'])
+    pet = g['t']['com.apple.gs.idms.pet']['token']
+
+    # Turn the PET into an auth token
+    import requests
+    import uuid
+
+    data = {
+        'apple-id': username,
+        'client-id': str(uuid.uuid4()),
+        'delegates': {
+            'com.apple.private.ids': {
+                'protocol-version': '4'
+            }
+        },
+        'password': pet,
+    }
+    data = plistlib.dumps(data)
+    headers = {'Content-Type': 'text/plist'}.update(gsa.Anisette().generate_headers())
+    r = requests.post("https://setup.icloud.com/setup/prefpane/loginDelegates", headers=headers, auth=(username, pet), data=data, verify=False)
+    r = plistlib.loads(r.content)
+    service_data = r['delegates']['com.apple.private.ids']['service-data']
+    realm_user_id = service_data['realm-user-id']
+    auth_token = service_data['auth-token']
+    print(f"Auth token for {realm_user_id}: {auth_token}")

@@ -12,4 +12,6 @@ conn1.connect()
 
 conn1.filter(["com.apple.madrid"])
 
-print(ids.lookup(conn1, ["mailto:jjtech@jjtech.dev"]))
+#print(ids.lookup(conn1, ["mailto:jjtech@jjtech.dev"]))
+
+print(ids.register(conn1, "user_test2@icloud.com", "wowSecure1"))

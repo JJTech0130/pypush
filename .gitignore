@@ -2,6 +2,8 @@
 ids.key
 ids.crt
 
+keychain-extract
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
