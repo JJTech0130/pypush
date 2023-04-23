@@ -217,7 +217,9 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
     )
 
 
-def _get_auth_cert(user_id, token) -> str:
+# Gets an IDS auth cert for the given user id and auth token
+# Returns [private key PEM, certificate PEM]
+def _get_auth_cert(user_id, token) -> tuple[str, str]:
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
     )
@@ -240,25 +242,63 @@ def _get_auth_cert(user_id, token) -> str:
     r = plistlib.loads(r.content)
     if r["status"] != 0:
         raise (Exception(f"Failed to get auth cert: {r}"))
-    return b64encode(r["cert"]).decode()
+    # return b64encode(r["cert"]).decode()
+    # cert = x509.load_pem_x509_certificate(b64encode(r["cert"]).decode())
+    cert = x509.load_der_x509_certificate(r["cert"])
+    # cert = cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+    return (
+        private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        .decode("utf-8")
+        .strip(),
+        cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip(),
+    )
 
 
 def test():
     import getpass
+    import json
 
-    # Prompt for username
-    username = input("Enter iCloud username: ")
-    # Prompt for password
-    password = getpass.getpass("Enter iCloud password: ")
+    # Open config as read and write
+    
+    try: 
+        with open("config.json", "r") as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        config = {}
+    
+    # If no username is set, prompt for it
+    if "username" not in config:
+        config["username"] = input("Enter iCloud username: ")
+    # If no password is set, prompt for it
+    if "password" not in config:
+        config["password"] = getpass.getpass("Enter iCloud password: ")
+    # If grandslam authentication is not set, prompt for it
+    if "use_gsa" not in config:
+        config["use_gsa"] = input("Use grandslam authentication? [y/N] ").lower() == "y"
 
     def factor_gen():
         return input("Enter iCloud 2FA code: ")
 
     user_id, token = _get_auth_token(
-        username, password, use_gsa=False, factor_gen=factor_gen
+        config["username"], config["password"], config["use_gsa"], factor_gen=factor_gen
     )
-    cert = _get_auth_cert(user_id, token)
-    print(cert)
+
+    config["user_id"] = user_id
+    config["token"] = token
+
+    key, cert = _get_auth_cert(user_id, token)
+
+    config["key"] = key
+    config["cert"] = cert
+    #print(key, cert)
+
+    # Save config
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=4)
 
 
 if __name__ == "__main__":

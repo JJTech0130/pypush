@@ -1,8 +1,4 @@
-# IDS
-ids.key
-ids.crt
-
-keychain-extract
+config.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
