@@ -158,12 +158,15 @@ def _auth_token_request(username: str, password: str) -> any:
     r = plistlib.loads(r.content)
     return r
 
+
 # Gets an IDS auth token for the given username and password
 # If use_gsa is True, GSA authentication will be used, which requires anisette
 # If use_gsa is False, it will use a old style 2FA code
 # If factor_gen is not None, it will be called to get the 2FA code, otherwise it will be prompted
 # Returns (realm user id, auth token)
-def _get_auth_token(username: str, password: str, use_gsa: bool = False, factor_gen: callable = None) -> tuple[str, str]:
+def _get_auth_token(
+    username: str, password: str, use_gsa: bool = False, factor_gen: callable = None
+) -> tuple[str, str]:
     if use_gsa:
         g = gsa.authenticate(username, password, gsa.Anisette())
         pet = g["t"]["com.apple.gs.idms.pet"]["token"]
@@ -176,14 +179,15 @@ def _get_auth_token(username: str, password: str, use_gsa: bool = False, factor_
         else:
             pet = password + factor_gen()
     r = _auth_token_request(username, pet)
-    #print(r)
-    if 'description' in r:
+    # print(r)
+    if "description" in r:
         raise Exception(f"Error: {r['description']}")
     service_data = r["delegates"]["com.apple.private.ids"]["service-data"]
     realm_user_id = service_data["realm-user-id"]
     auth_token = service_data["auth-token"]
     # print(f"Auth token for {realm_user_id}: {auth_token}")
     return realm_user_id, auth_token
+
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -198,9 +202,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
         .subject_name(
             x509.Name(
                 [
-                    x509.NameAttribute(
-                        NameOID.COMMON_NAME, random.randbytes(20).hex()
-                    ),
+                    x509.NameAttribute(NameOID.COMMON_NAME, random.randbytes(20).hex()),
                 ]
             )
         )
@@ -225,7 +227,7 @@ def _get_auth_cert(user_id, token) -> str:
         "realm-user-id": user_id,
     }
 
-    #print(body["csr"])
+    # print(body["csr"])
 
     body = plistlib.dumps(body)
 
@@ -243,13 +245,18 @@ def _get_auth_cert(user_id, token) -> str:
 
 def test():
     import getpass
+
     # Prompt for username
     username = input("Enter iCloud username: ")
     # Prompt for password
     password = getpass.getpass("Enter iCloud password: ")
+
     def factor_gen():
         return input("Enter iCloud 2FA code: ")
-    user_id, token = _get_auth_token(username, password, use_gsa=False, factor_gen=factor_gen)
+
+    user_id, token = _get_auth_token(
+        username, password, use_gsa=False, factor_gen=factor_gen
+    )
     cert = _get_auth_cert(user_id, token)
     print(cert)
 
