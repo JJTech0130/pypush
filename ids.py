@@ -1,15 +1,18 @@
 import plistlib
 import random
+import uuid
 import zlib
 from base64 import b64decode, b64encode
 from datetime import datetime
 
+import requests
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 import apns
 import bags
+import gsa
 
 USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
 # NOTE: The push token MUST be registered with the account for self-uri!
@@ -84,7 +87,7 @@ def sign_payload(
     return sig, nonce
 
 
-#global_key, global_cert = load_keys()
+# global_key, global_cert = load_keys()
 
 
 def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes) -> bytes:
@@ -135,32 +138,121 @@ def lookup(conn: apns.APNSConnection, query: list[str]) -> any:
     resp = plistlib.loads(resp)
     return resp
 
-def get_auth_token(username: str, password: str) -> str:
-    # Get a PET from GSA
-    import gsa
-    g = gsa.authenticate(username, password, gsa.Anisette())
-    #print(g['t']['com.apple.gs.idms.pet'])
-    pet = g['t']['com.apple.gs.idms.pet']['token']
 
+def _auth_token_request(username: str, password: str) -> any:
     # Turn the PET into an auth token
-    import requests
-    import uuid
-
     data = {
-        'apple-id': username,
-        'client-id': str(uuid.uuid4()),
-        'delegates': {
-            'com.apple.private.ids': {
-                'protocol-version': '4'
-            }
-        },
-        'password': pet,
+        "apple-id": username,
+        "client-id": str(uuid.uuid4()),
+        "delegates": {"com.apple.private.ids": {"protocol-version": "4"}},
+        "password": password,
     }
     data = plistlib.dumps(data)
-    headers = {'Content-Type': 'text/plist'}.update(gsa.Anisette().generate_headers())
-    r = requests.post("https://setup.icloud.com/setup/prefpane/loginDelegates", headers=headers, auth=(username, pet), data=data, verify=False)
+
+    r = requests.post(
+        "https://setup.icloud.com/setup/prefpane/loginDelegates",
+        auth=(username, password),
+        data=data,
+        verify=False,
+    )
     r = plistlib.loads(r.content)
-    service_data = r['delegates']['com.apple.private.ids']['service-data']
-    realm_user_id = service_data['realm-user-id']
-    auth_token = service_data['auth-token']
-    print(f"Auth token for {realm_user_id}: {auth_token}")
+    return r
+
+# Gets an IDS auth token for the given username and password
+# If use_gsa is True, GSA authentication will be used, which requires anisette
+# If use_gsa is False, it will use a old style 2FA code
+# If factor_gen is not None, it will be called to get the 2FA code, otherwise it will be prompted
+# Returns (realm user id, auth token)
+def _get_auth_token(username: str, password: str, use_gsa: bool = False, factor_gen: callable = None) -> tuple[str, str]:
+    if use_gsa:
+        g = gsa.authenticate(username, password, gsa.Anisette())
+        pet = g["t"]["com.apple.gs.idms.pet"]["token"]
+    else:
+        # Make the request without the 2FA code to make the prompt appear
+        _auth_token_request(username, password)
+        # Now make the request with the 2FA code
+        if factor_gen is None:
+            pet = password + input("Enter 2FA code: ")
+        else:
+            pet = password + factor_gen()
+    r = _auth_token_request(username, pet)
+    #print(r)
+    if 'description' in r:
+        raise Exception(f"Error: {r['description']}")
+    service_data = r["delegates"]["com.apple.private.ids"]["service-data"]
+    realm_user_id = service_data["realm-user-id"]
+    auth_token = service_data["auth-token"]
+    # print(f"Auth token for {realm_user_id}: {auth_token}")
+    return realm_user_id, auth_token
+
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.x509.oid import NameOID
+
+
+def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(
+                        NameOID.COMMON_NAME, random.randbytes(20).hex()
+                    ),
+                ]
+            )
+        )
+        .sign(private_key, hashes.SHA256())
+    )
+
+    csr = csr.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+    return (
+        csr.replace("-----BEGIN CERTIFICATE REQUEST-----", "")
+        .replace("-----END CERTIFICATE REQUEST-----", "")
+        .replace("\n", "")
+    )
+
+
+def _get_auth_cert(user_id, token) -> str:
+    private_key = rsa.generate_private_key(
+        public_exponent=65537, key_size=2048, backend=default_backend()
+    )
+    body = {
+        "authentication-data": {"auth-token": token},
+        "csr": b64decode(_generate_csr(private_key)),
+        "realm-user-id": user_id,
+    }
+
+    #print(body["csr"])
+
+    body = plistlib.dumps(body)
+
+    r = requests.post(
+        "https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/authenticateDS",
+        data=body,
+        headers={"x-protocol-version": "1630"},
+        verify=False,
+    )
+    r = plistlib.loads(r.content)
+    if r["status"] != 0:
+        raise (Exception(f"Failed to get auth cert: {r}"))
+    return b64encode(r["cert"]).decode()
+
+
+def test():
+    import getpass
+    # Prompt for username
+    username = input("Enter iCloud username: ")
+    # Prompt for password
+    password = getpass.getpass("Enter iCloud password: ")
+    def factor_gen():
+        return input("Enter iCloud 2FA code: ")
+    user_id, token = _get_auth_token(username, password, use_gsa=False, factor_gen=factor_gen)
+    cert = _get_auth_cert(user_id, token)
+    print(cert)
+
+
+if __name__ == "__main__":
+    test()
