@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives import padding
 import getpass
 
 # Constants
-DEBUG = False  # Allows using a proxy for debugging (disables SSL verification)
+DEBUG = True  # Allows using a proxy for debugging (disables SSL verification)
 # Server to use for anisette generation
 #ANISETTE = "https://sign.rheaa.xyz/"
 ANISETTE = 'http://45.132.246.138:6969/'

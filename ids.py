@@ -257,6 +257,34 @@ def _get_auth_cert(user_id, token) -> tuple[str, str]:
         cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip(),
     )
 
+def _register_request(push_token, user_id, auth_cert, auth_key, push_cert, push_key):
+    #body = {'device-name': 'Test'}
+    body = {'device-name': 'James’s Laptop', 'hardware-version': 'MacBookPro18,3', 'language': 'en-US', 'os-version': 'macOS,13.2.1,22D68', 'private-device-data': {'ap': '0', 'd': '703987510.082306', 'dt': 1, 'gt': '0', 'h': '1', 'ktf': '0', 'ktv': 54, 'm': '0', 'p': '0', 'pb': '22D68', 'pn': 'macOS', 'pv': '13.2.1', 's': '0', 't': '0', 'u': 'E451BD65-51B0-44F3-805A-A92BDD8A5000', 'v': '1'}, 'retry-count': 0, 'services': [{'capabilities': [{'flags': 1, 'name': 'Messenger', 'version': 1}], 'service': 'com.apple.madrid', 'sub-services': ['com.apple.private.alloy.gelato', 'com.apple.private.alloy.gamecenter.imessage', 'com.apple.private.alloy.sms', 'com.apple.private.alloy.biz'], 'users': [{'client-data': {'ec-version': 1, 'kt-version': 5, 'nicknames-version': 1, 'optionally-receive-typing-indicators': True, 'prefers-sdr': False, 'public-message-identity-key': b"0\x81\xf6\x81C\x00A\x04\x87\x1e\xeb\xe4u\x0b\xa3\x9e\x9c\xbc\xf8rK\x1e\xfe44%f$\x1d\xe8\xbb\xc6\xbdCD\x9ckv K\xc1\x1e\xb1\xdf4\xc8S6\x0f\x92\xd0=\x1e\x84\x9c\xc5\xa5\xb6\xb7}\xdd\xec\x1e\x1e\xd8Q\xd8\xca\xdb\x07'\xc7\x82\x81\xae\x00\xac0\x81\xa9\x02\x81\xa1\x00\xa8 \xfc\x9f\xa6\xb0V2\xce\x1c\xa7\x13\x9e\x03\xd1\xd8\x97a\xbb\xdd\xac\x86\xb8\x10(\x89\x13QP\x8f\xf0+EP\xd1\xb06\xee\x94\xcd\xa8\x9e\xf1\xedp\xa4\x9726\x1e\xe9\xab\xd4\xcb\xac\x05\xd7\x8c?\xbb\xa2\xde,\xfe\r\x1a\xb9\x88W@\x99\xec\xa0]\r\x1a>dV\xb2@\xc5P\xf3m\x80y\xf5\xa0G\xae\xd8h\x92\xef\xca\x85\xcbB\xed\xa9W\x8c\x13\xd4O\xdbYI2\xdcM\x1f\xf6c\x17\x1c\xd1v\xdd\xbcc\xac,&V\xfd\x07\xa0\xc3\x9f\x00\x1f\xc6\xe4\x02u\x12p\x8f\xe2\xb0\x14\xfai\x12\xbb\xa6\x9a6Q\xa5\xde+\x9e{\xcf\xc8\x1b}\x02\x03\x01\x00\x01", 'public-message-identity-ngm-version': 12, 'public-message-identity-version': 2, 'public-message-ngm-device-prekey-data-key': b'\n v\xd6=#\xb7\xde\xe9~n\xdd\x94|xw\x1c#W\xa5\xe0\xf3\x15\xed\xd1\xa0\xab\xa8\xfd\xa9\x8c\xdd\x16\xb0\x12@x\xb4\xafE\xc4\x1b\xcd\xe9\xb1\x8f\x8aI\x03\xd2&F\x95\x9b\x99R\x92\x07/\x12\xaeM\x10\xf3\xa2u\x7f5]\xd9\x19\xc3\x91\xb5\xb4\xbdO\x9c\x1f\r\xae\xa9\xf3+\x9c\x00M2\x83\x147\xb3X\xa11\x00\xaeV\xbe_\x19\x10\xafg\x19\xbf\x10\xd9A', 'supports-ack-v1': True, 'supports-animoji-v2': True, 'supports-audio-messaging-v2': True, 'supports-autoloopvideo-v1': True, 'supports-be-v1': True, 'supports-ca-v1': True, 'supports-certified-delivery-v1': True, 'supports-cross-platform-sharing': True, 'supports-dq-nr': True, 'supports-fsm-v1': True, 'supports-fsm-v2': True, 'supports-fsm-v3': True, 'supports-hdr': True, 'supports-heif': True, 'supports-ii-v1': True, 'supports-impact-v1': True, 'supports-inline-attachments': True, 'supports-keep-receipts': True, 'supports-location-sharing': True, 'supports-media-v2': True, 'supports-original-timestamp-v1': True, 'supports-people-request-messages': True, 'supports-people-request-messages-v2': True, 'supports-photos-extension-v1': True, 'supports-photos-extension-v2': True, 'supports-protobuf-payload-data-v2': True, 'supports-rem': True, 'supports-sa-v1': True, 'supports-st-v1': True, 'supports-update-attachments-v1': True}, 'kt-loggable-data': b'\n"\n \rl\xbe\xca\xf7\xe8\xb2\x89k\x18\x1e\xb9,d\xf8\xe2\n\xbf\x8d\xe1E\xd6\xf3T\xcb\xd9\x99d\xd1mk\xeb\x10\x0c\x18\x05"E\x08\x01\x12A\x04\x99\x16\xc3\xd8\x85\x80qPr\xbf\x0c\xdb\x9f\x1bHK\xb2:)\x01\x88\x91\xb1\x08do\xf3\x16\xc7\xaa\xd3nb\xddQF\x8f\xb2a\xb1\xbbK\xdf\xd0\xfa\x95\xa29XZ\xcaRh\xbex\xc4f\xe6G`\x1f\xf2\xf3[', 'uris': [{'uri': 'mailto:user_test2@icloud.com'}], 'user-id': 'D:20994360971'}]}], 'software-version': '22D68', 'validation-data': b'v\x02V`\xd8N\xf3V\xb0\xc4\'=\x137+\x16-o\x1d\x00\x1c\xf53\xe0g\xd9\x83x\xe0\xderh\xa0\xc7\x00\x00\x01\xe0\x07\x00\x00\x00\x01\x00\x00\x01\x806\x81<\xb9G\xf0,(CQX\xc5\x1e\xbc\xfe}a\xf7y\xfcg\xa1j/B\xb6k\xf4\xeey\x7f=e\xe6\xea\xa3\xfd\xb2\x18\x8e.\x19\x9e\'\x9eO]\xca\xe3{\x9f\x10I\x94\x1a\xe0\xef>\xce\x9dl\xb0\xb2u\x88KT\x0b\xcc\x915\x92\xd3\x86\x1b\xb3\xe5\x04\x9f\x8d\x8a\x82$\x11\xfb\xf2t\xda&\x96@U<lP"/\xf6->\xec\x84\x13\xe7p\xffS\x02\xde\x8c\xdd\xfcqA\x14!\xa4\x07\x82\xd0\x9fm\xe9~\xc4\xcf\x96\xd6D\xa3\xf0\xb9\xa7\xa2}\xc5\x0e.\x0fvYz\x07\xc2\x9f$s:\xd4<\x13u]\x06f[\xcd\x95\xd1\xad\xe9\xb3\xb3\x9f|\nh-\xa2\xa6\xb9c\xa1\x8d\xf2gx\x84\xbe\x1d\xc4\x03}^\xbf\x9ck#\xa8\xad\xa5\x87\x04\x88D\xd0\xee>\x9f\x0f\xa63;\x7fE\x14\x89\x1c]\x8b\x13o\xbd\xf6\x84`R\xa2\xb7Z\xcc\xdf+\xc5\xe5>\xf73?\x84\xe2d\x97\xd3\x07\x10V\xb6\xb4\nB7\xfc\x8bReeA\x15t\x94\xcf\xa8\x957\x1f\x1d>\xe1\xa4\xc5X\xb0!\x81\xcah\x11.\'$\xf6\x12\xb3`\xe9\xa93\x07\xe4}\x02\xee\x95hW\xb7\xfb \'_\xafC.\xdd\x13\x8df\xcf(H\x06\x18\xe2\xe7\xce\x93+\xf9\xe0\xf5\x17r\xb5.g2M\x8a\xb7\x80j\xb3\x00*\xa6Z\x1f\x07\xf3\x82\xcfj\xd2R\xc1%\xcc\xbe\x10\x9c\xb4qp\x1f\xd7W\x8c\x1aL2\xfa\xeb\x01s\x01m\xa3$\x9cJ\xf8X?\x99r`pT\xa7\xa6\x80\xcc\xc0\x97\xb3|[%\xc8Usj\x1d\x00\x00\x00\x00\x00\x00\x00O\x01P\xdc"\x98\xc3\xd9\xb5\xbaK\xdc.\xeb\x81\x87r\x8d\xa4q^\xcb\x00\x00\x006\t\x01\x92\x91\x8fI\xff\xff\xd5g\xf2\x1d\x04G\xf4_\xe4\x90dE\xc7\xb7\xcaO~V\x1e[\x7ff?e|d\xae\xb8\x92(F\xd1_\xe9\xb2\x9e\xb0\xf1\x99\x92\x07\xf8\xb2&I\xed'}
+    body = plistlib.dumps(body)
+    body = zlib.compress(body, wbits=16 + zlib.MAX_WBITS)
+
+    push_sig, push_nonce = sign_payload(push_key, 'id-register', '', push_token, body)
+    auth_sig, auth_nonce = sign_payload(auth_key, 'id-register', '', push_token, body)
+
+    headers = {
+        'x-protocol-version': '1640',
+        'content-type': 'application/x-apple-plist',
+        'content-encoding': 'gzip',
+
+        'x-auth-sig-0': auth_sig,
+        'x-auth-cert-0': auth_cert.replace('\n', '').replace('-----BEGIN CERTIFICATE-----', '').replace('-----END CERTIFICATE-----', ''),
+        'x-auth-user-id-0': user_id,
+        'x-auth-nonce-0': b64encode(auth_nonce),
+
+        'x-push-token': push_token,
+        'x-push-sig': push_sig,
+        'x-push-cert': push_cert.replace('\n', '').replace('-----BEGIN CERTIFICATE-----', '').replace('-----END CERTIFICATE-----', ''),
+        'x-push-nonce': b64encode(push_nonce),
+    }
+
+    r = requests.post('https://identity.ess.apple.com/WebObjects/TDIdentityService.woa/wa/register', headers=headers, data=body, verify=False)
+    print(r.text)
+
 
 def test():
     import getpass
@@ -295,6 +323,13 @@ def test():
     config["key"] = key
     config["cert"] = cert
     #print(key, cert)
+
+    conn1 = apns.APNSConnection()
+    conn1.connect()
+
+    conn1.filter(["com.apple.madrid"])
+
+    _register_request(b64encode(conn1.token), user_id, cert, key, conn1.cert, conn1.private_key)
 
     # Save config
     with open("config.json", "w") as f:

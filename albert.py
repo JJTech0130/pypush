@@ -79,7 +79,7 @@ def generate_push_cert() -> tuple[str, str]:
 
     resp = requests.post(
         "https://albert.apple.com/WebObjects/ALUnbrick.woa/wa/deviceActivation?device=Windows",
-        data={"activation-info": plistlib.dumps(body)},
+        data={"activation-info": plistlib.dumps(body)}, verify=False,
     )
 
     protocol = re.search("<Protocol>(.*)</Protocol>", resp.text).group(1)
