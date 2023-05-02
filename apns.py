@@ -33,6 +33,10 @@ def _connect(private_key: str, cert: str) -> tlslite.TLSConnection:
 class APNSConnection:
     incoming_queue = []
 
+    # Sink everything in the queue
+    def sink(self):
+        self.incoming_queue = []
+
     def _queue_filler(self):
         while True and not self.sock.closed:
             # print(self.sock.closed)

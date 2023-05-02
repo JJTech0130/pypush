@@ -134,42 +134,38 @@ if not 'ids_cert' in CONFIG:
     refresh_ids_cert()
 print("Got IDS certificate!")
 
-# This is the actual lookup!
-print("Looking up user...")
 ids_keypair = ids.KeyPair(CONFIG['key'], CONFIG['ids_cert'])
-resp = ids.lookup(conn, CONFIG['username'], ids_keypair, 'com.apple.madrid', ['mailto:user_test2@icloud.com'])
-print("Got response!")
-#print(resp)
 
-r = list(resp['results'].values())[0]
-i = r['identities']
-print(f"IDENTITIES: {len(i)}")
-for iden in i:
-    print("IDENTITY", end=" ")
-    #print("========")
-    print(f"Push Token: {b64encode(iden['push-token']).decode()}", end=" ")
-    if 'client-data' in iden:
-        print(f"Client Data: {len(iden['client-data'])}")
-        # cl = iden['client-data']
-        # for key, value in cl.items():
-        #     print(f"{key}: {value}")
-    else:
-        print("No client data")
-    #print("\n\n\n")
-    #print("\n\n\n")
-    #print(iden)
-    #
-    # for key, value in iden.items():
-    #    print(f"{key}: {value}")
-#for key, value in r.items():
-#    print(f"{key}: {value}")
-#print(r)
-#print(len(str(resp)))
+def lookup(topic:str, users: list[str]):
+    print(f"Looking up users {users} for topic {topic}...")
+    resp = ids.lookup(conn, CONFIG['username'], ids_keypair, topic, users)
 
-#print("\n\n\n\n")
+    #r = list(resp['results'].values())[0]
+    for k, v in resp['results'].items():
+        print(f"Result for user {k} topic {topic}:")
+        i = v['identities']
+        print(f"IDENTITIES: {len(i)}")
+        for iden in i:
+            print("IDENTITY", end=" ")
+            print(f"Push Token: {b64encode(iden['push-token']).decode()}", end=" ")
+            if 'client-data' in iden:
+                print(f"Client Data: {len(iden['client-data'])}")
+            
+            else:
+                print("No client data")
 
-#for key, value in resp['results']['mailto:user_test2@icloud.com'].items():
-#    print(f"{key}: {value}")
+# Hack to make sure that the requests and responses match up
+# This filter MUST contain all the topics you are looking up
+conn.filter(['com.apple.madrid', 'com.apple.private.alloy.facetime.multi'])
+import time
+time.sleep(5) # Let the server send us any messages it was holding
+conn.sink() # Dump the messages
+
+lookup("com.apple.madrid", ["mailto:jjtech@jjtech.dev"])
+lookup("com.apple.private.alloy.facetime.multi", ["mailto:jjtech@jjtech.dev"])
+
+lookup("com.apple.private.alloy.facetime.multi", ["mailto:user_test2@icloud.com"])
+lookup("com.apple.madrid", ["mailto:user_test2@icloud.com"])
 
 # Save config
 with open("config.json", "w") as f:
