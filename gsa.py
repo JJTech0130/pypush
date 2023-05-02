@@ -18,7 +18,8 @@ import getpass
 DEBUG = True  # Allows using a proxy for debugging (disables SSL verification)
 # Server to use for anisette generation
 #ANISETTE = "https://sign.rheaa.xyz/"
-ANISETTE = 'http://45.132.246.138:6969/'
+#ANISETTE = 'http://45.132.246.138:6969/'
+ANISETTE = False
 # ANISETTE = 'https://sideloadly.io/anisette/irGb3Quww8zrhgqnzmrx'
 # ANISETTE = "http://jkcoxson.com:2052/"
 
@@ -33,15 +34,34 @@ urllib3.disable_warnings()
 
 
 def generate_anisette() -> dict:
-    r = requests.get(ANISETTE, verify=False if DEBUG else True, timeout=5)
-    r = json.loads(r.text)
-    return r
+    import objc
+    from Foundation import NSBundle, NSClassFromString #type: ignore
+
+    AOSKitBundle = NSBundle.bundleWithPath_('/System/Library/PrivateFrameworks/AOSKit.framework')
+    objc.loadBundleFunctions(AOSKitBundle, globals(), [("retrieveOTPHeadersForDSID", b'')]) #type: ignore
+    util = NSClassFromString('AOSUtilities')
+
+    h = util.retrieveOTPHeadersForDSID_("-2")
+
+    o = {
+        "X-Apple-I-MD": str(h["X-Apple-MD"]),
+        "X-Apple-I-MD-M": str(h["X-Apple-MD-M"]),
+    }
+    #h["X-Apple-I-MD"] = str(h["X-Apple-MD"])
+    #h["X-Apple-I-MD-M"] = str(h["X-Apple-MD-M"])
+    #print(o)
+    return o
+    #r = requests.get(ANISETTE, verify=False if DEBUG else True, timeout=5)
+    #r = json.loads(r.text)
+    #return r
 
 
 class Anisette:
     @staticmethod
     def _fetch(url: str) -> dict:
         """Fetches anisette data that we cannot calculate from a remote server"""
+        if url == False:
+            return generate_anisette()
         r = requests.get(url, verify=False if DEBUG else True, timeout=5)
         r = json.loads(r.text)
         return r
@@ -507,5 +527,5 @@ def authenticate(username, password, anisette: Anisette):
         print(f"Unknown auth value {r['Status']['au']}")
         return
     else:
-        print("Assuming 2FA is not required")
+        #print("Assuming 2FA is not required")
         return spd
