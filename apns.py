@@ -101,7 +101,13 @@ class APNSConnection:
         ):
             raise Exception("Failed to connect")
 
-        self.token = _get_field(payload[1], 3)
+        new_token = _get_field(payload[1], 3)
+        if new_token is not None:
+            self.token = new_token
+        elif token is not None:
+            self.token = token
+        else:
+            raise Exception("No token")
 
         return self.token
 
