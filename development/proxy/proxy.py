@@ -8,6 +8,7 @@ import tlslite
 
 # setting path
 sys.path.append("../")
+sys.path.append("../../")
 
 # APNs server to proxy traffic to
 APNS_HOST = "windows.courier.push.apple.com"

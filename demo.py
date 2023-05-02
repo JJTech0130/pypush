@@ -156,8 +156,9 @@ def lookup(topic:str, users: list[str]):
 
 # Hack to make sure that the requests and responses match up
 # This filter MUST contain all the topics you are looking up
-conn.filter(['com.apple.madrid', 'com.apple.private.alloy.facetime.multi'])
+conn.filter(['com.apple.madrid', 'com.apple.private.alloy.facetime.multi', 'com.apple.private.alloy.multiplex1'])
 import time
+print("...waiting for queued messages... (this is a hack)")
 time.sleep(5) # Let the server send us any messages it was holding
 conn.sink() # Dump the messages
 
@@ -166,6 +167,8 @@ lookup("com.apple.private.alloy.facetime.multi", ["mailto:jjtech@jjtech.dev"])
 
 lookup("com.apple.private.alloy.facetime.multi", ["mailto:user_test2@icloud.com"])
 lookup("com.apple.madrid", ["mailto:user_test2@icloud.com"])
+
+lookup("com.apple.private.alloy.multiplex1", ["mailto:user_test2@icloud.com"])
 
 # Save config
 with open("config.json", "w") as f:
