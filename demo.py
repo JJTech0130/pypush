@@ -10,6 +10,16 @@ try:
 except FileNotFoundError:
     CONFIG = {}
 
+def input_multiline(prompt):
+    print(prompt)
+    lines = []
+    while True:
+        line = input()
+        if line == "":
+            break
+        lines.append(line)
+    return "\n".join(lines)
+
 def refresh_token():
     # If no username is set, prompt for it
     if "username" not in CONFIG:
@@ -102,6 +112,13 @@ def refresh_madrid_cert():
     CONFIG["madrid_cert"] = madrid_cert
 
 
+if not 'push' in CONFIG:
+    print("No push conn")
+    conn = create_connection()
+else:
+    print("restoring push conn")
+    conn = restore_connection()
+
 if not 'madrid_cert' in CONFIG:
     print("No madrid cert")
     if not 'key' in CONFIG:
@@ -110,14 +127,11 @@ if not 'madrid_cert' in CONFIG:
             print("No auth token")
             refresh_token()
         refresh_cert()
-    if not 'push' in CONFIG:
-        print("No push conn")
-        conn = create_connection()
-    else:
-        print("restoring push conn")
-        conn = restore_connection()
     refresh_madrid_cert()
     print("Got new madrid cert")
+print("Doing lookup")
+print(ids.lookup(conn, ['mailto:jjtech@jjtech.dev'], (CONFIG['key'], CONFIG['madrid_cert']), CONFIG['username']))
+
 
 print("Done")
 

@@ -16,7 +16,7 @@ import apns
 import bags
 import gsa
 
-#USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
+USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
 # NOTE: The push token MUST be registered with the account for self-uri!
 # This is an actual valid one for my account, since you can look it up anyway.
 #PUSH_TOKEN = "5V7AY+ikHr4DiSfq1W2UBa71G3FLGkpUSKTrOLg81yk="
@@ -34,17 +34,6 @@ def generate_nonce() -> bytes:
         + int(datetime.now().timestamp() * 1000).to_bytes(8, "big")
         + random.randbytes(8)
     )
-
-
-def load_keys() -> tuple[str, str]:
-    # Load the private key and certificate from files
-    with open("ids.key", "r") as f:
-        ids_key = f.read()
-    with open("ids.crt", "r") as f:
-        ids_cert = f.read()
-
-    return ids_key, ids_cert
-
 
 def _create_payload(
     bag_key: str,
@@ -92,27 +81,31 @@ def sign_payload(
 # global_key, global_cert = load_keys()
 
 
-def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes) -> bytes:
+def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes, id_key: str, id_cert, username: str) -> bytes:
     body = zlib.compress(body, wbits=16 + zlib.MAX_WBITS)
 
+    push_token = b64encode(conn.token).decode()
+
     # Sign the request
-    signature, nonce = sign_payload(global_key, bag_key, "", PUSH_TOKEN, body)
+    signature, nonce = sign_payload(id_key, bag_key, "", push_token, body)
 
     headers = {
-        "x-id-cert": global_cert.replace("-----BEGIN CERTIFICATE-----", "")
+        "x-id-cert": id_cert.replace("-----BEGIN CERTIFICATE-----", "")
         .replace("-----END CERTIFICATE-----", "")
         .replace("\n", ""),
         "x-id-nonce": b64encode(nonce).decode(),
         "x-id-sig": signature,
-        "x-push-token": PUSH_TOKEN,
-        "x-id-self-uri": SELF_URI,
+        "x-push-token": push_token,
+        "x-id-self-uri": 'mailto:' + username,
         "User-Agent": USER_AGENT,
         "x-protocol-version": "1630",
     }
 
+    print(headers)
+
     req = {
         "cT": "application/x-apple-plist",
-        "U": b"\x16%D\xd5\xcd:D1\xa1\xa7z6\xa9\xe2\xbc\x8f",  # Just random bytes?
+        "U": b"\x16%C\xd5\xcd:D1\xa1\xa7z6\xa9\xe2\xbc\x8f",  # Just random bytes?
         "c": 96,
         "ua": USER_AGENT,
         "u": bags.ids_bag()[bag_key],
@@ -132,9 +125,9 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes) -> bytes
     return resp_body
 
 
-def lookup(conn: apns.APNSConnection, query: list[str]) -> any:
+def lookup(conn: apns.APNSConnection, query: list[str], id_pair: tuple[str, str], self_user: str) -> any:
     query = {"uris": query}
-    resp = _send_request(conn, "id-query", plistlib.dumps(query))
+    resp = _send_request(conn, "id-query", plistlib.dumps(query), id_pair[0], id_pair[1], self_user)
     resp = plistlib.loads(resp)
     resp = zlib.decompress(resp["b"], 16 + zlib.MAX_WBITS)
     resp = plistlib.loads(resp)
@@ -307,14 +300,3 @@ def _register_request(
     if "status" in r and r["status"] == 6004:
         raise Exception("Validation data expired!")
     return r
-
-
-def input_multiline(prompt):
-    print(prompt)
-    lines = []
-    while True:
-        line = input()
-        if line == "":
-            break
-        lines.append(line)
-    return "\n".join(lines)
