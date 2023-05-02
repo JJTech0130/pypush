@@ -137,9 +137,39 @@ print("Got IDS certificate!")
 # This is the actual lookup!
 print("Looking up user...")
 ids_keypair = ids.KeyPair(CONFIG['key'], CONFIG['ids_cert'])
-resp = ids.lookup(conn, CONFIG['username'], ids_keypair, 'com.apple.madrid', ['mailto:textgpt@icloud.com'])
+resp = ids.lookup(conn, CONFIG['username'], ids_keypair, 'com.apple.madrid', ['mailto:user_test2@icloud.com'])
 print("Got response!")
-print(resp)
+#print(resp)
+
+r = list(resp['results'].values())[0]
+i = r['identities']
+print(f"IDENTITIES: {len(i)}")
+for iden in i:
+    print("IDENTITY", end=" ")
+    #print("========")
+    print(f"Push Token: {b64encode(iden['push-token']).decode()}", end=" ")
+    if 'client-data' in iden:
+        print(f"Client Data: {len(iden['client-data'])}")
+        # cl = iden['client-data']
+        # for key, value in cl.items():
+        #     print(f"{key}: {value}")
+    else:
+        print("No client data")
+    #print("\n\n\n")
+    #print("\n\n\n")
+    #print(iden)
+    #
+    # for key, value in iden.items():
+    #    print(f"{key}: {value}")
+#for key, value in r.items():
+#    print(f"{key}: {value}")
+#print(r)
+#print(len(str(resp)))
+
+#print("\n\n\n\n")
+
+#for key, value in resp['results']['mailto:user_test2@icloud.com'].items():
+#    print(f"{key}: {value}")
 
 # Save config
 with open("config.json", "w") as f:
