@@ -11,17 +11,15 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
+from collections import namedtuple
 
 import apns
 import bags
 import gsa
 
 USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
-# NOTE: The push token MUST be registered with the account for self-uri!
-# This is an actual valid one for my account, since you can look it up anyway.
-#PUSH_TOKEN = "5V7AY+ikHr4DiSfq1W2UBa71G3FLGkpUSKTrOLg81yk="
-#SELF_URI = "mailto:jjtech@jjtech.dev"
 
+KeyPair = namedtuple("KeyPair", ["key", "cert"])
 
 # Nonce Format:
 # 01000001876bd0a2c0e571093967fce3d7
@@ -80,17 +78,16 @@ def sign_payload(
 
 # global_key, global_cert = load_keys()
 
-
-def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes, id_key: str, id_cert, username: str) -> bytes:
+def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: bytes, keypair: KeyPair, username: str) -> bytes:
     body = zlib.compress(body, wbits=16 + zlib.MAX_WBITS)
 
     push_token = b64encode(conn.token).decode()
 
     # Sign the request
-    signature, nonce = sign_payload(id_key, bag_key, "", push_token, body)
+    signature, nonce = sign_payload(keypair.key, bag_key, "", push_token, body)
 
     headers = {
-        "x-id-cert": id_cert.replace("-----BEGIN CERTIFICATE-----", "")
+        "x-id-cert": keypair.cert.replace("-----BEGIN CERTIFICATE-----", "")
         .replace("-----END CERTIFICATE-----", "")
         .replace("\n", ""),
         "x-id-nonce": b64encode(nonce).decode(),
@@ -101,7 +98,7 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes, id_key: 
         "x-protocol-version": "1630",
     }
 
-    print(headers)
+    #print(headers)
 
     req = {
         "cT": "application/x-apple-plist",
@@ -114,7 +111,7 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes, id_key: 
         "b": body,
     }
 
-    conn.send_message("com.apple.madrid", plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
+    conn.send_message(topic, plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
     resp = conn.wait_for_packet(0x0A)
 
     resp_body = apns._get_field(resp[1], 3)
@@ -125,9 +122,16 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, body: bytes, id_key: 
     return resp_body
 
 
-def lookup(conn: apns.APNSConnection, query: list[str], id_pair: tuple[str, str], self_user: str) -> any:
+# Performs an IDS lookup
+# conn: an active APNs connection. must be connected and have a push token. will be filtered to the IDS topic
+# self: the user's email address
+# keypair: a KeyPair object containing the user's private key and certificate
+# topic: the IDS topic to query
+# query: a list of URIs to query
+def lookup(conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, query: list[str]) -> any:
+    conn.filter([topic])
     query = {"uris": query}
-    resp = _send_request(conn, "id-query", plistlib.dumps(query), id_pair[0], id_pair[1], self_user)
+    resp = _send_request(conn, "id-query", topic, plistlib.dumps(query), keypair, self)
     resp = plistlib.loads(resp)
     resp = zlib.decompress(resp["b"], 16 + zlib.MAX_WBITS)
     resp = plistlib.loads(resp)

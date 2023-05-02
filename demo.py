@@ -46,7 +46,7 @@ def refresh_cert():
 def create_connection(): 
     conn = apns.APNSConnection()
     token = conn.connect()
-    conn.filter(['com.apple.madrid'])
+    #conn.filter(['com.apple.madrid'])
     CONFIG['push'] = {
         'token': b64encode(token).decode(),
         'cert': conn.cert,
@@ -57,10 +57,10 @@ def create_connection():
 def restore_connection():
     conn = apns.APNSConnection(CONFIG['push']['key'], CONFIG['push']['cert'])
     conn.connect(True, b64decode(CONFIG['push']['token']))
-    conn.filter(['com.apple.madrid'])
+    #conn.filter(['com.apple.madrid', 'com.apple.private.alloy.facetime.multi'])
     return conn
 
-def refresh_madrid_cert():
+def refresh_ids_cert():
     info = {
         "uri": "mailto:" + CONFIG["username"],
         "user_id": CONFIG['user_id'],
@@ -102,38 +102,44 @@ def refresh_madrid_cert():
         )
         CONFIG["validation_data"] = validation_data
 
-    madrid_cert = x509.load_der_x509_certificate(
+    ids_cert = x509.load_der_x509_certificate(
         resp["services"][0]["users"][0]["cert"]
     )
-    madrid_cert = (
-        madrid_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip()
+    ids_cert = (
+        ids_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip()
     )
 
-    CONFIG["madrid_cert"] = madrid_cert
+    CONFIG["ids_cert"] = ids_cert
 
 
 if not 'push' in CONFIG:
-    print("No push conn")
+    print("No existing APNs credentials, creating new ones...")
+    #print("No push conn")
     conn = create_connection()
 else:
-    print("restoring push conn")
+    print("Restoring APNs credentials...")
     conn = restore_connection()
+print("Connected to APNs!")
 
-if not 'madrid_cert' in CONFIG:
-    print("No madrid cert")
+if not 'ids_cert' in CONFIG:
+    print("No existing IDS certificate, creating new one...")
     if not 'key' in CONFIG:
-        print("No auth cert")
+        print("No existing authentication certificate, creating new one...")
         if not 'token' in CONFIG:
-            print("No auth token")
+            print("No existing authentication token, creating new one...")
             refresh_token()
+        print("Got authentication token!")
         refresh_cert()
-    refresh_madrid_cert()
-    print("Got new madrid cert")
-print("Doing lookup")
-print(ids.lookup(conn, ['mailto:jjtech@jjtech.dev'], (CONFIG['key'], CONFIG['madrid_cert']), CONFIG['username']))
+    print("Got authentication certificate!")
+    refresh_ids_cert()
+print("Got IDS certificate!")
 
-
-print("Done")
+# This is the actual lookup!
+print("Looking up user...")
+ids_keypair = ids.KeyPair(CONFIG['key'], CONFIG['ids_cert'])
+resp = ids.lookup(conn, CONFIG['username'], ids_keypair, 'com.apple.madrid', ['mailto:textgpt@icloud.com'])
+print("Got response!")
+print(resp)
 
 # Save config
 with open("config.json", "w") as f:
