@@ -83,11 +83,11 @@ class APNSConnection:
 
         if token is None:
             payload = _serialize_payload(
-                7, [(2, 0x01.to_bytes()), (5, flags.to_bytes(4))]
+                7, [(2, 0x01.to_bytes(1, 'big')), (5, flags.to_bytes(4, 'big'))]
             )
         else:
             payload = _serialize_payload(
-                7, [(1, token), (2, 0x01.to_bytes()), (5, flags.to_bytes(4))]
+                7, [(1, token), (2, 0x01.to_bytes(1, 'big')), (5, flags.to_bytes(4, 'big'))]
             )
 
         self.sock.write(payload)
@@ -97,7 +97,7 @@ class APNSConnection:
         if (
             payload == None
             or payload[0] != 8
-            or _get_field(payload[1], 1) != 0x00.to_bytes()
+            or _get_field(payload[1], 1) != 0x00.to_bytes(1, 'big')
         ):
             raise Exception("Failed to connect")
 
@@ -139,13 +139,13 @@ class APNSConnection:
 
         payload = self.wait_for_packet(0x0B)
 
-        if payload[1][0][1] != 0x00.to_bytes():
+        if payload[1][0][1] != 0x00.to_bytes(1, 'big'):
             raise Exception("Failed to send message")
 
     def set_state(self, state: int):
         self.sock.write(
             _serialize_payload(
-                0x14, [(1, state.to_bytes(1)), (2, 0x7FFFFFFF.to_bytes(4))]
+                0x14, [(1, state.to_bytes(1, 'big')), (2, 0x7FFFFFFF.to_bytes(4, 'big'))]
             )
         )
 
@@ -158,7 +158,7 @@ class APNSConnection:
 
 
 def _serialize_field(id: int, value: bytes) -> bytes:
-    return id.to_bytes() + len(value).to_bytes(2, "big") + value
+    return id.to_bytes(1, 'big') + len(value).to_bytes(2, "big") + value
 
 
 def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
@@ -168,7 +168,7 @@ def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
         if fid is not None:
             payload += _serialize_field(fid, value)
 
-    return id.to_bytes() + len(payload).to_bytes(4, "big") + payload
+    return id.to_bytes(1, 'big') + len(payload).to_bytes(4, "big") + payload
 
 
 def _deserialize_field(stream: bytes) -> tuple[int, bytes]:

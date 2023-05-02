@@ -1,7 +1,7 @@
 import plistlib
 import random
 import uuid
-import zlib
+import gzip
 from base64 import b64decode, b64encode
 from datetime import datetime
 
@@ -47,13 +47,13 @@ def _create_payload(
 
     return (
         nonce
-        + len(bag_key).to_bytes(4)
+        + len(bag_key).to_bytes(4, 'big')
         + bag_key.encode()
-        + len(query_string).to_bytes(4)
+        + len(query_string).to_bytes(4, 'big')
         + query_string.encode()
-        + len(payload).to_bytes(4)
+        + len(payload).to_bytes(4, 'big')
         + payload
-        + len(push_token).to_bytes(4)
+        + len(push_token).to_bytes(4, 'big')
         + push_token,
         nonce,
     )
@@ -79,7 +79,7 @@ def sign_payload(
 # global_key, global_cert = load_keys()
 
 def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: bytes, keypair: KeyPair, username: str) -> bytes:
-    body = zlib.compress(body, wbits=16 + zlib.MAX_WBITS)
+    body = gzip.compress(body, mtime=0)
 
     push_token = b64encode(conn.token).decode()
 
@@ -133,7 +133,7 @@ def lookup(conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, q
     query = {"uris": query}
     resp = _send_request(conn, "id-query", topic, plistlib.dumps(query), keypair, self)
     resp = plistlib.loads(resp)
-    resp = zlib.decompress(resp["b"], 16 + zlib.MAX_WBITS)
+    resp = gzip.decompress(resp["b"])
     resp = plistlib.loads(resp)
     return resp
 
@@ -269,7 +269,7 @@ def _register_request(
     }
 
     body = plistlib.dumps(body)
-    body = zlib.compress(body, wbits=16 + zlib.MAX_WBITS)
+    body = gzip.compress(body, mtime=0)
 
     push_sig, push_nonce = sign_payload(push_key, "id-register", "", push_token, body)
     auth_sig, auth_nonce = sign_payload(auth_key, "id-register", "", push_token, body)
