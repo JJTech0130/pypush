@@ -1,5 +1,6 @@
 import plistlib
 import re
+import typing
 import uuid
 from base64 import b64decode, b64encode
 
@@ -42,7 +43,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
 
 # Generates an APNs push certificate by talking to Albert
 # Returns [private key PEM, certificate PEM]
-def generate_push_cert() -> tuple[str, str]:
+def generate_push_cert() -> typing.Tuple[str, str]:
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
     )

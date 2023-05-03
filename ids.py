@@ -1,10 +1,12 @@
 import gzip
 import plistlib
 import random
+import typing
 import uuid
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from datetime import datetime
+from secrets import token_hex, token_bytes
 
 import requests
 from cryptography import x509
@@ -31,7 +33,7 @@ def generate_nonce() -> bytes:
     return (
         b"\x01"
         + int(datetime.now().timestamp() * 1000).to_bytes(8, "big")
-        + random.randbytes(8)
+        + token_bytes(8)
     )
 
 
@@ -41,7 +43,7 @@ def _create_payload(
     push_token: str,
     payload: bytes,
     nonce: bytes = None,
-) -> tuple[str, bytes]:
+) -> typing.Tuple[str, bytes]:
     # Generate the nonce
     if nonce is None:
         nonce = generate_nonce()
@@ -63,7 +65,7 @@ def _create_payload(
 
 def sign_payload(
     private_key: str, bag_key: str, query_string: str, push_token: str, payload: bytes
-) -> tuple[str, bytes]:
+) -> typing.Tuple[str, bytes]:
     # Load the private key
     key = serialization.load_pem_private_key(
         private_key.encode(), password=None, backend=default_backend()
@@ -89,7 +91,7 @@ def _send_request(
     keypair: KeyPair,
     username: str,
 ) -> bytes:
-    body = gzip.compress(body, mtime=0)
+    body = gzip.compress(body)
 
     push_token = b64encode(conn.token).decode()
 
@@ -110,7 +112,7 @@ def _send_request(
 
     # print(headers)
 
-    msg_id = random.randbytes(16)
+    msg_id = token_bytes(16)
 
     req = {
         "cT": "application/x-apple-plist",
@@ -150,7 +152,7 @@ def _send_request(
 # topic: the IDS topic to query
 # query: a list of URIs to query
 def lookup(
-    conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, query: list[str]
+    conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, query: typing.List[str]
 ) -> any:
     conn.filter([topic])
     query = {"uris": query}
@@ -189,7 +191,7 @@ def _auth_token_request(username: str, password: str) -> any:
 # Returns (realm user id, auth token)
 def _get_auth_token(
     username: str, password: str, use_gsa: bool = False, factor_gen: callable = None
-) -> tuple[str, str]:
+) -> typing.Tuple[str, str]:
     if use_gsa:
         g = gsa.authenticate(username, password, gsa.Anisette())
         pet = g["t"]["com.apple.gs.idms.pet"]["token"]
@@ -218,7 +220,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
         .subject_name(
             x509.Name(
                 [
-                    x509.NameAttribute(NameOID.COMMON_NAME, random.randbytes(20).hex()),
+                    x509.NameAttribute(NameOID.COMMON_NAME, token_hex(20)),
                 ]
             )
         )
@@ -235,7 +237,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
 
 # Gets an IDS auth cert for the given user id and auth token
 # Returns [private key PEM, certificate PEM]
-def _get_auth_cert(user_id, token) -> tuple[str, str]:
+def _get_auth_cert(user_id, token) -> typing.Tuple[str, str]:
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
     )
@@ -293,7 +295,7 @@ def _register_request(
     }
 
     body = plistlib.dumps(body)
-    body = gzip.compress(body, mtime=0)
+    body = gzip.compress(body)
 
     push_sig, push_nonce = sign_payload(push_key, "id-register", "", push_token, body)
     auth_sig, auth_nonce = sign_payload(auth_key, "id-register", "", push_token, body)
