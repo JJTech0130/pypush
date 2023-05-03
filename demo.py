@@ -163,13 +163,13 @@ def lookup(topic:str, users: list[str]):
 #time.sleep(5) # Let the server send us any messages it was holding
 #conn.sink() # Dump the messages
 
-#lookup("com.apple.madrid", ["mailto:jjtech@jjtech.dev"])
-#lookup("com.apple.private.alloy.facetime.multi", ["mailto:jjtech@jjtech.dev"])
+lookup("com.apple.madrid", ["mailto:jjtech@jjtech.dev"])
+lookup("com.apple.private.alloy.facetime.multi", ["mailto:jjtech@jjtech.dev"])
 
-# lookup("com.apple.private.alloy.facetime.multi", ["mailto:user_test2@icloud.com"])
-# lookup("com.apple.madrid", ["mailto:user_test2@icloud.com"])
+lookup("com.apple.private.alloy.facetime.multi", ["mailto:user_test2@icloud.com"])
+lookup("com.apple.madrid", ["mailto:user_test2@icloud.com"])
 
-# lookup("com.apple.private.alloy.multiplex1", ["mailto:user_test2@icloud.com"])
+lookup("com.apple.private.alloy.multiplex1", ["mailto:user_test2@icloud.com"])
 
 lookup("com.apple.private.alloy.screensharing", ["mailto:user_test2@icloud.com"])
 
