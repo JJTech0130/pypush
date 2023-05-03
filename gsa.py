@@ -7,7 +7,6 @@ import plistlib as plist
 import uuid
 from base64 import b64decode, b64encode
 from datetime import datetime
-from random import randbytes
 
 import pbkdf2
 import requests

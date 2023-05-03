@@ -1,10 +1,12 @@
-from __future__ import annotations
+
 
 import random
 import socket
 import threading
 import time
+import typing
 from hashlib import sha1
+from secrets import token_bytes
 
 import tlslite
 
@@ -94,7 +96,7 @@ class APNSConnection:
                 self.incoming_queue.append(payload)
         # print("QUEUE: Thread ended")
 
-    # def _pop_by_id(self, id: int) -> tuple[int, list[tuple[int, bytes]]] | None:
+    # def _pop_by_id(self, id: int) -> typing.Optional[typing.Tuple[int, typing.List[typing.Tuple[int, bytes]]]] :
     #     def finder(item):
     #         return item[0] == id
     #     return self.incoming_queue.find(finder)
@@ -104,7 +106,7 @@ class APNSConnection:
     #     #        return self.incoming_queue.pop(i)
     #     #return None
 
-    # def wait_for_packet(self, id: int) -> tuple[int, list[tuple[int, bytes]]]:
+    # def wait_for_packet(self, id: int) -> typing.Tuple[int, typing.List[typing.Tuple[int, bytes]]]:
     #     found = None
     #     while found is None:
     #         found = self._pop_by_id(id)
@@ -172,7 +174,7 @@ class APNSConnection:
 
         return self.token
 
-    def filter(self, topics: list[str]):
+    def filter(self, topics: typing.List[str]):
         fields = [(1, self.token)]
 
         for topic in topics:
@@ -184,7 +186,7 @@ class APNSConnection:
 
     def send_message(self, topic: str, payload: str, id=None):
         if id is None:
-            id = random.randbytes(4)
+            id = token_bytes(4)
 
         payload = _serialize_payload(
             0x0A,
@@ -237,7 +239,7 @@ def _serialize_field(id: int, value: bytes) -> bytes:
     return id.to_bytes(1, "big") + len(value).to_bytes(2, "big") + value
 
 
-def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
+def _serialize_payload(id: int, fields: typing.List[typing.Tuple[int, bytes]]) -> bytes:
     payload = b""
 
     for fid, value in fields:
@@ -247,7 +249,7 @@ def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
     return id.to_bytes(1, "big") + len(payload).to_bytes(4, "big") + payload
 
 
-def _deserialize_field(stream: bytes) -> tuple[int, bytes]:
+def _deserialize_field(stream: bytes) -> typing.Tuple[int, bytes]:
     id = int.from_bytes(stream[:1], "big")
     length = int.from_bytes(stream[1:3], "big")
     value = stream[3 : 3 + length]
@@ -256,13 +258,13 @@ def _deserialize_field(stream: bytes) -> tuple[int, bytes]:
 
 # Note: Takes a stream, not a buffer, as we do not know the length of the payload
 # WILL BLOCK IF THE STREAM IS EMPTY
-def _deserialize_payload(stream) -> tuple[int, list[tuple[int, bytes]]] | None:
-    id = int.from_bytes(stream.read(1), "big")
+def _deserialize_payload(stream) -> typing.Optional[typing.Tuple[int, typing.List[typing.Tuple[int, bytes]]]] :
+    id = (1).from_bytes(stream.read(1), "big")
 
     if id == 0x0:
         return None
 
-    length = int.from_bytes(stream.read(4), "big")
+    length = (1).from_bytes(stream.read(4), "big")
 
     buffer = stream.read(length)
 
@@ -278,13 +280,13 @@ def _deserialize_payload(stream) -> tuple[int, list[tuple[int, bytes]]] | None:
 
 def _deserialize_payload_from_buffer(
     buffer: bytes,
-) -> tuple[int, list[tuple[int, bytes]]] | None:
-    id = int.from_bytes(buffer[:1], "big")
+) -> typing.Optional[typing.Tuple[int, typing.List[typing.Tuple[int, bytes]]]] :
+    id = (1).from_bytes(buffer[:1], "big")
 
     if id == 0x0:
         return None
 
-    length = int.from_bytes(buffer[1:5], "big")
+    length = (1).from_bytes(buffer[1:5], "big")
 
     buffer = buffer[5:]
 
@@ -302,7 +304,7 @@ def _deserialize_payload_from_buffer(
 
 
 # Returns the value of the first field with the given id
-def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes:
+def _get_field(fields: typing.List[typing.Tuple[int, bytes]], id: int) -> typing.Optional[bytes]:
     for field_id, value in fields:
         if field_id == id:
             return value

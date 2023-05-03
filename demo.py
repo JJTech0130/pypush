@@ -140,7 +140,7 @@ print("Got IDS certificate!")
 ids_keypair = ids.KeyPair(CONFIG["key"], CONFIG["ids_cert"])
 
 
-def lookup(topic: str, users: list[str]):
+def lookup(topic: str, users: typing.List[str]):
     print(f"Looking up users {users} for topic {topic}...")
     resp = ids.lookup(conn, CONFIG["username"], ids_keypair, topic, users)
 
