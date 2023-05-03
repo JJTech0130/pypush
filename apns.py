@@ -29,13 +29,53 @@ def _connect(private_key: str, cert: str) -> tlslite.TLSConnection:
 
     return sock
 
+class IncomingQueue:
+    def __init__(self):
+        self.queue = []
+        self.lock = threading.Lock()
+    
+    def append(self, item):
+        with self.lock:
+            self.queue.append(item)
+        
+    def pop(self, index):
+        with self.lock:
+            return self.queue.pop(index)
+    
+    def __getitem__(self, index):
+        with self.lock:
+            return self.queue[index]
+        
+    def __len__(self):
+        with self.lock:
+            return len(self.queue)
+        
+    def find(self, finder):
+        with self.lock:
+            return next((i for i in self.queue if finder(i)), None)
+        
+    def pop_find(self, finder):
+        with self.lock:
+            found = next((i for i in self.queue if finder(i)), None)
+            if found is not None:
+                # We have the lock, so we can safely remove it
+                self.queue.remove(found)
+            return found
+        
+    def wait_pop_find(self, finder, delay=0.1):
+        found = None
+        while found is None:
+            found = self.pop_find(finder)
+            if found is None:
+                time.sleep(delay)
+        return found
 
 class APNSConnection:
-    incoming_queue = []
+    incoming_queue = IncomingQueue()
 
     # Sink everything in the queue
     def sink(self):
-        self.incoming_queue = []
+        self.incoming_queue = IncomingQueue()
 
     def _queue_filler(self):
         while True and not self.sock.closed:
@@ -47,23 +87,33 @@ class APNSConnection:
             # print("QUEUE: Got payload?")
 
             if payload is not None:
-                # print("QUEUE: Received payload: " + str(payload))
+                #print("QUEUE: Received payload: " + str(payload))
+                print("QUEUE: Received payload type: " + hex(payload[0]))
                 self.incoming_queue.append(payload)
         # print("QUEUE: Thread ended")
 
-    def _pop_by_id(self, id: int) -> tuple[int, list[tuple[int, bytes]]] | None:
-        # print("QUEUE: Looking for id " + str(id) + " in " + str(self.incoming_queue))
-        for i in range(len(self.incoming_queue)):
-            if self.incoming_queue[i][0] == id:
-                return self.incoming_queue.pop(i)
-        return None
+    # def _pop_by_id(self, id: int) -> tuple[int, list[tuple[int, bytes]]] | None:
+    #     def finder(item):
+    #         return item[0] == id
+    #     return self.incoming_queue.find(finder)
+    #     # print("QUEUE: Looking for id " + str(id) + " in " + str(self.incoming_queue))
+    #     #for i in range(len(self.incoming_queue)):
+    #     #    if self.incoming_queue[i][0] == id:
+    #     #        return self.incoming_queue.pop(i)
+    #     #return None
 
-    def wait_for_packet(self, id: int) -> tuple[int, list[tuple[int, bytes]]]:
-        payload = self._pop_by_id(id)
-        while payload is None:
-            payload = self._pop_by_id(id)
-            time.sleep(0.1)
-        return payload
+    # def wait_for_packet(self, id: int) -> tuple[int, list[tuple[int, bytes]]]:
+    #     found = None
+    #     while found is None:
+    #         found = self._pop_by_id(id)
+    #         if found is None:
+    #             time.sleep(0.1)
+    #     return found
+    
+    # def find_packet(self, finder) -> 
+    
+    #def replace_packet(self, payload: tuple[int, list[tuple[int, bytes]]]):
+    #    self.incoming_queue.append(payload)
 
     def __init__(self, private_key=None, cert=None):
         # Generate the private key and certificate if they're not provided
@@ -96,7 +146,7 @@ class APNSConnection:
 
         self.sock.write(payload)
 
-        payload = self.wait_for_packet(8)
+        payload = self.incoming_queue.wait_pop_find(lambda i: i[0] == 8)
 
         if (
             payload == None
@@ -141,7 +191,8 @@ class APNSConnection:
 
         self.sock.write(payload)
 
-        payload = self.wait_for_packet(0x0B)
+        # Wait for ACK
+        payload = self.incoming_queue.wait_pop_find(lambda i: i[0] == 0x0B)
 
         if payload[1][0][1] != 0x00.to_bytes(1, 'big'):
             raise Exception("Failed to send message")
@@ -155,6 +206,19 @@ class APNSConnection:
 
     def keep_alive(self):
         self.sock.write(_serialize_payload(0x0C, []))
+
+    # def _send_ack(self, id: bytes):
+    #     print(f"Sending ACK for message {id}")
+    #     payload = _serialize_payload(0x0B, [(1, self.token), (4, id), (8, b"\x00")])
+    #     self.sock.write(payload)
+    #     #self.sock.write(_serialize_payload(0x0B, [(4, id)])
+    #     #pass
+
+    # def recieve_message(self):
+    #     payload = self.incoming_queue.wait_pop_find(lambda i: i[0] == 0x0A)
+    #     # Send ACK
+    #     self._send_ack(_get_field(payload[1], 4))
+    #     return _get_field(payload[1], 3)
 
     # TODO: Find a way to make this non-blocking
     # def expect_message(self) -> tuple[int, list[tuple[int, bytes]]] | None:

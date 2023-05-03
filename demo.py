@@ -140,6 +140,7 @@ def lookup(topic:str, users: list[str]):
     print(f"Looking up users {users} for topic {topic}...")
     resp = ids.lookup(conn, CONFIG['username'], ids_keypair, topic, users)
 
+    #print(resp)
     #r = list(resp['results'].values())[0]
     for k, v in resp['results'].items():
         print(f"Result for user {k} topic {topic}:")
@@ -156,20 +157,23 @@ def lookup(topic:str, users: list[str]):
 
 # Hack to make sure that the requests and responses match up
 # This filter MUST contain all the topics you are looking up
-conn.filter(['com.apple.madrid', 'com.apple.private.alloy.facetime.multi', 'com.apple.private.alloy.multiplex1'])
-import time
-print("...waiting for queued messages... (this is a hack)")
-time.sleep(5) # Let the server send us any messages it was holding
-conn.sink() # Dump the messages
+#conn.filter(['com.apple.madrid', 'com.apple.private.alloy.facetime.multi', 'com.apple.private.alloy.multiplex1', 'com.apple.private.alloy.screensharing'])
+#import time
+#print("...waiting for queued messages... (this is a hack)")
+#time.sleep(5) # Let the server send us any messages it was holding
+#conn.sink() # Dump the messages
 
-lookup("com.apple.madrid", ["mailto:jjtech@jjtech.dev"])
-lookup("com.apple.private.alloy.facetime.multi", ["mailto:jjtech@jjtech.dev"])
+#lookup("com.apple.madrid", ["mailto:jjtech@jjtech.dev"])
+#lookup("com.apple.private.alloy.facetime.multi", ["mailto:jjtech@jjtech.dev"])
 
-lookup("com.apple.private.alloy.facetime.multi", ["mailto:user_test2@icloud.com"])
-lookup("com.apple.madrid", ["mailto:user_test2@icloud.com"])
+# lookup("com.apple.private.alloy.facetime.multi", ["mailto:user_test2@icloud.com"])
+# lookup("com.apple.madrid", ["mailto:user_test2@icloud.com"])
 
-lookup("com.apple.private.alloy.multiplex1", ["mailto:user_test2@icloud.com"])
+# lookup("com.apple.private.alloy.multiplex1", ["mailto:user_test2@icloud.com"])
 
+lookup("com.apple.private.alloy.screensharing", ["mailto:user_test2@icloud.com"])
+
+#time.sleep(4)
 # Save config
 with open("config.json", "w") as f:
     json.dump(CONFIG, f, indent=4)

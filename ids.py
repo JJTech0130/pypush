@@ -100,9 +100,11 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: byt
 
     #print(headers)
 
+    msg_id = random.randbytes(16)
+
     req = {
         "cT": "application/x-apple-plist",
-        "U": b"\x16%C\xd5\xcd:D1\xa1\xa7z6\xa9\xe2\xbc\x8f",  # Just random bytes?
+        "U": msg_id,
         "c": 96,
         "ua": USER_AGENT,
         "u": bags.ids_bag()[bag_key],
@@ -112,14 +114,23 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: byt
     }
 
     conn.send_message(topic, plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
-    resp = conn.wait_for_packet(0x0A)
+    #resp = conn.wait_for_packet(0x0A)
 
-    resp_body = apns._get_field(resp[1], 3)
-
-    if resp_body is None:
-        raise (Exception(f"Got invalid response: {resp}"))
-
-    return resp_body
+    def check_response(x):
+        if x[0] != 0x0A:
+            return False
+        resp_body = apns._get_field(x[1], 3)
+        if resp_body is None:
+            return False
+        resp_body = plistlib.loads(resp_body)
+        return resp_body['U'] == msg_id
+    
+    # Lambda to check if the response is the one we want
+    #conn.incoming_queue.find(check_response)
+    payload = conn.incoming_queue.wait_pop_find(check_response)
+    #conn._send_ack(apns._get_field(payload[1], 4))
+    resp = apns._get_field(payload[1], 3)
+    return plistlib.loads(resp)
 
 
 # Performs an IDS lookup
@@ -132,7 +143,8 @@ def lookup(conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, q
     conn.filter([topic])
     query = {"uris": query}
     resp = _send_request(conn, "id-query", topic, plistlib.dumps(query), keypair, self)
-    resp = plistlib.loads(resp)
+    #resp = plistlib.loads(resp)
+    #print(resp)
     resp = gzip.decompress(resp["b"])
     resp = plistlib.loads(resp)
     return resp
