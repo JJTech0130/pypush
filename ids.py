@@ -1,8 +1,9 @@
+import gzip
 import plistlib
 import random
 import uuid
-import gzip
 from base64 import b64decode, b64encode
+from collections import namedtuple
 from datetime import datetime
 
 import requests
@@ -11,7 +12,6 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
-from collections import namedtuple
 
 import apns
 import bags
@@ -20,6 +20,7 @@ import gsa
 USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
 
 KeyPair = namedtuple("KeyPair", ["key", "cert"])
+
 
 # Nonce Format:
 # 01000001876bd0a2c0e571093967fce3d7
@@ -32,6 +33,7 @@ def generate_nonce() -> bytes:
         + int(datetime.now().timestamp() * 1000).to_bytes(8, "big")
         + random.randbytes(8)
     )
+
 
 def _create_payload(
     bag_key: str,
@@ -47,13 +49,13 @@ def _create_payload(
 
     return (
         nonce
-        + len(bag_key).to_bytes(4, 'big')
+        + len(bag_key).to_bytes(4, "big")
         + bag_key.encode()
-        + len(query_string).to_bytes(4, 'big')
+        + len(query_string).to_bytes(4, "big")
         + query_string.encode()
-        + len(payload).to_bytes(4, 'big')
+        + len(payload).to_bytes(4, "big")
         + payload
-        + len(push_token).to_bytes(4, 'big')
+        + len(push_token).to_bytes(4, "big")
         + push_token,
         nonce,
     )
@@ -78,7 +80,15 @@ def sign_payload(
 
 # global_key, global_cert = load_keys()
 
-def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: bytes, keypair: KeyPair, username: str) -> bytes:
+
+def _send_request(
+    conn: apns.APNSConnection,
+    bag_key: str,
+    topic: str,
+    body: bytes,
+    keypair: KeyPair,
+    username: str,
+) -> bytes:
     body = gzip.compress(body, mtime=0)
 
     push_token = b64encode(conn.token).decode()
@@ -93,12 +103,12 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: byt
         "x-id-nonce": b64encode(nonce).decode(),
         "x-id-sig": signature,
         "x-push-token": push_token,
-        "x-id-self-uri": 'mailto:' + username,
+        "x-id-self-uri": "mailto:" + username,
         "User-Agent": USER_AGENT,
         "x-protocol-version": "1630",
     }
 
-    #print(headers)
+    # print(headers)
 
     msg_id = random.randbytes(16)
 
@@ -114,7 +124,7 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: byt
     }
 
     conn.send_message(topic, plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
-    #resp = conn.wait_for_packet(0x0A)
+    # resp = conn.wait_for_packet(0x0A)
 
     def check_response(x):
         if x[0] != 0x0A:
@@ -123,12 +133,12 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: byt
         if resp_body is None:
             return False
         resp_body = plistlib.loads(resp_body)
-        return resp_body['U'] == msg_id
-    
+        return resp_body["U"] == msg_id
+
     # Lambda to check if the response is the one we want
-    #conn.incoming_queue.find(check_response)
+    # conn.incoming_queue.find(check_response)
     payload = conn.incoming_queue.wait_pop_find(check_response)
-    #conn._send_ack(apns._get_field(payload[1], 4))
+    # conn._send_ack(apns._get_field(payload[1], 4))
     resp = apns._get_field(payload[1], 3)
     return plistlib.loads(resp)
 
@@ -139,12 +149,14 @@ def _send_request(conn: apns.APNSConnection, bag_key: str, topic: str, body: byt
 # keypair: a KeyPair object containing the user's private key and certificate
 # topic: the IDS topic to query
 # query: a list of URIs to query
-def lookup(conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, query: list[str]) -> any:
+def lookup(
+    conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, query: list[str]
+) -> any:
     conn.filter([topic])
     query = {"uris": query}
     resp = _send_request(conn, "id-query", topic, plistlib.dumps(query), keypair, self)
-    #resp = plistlib.loads(resp)
-    #print(resp)
+    # resp = plistlib.loads(resp)
+    # print(resp)
     resp = gzip.decompress(resp["b"])
     resp = plistlib.loads(resp)
     return resp

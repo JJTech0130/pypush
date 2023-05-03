@@ -47,8 +47,9 @@ cert: str = None
 key: str = None
 
 
-import apns
 import printer
+
+import apns
 
 outgoing_list = []
 incoming_list = []

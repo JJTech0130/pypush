@@ -29,31 +29,32 @@ def _connect(private_key: str, cert: str) -> tlslite.TLSConnection:
 
     return sock
 
+
 class IncomingQueue:
     def __init__(self):
         self.queue = []
         self.lock = threading.Lock()
-    
+
     def append(self, item):
         with self.lock:
             self.queue.append(item)
-        
+
     def pop(self, index):
         with self.lock:
             return self.queue.pop(index)
-    
+
     def __getitem__(self, index):
         with self.lock:
             return self.queue[index]
-        
+
     def __len__(self):
         with self.lock:
             return len(self.queue)
-        
+
     def find(self, finder):
         with self.lock:
             return next((i for i in self.queue if finder(i)), None)
-        
+
     def pop_find(self, finder):
         with self.lock:
             found = next((i for i in self.queue if finder(i)), None)
@@ -61,7 +62,7 @@ class IncomingQueue:
                 # We have the lock, so we can safely remove it
                 self.queue.remove(found)
             return found
-        
+
     def wait_pop_find(self, finder, delay=0.1):
         found = None
         while found is None:
@@ -69,6 +70,7 @@ class IncomingQueue:
             if found is None:
                 time.sleep(delay)
         return found
+
 
 class APNSConnection:
     incoming_queue = IncomingQueue()
@@ -87,8 +89,8 @@ class APNSConnection:
             # print("QUEUE: Got payload?")
 
             if payload is not None:
-                #print("QUEUE: Received payload: " + str(payload))
-                #print("QUEUE: Received payload type: " + hex(payload[0]))
+                # print("QUEUE: Received payload: " + str(payload))
+                # print("QUEUE: Received payload type: " + hex(payload[0]))
                 self.incoming_queue.append(payload)
         # print("QUEUE: Thread ended")
 
@@ -109,10 +111,10 @@ class APNSConnection:
     #         if found is None:
     #             time.sleep(0.1)
     #     return found
-    
-    # def find_packet(self, finder) -> 
-    
-    #def replace_packet(self, payload: tuple[int, list[tuple[int, bytes]]]):
+
+    # def find_packet(self, finder) ->
+
+    # def replace_packet(self, payload: tuple[int, list[tuple[int, bytes]]]):
     #    self.incoming_queue.append(payload)
 
     def __init__(self, private_key=None, cert=None):
@@ -137,11 +139,16 @@ class APNSConnection:
 
         if token is None:
             payload = _serialize_payload(
-                7, [(2, 0x01.to_bytes(1, 'big')), (5, flags.to_bytes(4, 'big'))]
+                7, [(2, 0x01.to_bytes(1, "big")), (5, flags.to_bytes(4, "big"))]
             )
         else:
             payload = _serialize_payload(
-                7, [(1, token), (2, 0x01.to_bytes(1, 'big')), (5, flags.to_bytes(4, 'big'))]
+                7,
+                [
+                    (1, token),
+                    (2, 0x01.to_bytes(1, "big")),
+                    (5, flags.to_bytes(4, "big")),
+                ],
             )
 
         self.sock.write(payload)
@@ -151,7 +158,7 @@ class APNSConnection:
         if (
             payload == None
             or payload[0] != 8
-            or _get_field(payload[1], 1) != 0x00.to_bytes(1, 'big')
+            or _get_field(payload[1], 1) != 0x00.to_bytes(1, "big")
         ):
             raise Exception("Failed to connect")
 
@@ -194,13 +201,14 @@ class APNSConnection:
         # Wait for ACK
         payload = self.incoming_queue.wait_pop_find(lambda i: i[0] == 0x0B)
 
-        if payload[1][0][1] != 0x00.to_bytes(1, 'big'):
+        if payload[1][0][1] != 0x00.to_bytes(1, "big"):
             raise Exception("Failed to send message")
 
     def set_state(self, state: int):
         self.sock.write(
             _serialize_payload(
-                0x14, [(1, state.to_bytes(1, 'big')), (2, 0x7FFFFFFF.to_bytes(4, 'big'))]
+                0x14,
+                [(1, state.to_bytes(1, "big")), (2, 0x7FFFFFFF.to_bytes(4, "big"))],
             )
         )
 
@@ -226,7 +234,7 @@ class APNSConnection:
 
 
 def _serialize_field(id: int, value: bytes) -> bytes:
-    return id.to_bytes(1, 'big') + len(value).to_bytes(2, "big") + value
+    return id.to_bytes(1, "big") + len(value).to_bytes(2, "big") + value
 
 
 def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
@@ -236,7 +244,7 @@ def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
         if fid is not None:
             payload += _serialize_field(fid, value)
 
-    return id.to_bytes(1, 'big') + len(payload).to_bytes(4, "big") + payload
+    return id.to_bytes(1, "big") + len(payload).to_bytes(4, "big") + payload
 
 
 def _deserialize_field(stream: bytes) -> tuple[int, bytes]:

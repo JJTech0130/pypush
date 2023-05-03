@@ -1,24 +1,25 @@
-from base64 import b64encode, b64decode
-from datetime import datetime
-from random import randbytes
-import uuid
-import locale
-import plistlib as plist
-import json
+import getpass
 import hashlib
 import hmac
+import json
+import locale
+import plistlib as plist
+import uuid
+from base64 import b64decode, b64encode
+from datetime import datetime
+from random import randbytes
+
+import pbkdf2
 import requests
 import srp._pysrp as srp
-import pbkdf2
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
-import getpass
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 # Constants
 DEBUG = True  # Allows using a proxy for debugging (disables SSL verification)
 # Server to use for anisette generation
-#ANISETTE = "https://sign.rheaa.xyz/"
-#ANISETTE = 'http://45.132.246.138:6969/'
+# ANISETTE = "https://sign.rheaa.xyz/"
+# ANISETTE = 'http://45.132.246.138:6969/'
 ANISETTE = False
 # ANISETTE = 'https://sideloadly.io/anisette/irGb3Quww8zrhgqnzmrx'
 # ANISETTE = "http://jkcoxson.com:2052/"
@@ -35,11 +36,13 @@ urllib3.disable_warnings()
 
 def generate_anisette() -> dict:
     import objc
-    from Foundation import NSBundle, NSClassFromString #type: ignore
+    from Foundation import NSBundle, NSClassFromString  # type: ignore
 
-    AOSKitBundle = NSBundle.bundleWithPath_('/System/Library/PrivateFrameworks/AOSKit.framework')
-    objc.loadBundleFunctions(AOSKitBundle, globals(), [("retrieveOTPHeadersForDSID", b'')]) #type: ignore
-    util = NSClassFromString('AOSUtilities')
+    AOSKitBundle = NSBundle.bundleWithPath_(
+        "/System/Library/PrivateFrameworks/AOSKit.framework"
+    )
+    objc.loadBundleFunctions(AOSKitBundle, globals(), [("retrieveOTPHeadersForDSID", b"")])  # type: ignore
+    util = NSClassFromString("AOSUtilities")
 
     h = util.retrieveOTPHeadersForDSID_("-2")
 
@@ -47,13 +50,13 @@ def generate_anisette() -> dict:
         "X-Apple-I-MD": str(h["X-Apple-MD"]),
         "X-Apple-I-MD-M": str(h["X-Apple-MD-M"]),
     }
-    #h["X-Apple-I-MD"] = str(h["X-Apple-MD"])
-    #h["X-Apple-I-MD-M"] = str(h["X-Apple-MD-M"])
-    #print(o)
+    # h["X-Apple-I-MD"] = str(h["X-Apple-MD"])
+    # h["X-Apple-I-MD-M"] = str(h["X-Apple-MD-M"])
+    # print(o)
     return o
-    #r = requests.get(ANISETTE, verify=False if DEBUG else True, timeout=5)
-    #r = json.loads(r.text)
-    #return r
+    # r = requests.get(ANISETTE, verify=False if DEBUG else True, timeout=5)
+    # r = json.loads(r.text)
+    # return r
 
 
 class Anisette:
@@ -304,7 +307,7 @@ def authenticated_request(parameters, anisette: Anisette) -> dict:
     }
 
     resp = requests.post(
-        #"https://17.32.194.2/grandslam/GsService2",
+        # "https://17.32.194.2/grandslam/GsService2",
         "https://gsa.apple.com/grandslam/GsService2",
         headers=headers,
         data=plist.dumps(body),
@@ -460,7 +463,7 @@ def authenticate(username, password, anisette: Anisette):
         {
             "A2k": A,
             "ps": ["s2k", "s2k_fo"],
-            #"ps": ["s2k"],
+            # "ps": ["s2k"],
             "u": username,
             "o": "init",
         },
@@ -527,5 +530,5 @@ def authenticate(username, password, anisette: Anisette):
         print(f"Unknown auth value {r['Status']['au']}")
         return
     else:
-        #print("Assuming 2FA is not required")
+        # print("Assuming 2FA is not required")
         return spd
