@@ -1,7 +1,7 @@
 import json
 from base64 import b64encode
 from getpass import getpass
-
+from base64 import b64decode
 import apns
 import ids
 
@@ -25,11 +25,38 @@ try:
 except FileNotFoundError:
     CONFIG = {}
 
+def convert_config(old):
+    new = {}
+    new["id"] = {
+        "key": old["key"],
+        "cert": old["ids_cert"],
+    }
+    new["auth"] = {
+        "key": old["key"],
+        "cert": old["auth_cert"],
+        "user_id": old["user_id"],
+        "handles": [
+            "mailto:user_test2@icloud.com",
+        ]
+        #"handles": old["handles"],
+    }
+    new["push"] = {
+        "token": old["push"]["token"],
+        "key": old["push"]["key"],
+        "cert": old["push"]["cert"],
+    }
+    return new
+
+CONFIG = convert_config(CONFIG)
+
 
 conn = apns.APNSConnection(
     CONFIG.get("push", {}).get("key"), CONFIG.get("push", {}).get("cert")
 )
-conn.connect(CONFIG.get("push", {}).get("token"))
+#print(CONFIG.get("push", {}).get("token"))
+print(b64decode(CONFIG.get("push", {}).get("token")))
+conn.connect(True, b64decode(CONFIG.get("push", {}).get("token")))
+print(conn.token)
 
 user = ids.IDSUser(conn)
 
@@ -70,5 +97,5 @@ CONFIG["push"] = {
     "cert": user.push_connection.cert,
 }
 
-with open("config.json", "w") as f:
+with open("config.json.new", "w") as f:
     json.dump(CONFIG, f, indent=4)
