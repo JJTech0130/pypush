@@ -183,19 +183,21 @@ def _auth_token_request(username: str, password: str) -> any:
 
 
 # Gets an IDS auth token for the given username and password
-# If use_gsa is True, GSA authentication will be used, which requires anisette
-# If use_gsa is False, it will use a old style 2FA code
+# Will use native Grand Slam on macOS
 # If factor_gen is not None, it will be called to get the 2FA code, otherwise it will be prompted
 # Returns (realm user id, auth token)
 def _get_auth_token(
-    username: str, password: str, use_gsa: bool = False, factor_gen: callable = None
+    username: str, password: str, factor_gen: callable = None
 ) -> tuple[str, str]:
-    if use_gsa:
+    from sys import platform
+    #if use_gsa:
+    if platform == "darwin":
         g = gsa.authenticate(username, password, gsa.Anisette())
         pet = g["t"]["com.apple.gs.idms.pet"]["token"]
     else:
         # Make the request without the 2FA code to make the prompt appear
         _auth_token_request(username, password)
+        # TODO: Make sure we actually need the second request, some rare accounts don't have 2FA
         # Now make the request with the 2FA code
         if factor_gen is None:
             pet = password + input("Enter 2FA code: ")
@@ -235,7 +237,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
 
 # Gets an IDS auth cert for the given user id and auth token
 # Returns [private key PEM, certificate PEM]
-def _get_auth_cert(user_id, token) -> tuple[str, str]:
+def _get_auth_cert(user_id, token) -> KeyPair:
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
     )
@@ -257,7 +259,7 @@ def _get_auth_cert(user_id, token) -> tuple[str, str]:
     if r["status"] != 0:
         raise (Exception(f"Failed to get auth cert: {r}"))
     cert = x509.load_der_x509_certificate(r["cert"])
-    return (
+    return KeyPair(
         private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
@@ -283,6 +285,7 @@ def _register_request(
                 "service": "com.apple.madrid",
                 "users": [
                     {
+                        # TODO: Pass ALL URIs from get handles
                         "uris": [{"uri": info["uri"]}],
                         "user-id": info["user_id"],
                     }
@@ -308,7 +311,7 @@ def _register_request(
         .replace("-----END CERTIFICATE-----", ""),
         "x-auth-user-id-0": info["user_id"],
         "x-auth-nonce-0": b64encode(auth_nonce),
-        "x-pr-nonce": b64encode(auth_nonce),
+        #"x-pr-nonce": b64encode(auth_nonce),
         "x-push-token": push_token,
         "x-push-sig": push_sig,
         "x-push-cert": push_cert.replace("\n", "")
@@ -327,4 +330,76 @@ def _register_request(
     print(f'Response code: {r["status"]}')
     if "status" in r and r["status"] == 6004:
         raise Exception("Validation data expired!")
+    # TODO: Do validation of nested statuses
     return r
+
+def _get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
+    body = {}
+    body = plistlib.dumps(body)
+    body = gzip.compress(body, mtime=0)
+
+    push_sig, push_nonce = sign_payload(push_key.key, "id-get-handles", "", push_token, body)
+    auth_sig, auth_nonce = sign_payload(auth_key.key, "id-get-handles", "", push_token, body)
+
+    headers = {
+        "x-protocol-version": "1640",
+        "content-type": "application/x-apple-plist",
+        "content-encoding": "gzip",
+        "x-auth-sig": auth_sig,
+        "x-auth-cert": auth_key.cert.replace("\n", "")
+        .replace("-----BEGIN CERTIFICATE-----", "")
+        .replace("-----END CERTIFICATE-----", ""),
+        "x-auth-user-id": user_id,
+        "x-auth-nonce": b64encode(auth_nonce),
+       #"x-pr-nonce": b64encode(auth_nonce),
+        "x-push-token": push_token,
+        "x-push-sig": push_sig,
+        "x-push-cert": push_key.cert.replace("\n", "")
+        .replace("-----BEGIN CERTIFICATE-----", "")
+        .replace("-----END CERTIFICATE-----", ""),
+        "x-push-nonce": b64encode(push_nonce),
+    }
+
+    r = requests.post(
+        "https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/idsGetHandles",
+        headers=headers,
+        data=body,
+        verify=False,
+    )
+
+    r = plistlib.loads(r.content)
+
+    return [handle['uri'] for handle in r['handles']]
+
+
+    #print(r.content)
+
+
+
+
+
+
+class IDSUser:
+    def _authenticate_for_token(self, username: str, password: str, factor_callback: callable = None):
+        self.user_id, self._auth_token = _get_auth_token(username, password, factor_callback)
+    
+    def _authenticate_for_cert(self):
+        self._auth_keypair = _get_auth_cert(self.user_id, self._auth_token)
+    
+    # Factor callback will be called if a 2FA code is necessary
+    def __init__(self, push_connection: apns.APNSConnection, username: str, password: str, factor_callback: callable = None):
+        self.push_connection = push_connection
+        self._authenticate_for_token(username, password, factor_callback)
+        self._authenticate_for_cert()
+        self.handles = _get_handles(b64encode(self.push_connection.token), self.user_id, self._auth_keypair, KeyPair(self.push_connection.private_key, self.push_connection.cert))
+    
+def test():
+    conn = apns.APNSConnection()
+    conn.connect()
+    user = IDSUser(conn, "jjtech@jjtech.dev", "whiteCart25")
+    print(user.handles)
+    #user.authenticate("test", "test")
+
+if __name__ == '__main__':
+    test()
+#def register(users: list[])

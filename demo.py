@@ -38,7 +38,7 @@ def refresh_token():
         return input("Enter iCloud 2FA code: ")
 
     CONFIG["user_id"], CONFIG["token"] = ids._get_auth_token(
-        CONFIG["username"], CONFIG["password"], CONFIG["use_gsa"], factor_gen=factor_gen
+        CONFIG["username"], CONFIG["password"], factor_gen=factor_gen
     )
 
 
@@ -72,6 +72,16 @@ def refresh_ids_cert():
         "uri": "mailto:" + CONFIG["username"],
         "user_id": CONFIG["user_id"],
     }
+
+    print(ids._get_handles(
+        CONFIG["push"]["token"],
+                info,
+                CONFIG["auth_cert"],
+                CONFIG["key"],
+                CONFIG["push"]["cert"],
+                CONFIG["push"]["key"],
+    ))
+    
 
     resp = None
     try:
@@ -109,6 +119,7 @@ def refresh_ids_cert():
         )
         CONFIG["validation_data"] = validation_data
 
+    print(resp)
     ids_cert = x509.load_der_x509_certificate(resp["services"][0]["users"][0]["cert"])
     ids_cert = ids_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip()
 
