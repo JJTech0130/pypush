@@ -47,17 +47,21 @@ def convert_config(old):
     }
     return new
 
-CONFIG = convert_config(CONFIG)
+# Uncomment this to change from an old config.json to a new one
+#CONFIG = convert_config(CONFIG)
 
 
 conn = apns.APNSConnection(
     CONFIG.get("push", {}).get("key"), CONFIG.get("push", {}).get("cert")
 )
-#print(CONFIG.get("push", {}).get("token"))
-print(b64decode(CONFIG.get("push", {}).get("token")))
-conn.connect(True, b64decode(CONFIG.get("push", {}).get("token")))
-print(conn.token)
 
+def safe_b64decode(s):
+    try:
+        return b64decode(s)
+    except:
+        return None
+conn.connect(token=safe_b64decode(CONFIG.get("push", {}).get("token")))
+#print(b64encode(conn.token).decode())
 user = ids.IDSUser(conn)
 
 if CONFIG.get("auth", {}).get("cert") is not None:
@@ -97,5 +101,5 @@ CONFIG["push"] = {
     "cert": user.push_connection.cert,
 }
 
-with open("config.json.new", "w") as f:
+with open("config.json", "w") as f:
     json.dump(CONFIG, f, indent=4)
