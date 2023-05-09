@@ -1,18 +1,21 @@
-from ._helpers import dearmour, KeyPair
-from datetime import datetime
 import random
-from base64 import b64encode, b64decode
+from base64 import b64decode, b64encode
+from datetime import datetime
+
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 
+from ._helpers import KeyPair, dearmour
+
+
 # TODO: Move this helper somewhere else
 def armour_cert(cert: bytes) -> str:
-    x509.load_der_x509_certificate(cert)
-    ids_cert = ids_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip()
-    return ids_cert
+    cert = x509.load_der_x509_certificate(cert)
+    return cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip()
+
 
 """
 Generates a nonce in this format:
@@ -21,6 +24,8 @@ Generates a nonce in this format:
    000001876d008cc5                 # unix time
                    r1r2r3r4r5r6r7r8 # random bytes
 """
+
+
 def generate_nonce() -> bytes:
     return (
         b"\x01"
@@ -30,6 +35,7 @@ def generate_nonce() -> bytes:
 
 
 import typing
+
 
 # Creates a payload from individual parts for signing
 def _create_payload(
@@ -73,12 +79,13 @@ def _sign_payload(
 
     payload, nonce = _create_payload(bag_key, query_string, push_token, payload)
 
-    sig = key.sign(payload, padding.PKCS1v15(), hashes.SHA1()) # type: ignore
+    sig = key.sign(payload, padding.PKCS1v15(), hashes.SHA1())  # type: ignore
 
     sig = b"\x01\x01" + sig
     sig = b64encode(sig).decode()
 
     return sig, nonce
+
 
 # Add headers for x-push-sig and x-auth-sig stuff
 def add_auth_signature(

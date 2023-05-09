@@ -1,11 +1,14 @@
-from ._helpers import KeyPair, PROTOCOL_VERSION, USER_AGENT
-from base64 import b64decode
 import plistlib
-import requests
-from .signing import add_auth_signature
+from base64 import b64decode
 
-def register_request(
-    push_token, handles, uid, auth_key: KeyPair, push_key: KeyPair, validation_data
+import requests
+
+from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
+from .signing import add_auth_signature, armour_cert
+
+
+def register(
+    push_token, handles, user_id, auth_key: KeyPair, push_key: KeyPair, validation_data
 ):
     uris = [{"uri": handle} for handle in handles]
 
@@ -20,9 +23,8 @@ def register_request(
                 "service": "com.apple.madrid",
                 "users": [
                     {
-                        # TODO: Pass ALL URIs from get handles
                         "uris": uris,
-                        "user-id": uid,
+                        "user-id": user_id,
                     }
                 ],
             }
@@ -34,11 +36,9 @@ def register_request(
 
     headers = {
         "x-protocol-version": PROTOCOL_VERSION,
-        "x-auth-user-id-0": uid,
+        "x-auth-user-id-0": user_id,
     }
-    add_auth_signature(
-        headers, body, "id-register", auth_key, push_key, push_token, 0
-    )
+    add_auth_signature(headers, body, "id-register", auth_key, push_key, push_token, 0)
 
     r = requests.post(
         "https://identity.ess.apple.com/WebObjects/TDIdentityService.woa/wa/register",
@@ -51,4 +51,13 @@ def register_request(
     if "status" in r and r["status"] == 6004:
         raise Exception("Validation data expired!")
     # TODO: Do validation of nested statuses
-    return r
+    if "status" in r and r["status"] != 0:
+        raise Exception(f"Failed to register: {r}")
+    if not "services" in r:
+        raise Exception(f"No services in response: {r}")
+    if not "users" in r["services"][0]:
+        raise Exception(f"No users in response: {r}")
+    if not "cert" in r["services"][0]["users"][0]:
+        raise Exception(f"No cert in response: {r}")
+
+    return armour_cert(r["services"][0]["users"][0]["cert"])

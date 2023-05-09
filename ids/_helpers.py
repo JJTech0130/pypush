@@ -6,7 +6,11 @@ PROTOCOL_VERSION = "1640"
 # KeyPair is a named tuple that holds a key and a certificate in PEM form
 KeyPair = namedtuple("KeyPair", ["key", "cert"])
 
+
 def dearmour(armoured: str) -> str:
     import re
+
     # Use a regex to remove the header and footer (generic so it work on more than just certificates)
-    return re.sub(r"-----BEGIN .*-----|-----END .*-----", "", armoured).replace("\n", "")
+    return re.sub(r"-----BEGIN .*-----|-----END .*-----", "", armoured).replace(
+        "\n", ""
+    )

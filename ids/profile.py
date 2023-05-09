@@ -1,16 +1,19 @@
-import requests
 import plistlib
+import random
 import uuid
-import gsa
+from base64 import b64decode
+
+import requests
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
-import random
-from base64 import b64decode
-from ._helpers import KeyPair, PROTOCOL_VERSION, USER_AGENT
+
+import gsa
+
 from . import signing
+from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
 
 
 def _auth_token_request(username: str, password: str) -> any:
@@ -122,23 +125,15 @@ def _get_auth_cert(user_id, token) -> KeyPair:
         cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip(),
     )
 
+
 def _get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
     headers = {
         "x-protocol-version": PROTOCOL_VERSION,
         "x-auth-user-id": user_id,
-        #"user-agent": USER_AGENT,
     }
-    import oldids
-    #headers2 = headers.copy()
-    #oldids._add_auth_push_sig(headers2, None, "id-get-handles", auth_key, push_key, push_token)
-    #headers3 = headers.copy()
     signing.add_auth_signature(
         headers, None, "id-get-handles", auth_key, push_key, push_token
     )
-
-    #for key, value in headers2.items():
-    #    if headers3[key] != value:
-    #        print(f"Key {key} mismatch: {headers3[key]} != {value}")
 
     r = requests.get(
         "https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/idsGetHandles",
