@@ -73,15 +73,14 @@ def refresh_ids_cert():
         "user_id": CONFIG["user_id"],
     }
 
-    print(ids._get_handles(
-        CONFIG["push"]["token"],
-                info,
-                CONFIG["auth_cert"],
-                CONFIG["key"],
-                CONFIG["push"]["cert"],
-                CONFIG["push"]["key"],
-    ))
-    
+    print(
+        ids._get_handles(
+            CONFIG["push"]["token"],
+            CONFIG["user_id"],
+            ids.KeyPair(CONFIG["key"], CONFIG["auth_cert"]),
+            ids.KeyPair(CONFIG["push"]["key"], CONFIG["push"]["cert"]),
+        )
+    )
 
     resp = None
     try:
@@ -89,10 +88,8 @@ def refresh_ids_cert():
             resp = ids._register_request(
                 CONFIG["push"]["token"],
                 info,
-                CONFIG["auth_cert"],
-                CONFIG["key"],
-                CONFIG["push"]["cert"],
-                CONFIG["push"]["key"],
+                ids.KeyPair(CONFIG["key"], CONFIG["auth_cert"]),
+                ids.KeyPair(CONFIG["push"]["key"], CONFIG["push"]["cert"]),
                 CONFIG["validation_data"],
             )
     except Exception as e:
@@ -111,10 +108,8 @@ def refresh_ids_cert():
         resp = ids._register_request(
             CONFIG["push"]["token"],
             info,
-            CONFIG["auth_cert"],
-            CONFIG["key"],
-            CONFIG["push"]["cert"],
-            CONFIG["push"]["key"],
+            ids.KeyPair(CONFIG["key"], CONFIG["auth_cert"]),
+            ids.KeyPair(CONFIG["push"]["key"], CONFIG["push"]["cert"]),
             validation_data,
         )
         CONFIG["validation_data"] = validation_data
