@@ -68,7 +68,7 @@ def generate_push_cert() -> tuple[str, str]:
     )
 
     # Sign the activation info
-    signature = fairplay_key.sign(activation_info, padding.PKCS1v15(), hashes.SHA1())
+    signature = fairplay_key.sign(activation_info, padding.PKCS1v15(), hashes.SHA1()) # type: ignore
 
     body = {
         "ActivationInfoComplete": True,
@@ -83,7 +83,7 @@ def generate_push_cert() -> tuple[str, str]:
         verify=False,
     )
 
-    protocol = re.search("<Protocol>(.*)</Protocol>", resp.text).group(1)
+    protocol = re.search("<Protocol>(.*)</Protocol>", resp.text).group(1) # type: ignore
     protocol = plistlib.loads(protocol.encode("utf-8"))
 
     return (

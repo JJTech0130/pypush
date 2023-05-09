@@ -326,8 +326,9 @@ def check_error(r):
         status = r
 
     if status["ec"] != 0:
-        print(f"Error {status['ec']}: {status['em']}")
-        return True
+        raise Exception(f"Error {status['ec']}: {status['em']}")
+        #print(f"Error {status['ec']}: {status['em']}")
+        #return True
     return False
 
 

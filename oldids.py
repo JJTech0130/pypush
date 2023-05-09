@@ -41,16 +41,11 @@ def _send_request(
     signature, nonce = _sign_payload(keypair.key, bag_key, "", push_token, body)
 
     headers = {
-        "x-id-cert": keypair.cert.replace("-----BEGIN CERTIFICATE-----", "")
-        .replace("-----END CERTIFICATE-----", "")
-        .replace("\n", ""),
-        "x-id-nonce": b64encode(nonce).decode(),
-        "x-id-sig": signature,
-        "x-push-token": push_token,
         "x-id-self-uri": "mailto:" + username,
         "User-Agent": USER_AGENT,
         "x-protocol-version": "1630",
     }
+    _add_id_sig(headers, body, bag_key, keypair, push_token)
 
     # print(headers)
 
@@ -246,7 +241,7 @@ def _register_request(
         "x-protocol-version": PROTOCOL_VERSION,
         "x-auth-user-id-0": info["user_id"],
     }
-    _add_auth_push_signatures(
+    _add_auth_push_sig(
         headers, body, "id-register", auth_key, push_key, push_token, 0
     )
 
@@ -263,24 +258,12 @@ def _register_request(
     # TODO: Do validation of nested statuses
     return r
 
-
-def mini_cert(cert: str):
-    return (
-        cert.replace("\n", "")
-        .replace("-----BEGIN CERTIFICATE-----", "")
-        .replace("-----END CERTIFICATE-----", "")
-    )
-
-
-PROTOCOL_VERSION = "1640"
-
-
 def _get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
     headers = {
         "x-protocol-version": PROTOCOL_VERSION,
         "x-auth-user-id": user_id,
     }
-    _add_auth_push_signatures(
+    _add_auth_push_sig(
         headers, None, "id-get-handles", auth_key, push_key, push_token
     )
 
@@ -404,9 +387,15 @@ def _sign_payload(
 
     return sig, nonce
 
+def dearmour(cert: str):
+    return (
+        cert.replace("\n", "")
+        .replace("-----BEGIN CERTIFICATE-----", "")
+        .replace("-----END CERTIFICATE-----", "")
+    )
 
 # Add headers for x-push-sig and x-auth-sig stuff
-def _add_auth_push_signatures(
+def _add_auth_push_sig(
     headers: dict,
     body: bytes,
     bag_key: str,
@@ -418,14 +407,27 @@ def _add_auth_push_signatures(
     push_sig, push_nonce = _sign_payload(push_key.key, bag_key, "", push_token, body)
     headers["x-push-sig"] = push_sig
     headers["x-push-nonce"] = b64encode(push_nonce)
-    headers["x-push-cert"] = mini_cert(push_key.cert)
+    headers["x-push-cert"] = dearmour(push_key.cert)
     headers["x-push-token"] = push_token
 
     auth_sig, auth_nonce = _sign_payload(auth_key.key, bag_key, "", push_token, body)
     auth_postfix = "-" + str(auth_number) if auth_number is not None else ""
     headers["x-auth-sig" + auth_postfix] = auth_sig
     headers["x-auth-nonce" + auth_postfix] = b64encode(auth_nonce)
-    headers["x-auth-cert" + auth_postfix] = mini_cert(auth_key.cert)
+    headers["x-auth-cert" + auth_postfix] = dearmour(auth_key.cert)
+
+def _add_id_sig(
+    headers: dict,
+    body: bytes,
+    bag_key: str,
+    id_key: KeyPair,
+    push_token: str,
+):
+    id_sig, id_nonce = _sign_payload(id_key.key, bag_key, "", push_token, body)
+    headers["x-id-sig"] = id_sig
+    headers["x-id-nonce"] = b64encode(id_nonce)
+    headers["x-id-cert"] = dearmour(id_key.cert)
+    headers["x-push-token"] = push_token
 
 
 if __name__ == "__main__":

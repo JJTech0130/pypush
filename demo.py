@@ -2,7 +2,10 @@ import getpass
 import json
 
 import ids
-from ids import *
+from base64 import b64encode, b64decode
+import apns
+from ids import signing
+
 
 # Open config
 try:
@@ -115,8 +118,7 @@ def refresh_ids_cert():
         CONFIG["validation_data"] = validation_data
 
     print(resp)
-    ids_cert = x509.load_der_x509_certificate(resp["services"][0]["users"][0]["cert"])
-    ids_cert = ids_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip()
+    ids_cert = signing.armour_cert(resp["services"][0]["users"][0]["cert"])
 
     CONFIG["ids_cert"] = ids_cert
 
