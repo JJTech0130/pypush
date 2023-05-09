@@ -6,7 +6,7 @@ from base64 import b64encode
 import apns
 import bags
 
-from ._helpers import USER_AGENT, KeyPair
+from ._helpers import KeyPair, PROTOCOL_VERSION
 from . import signing
 
 
@@ -18,19 +18,19 @@ def lookup(
     topic,
 ) -> bytes:
     BAG_KEY = "id-query"
-    conn.filter([topic])
-    body = {"uris": query}
-    body = plistlib.dumps(body)
 
+    conn.filter([topic])
+
+    body = plistlib.dumps({"uris": query})
     body = gzip.compress(body, mtime=0)
 
     push_token = b64encode(conn.token).decode()
 
     headers = {
         "x-id-self-uri": self_uri,
-        "x-protocol-version": "1630",
+        "x-protocol-version": PROTOCOL_VERSION,
     }
-    signing.add_id_signature(headers, body, BAG_KEY, id_keypair, push_token, None)
+    signing.add_id_signature(headers, body, BAG_KEY, id_keypair, push_token)
 
     msg_id = random.randbytes(16)
 
@@ -43,7 +43,6 @@ def lookup(
         "v": 2,
         "b": body,
     }
-    print(req)
 
     conn.send_message(topic, plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
 
