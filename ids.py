@@ -421,12 +421,18 @@ class IDSUser:
             KeyPair(self.push_connection.private_key, self.push_connection.cert),
         )
 
+    def __str__(self):
+        return f"IDSUser(user_id={self.user_id}, handles={self.handles}, push_token={b64encode(self.push_connection.token).decode()})"
+
 
 def test():
+    import getpass
     conn = apns.APNSConnection()
     conn.connect()
-    user = IDSUser(conn, "jjtech@jjtech.dev", "whiteCart25")
-    print(user.handles)
+    username = input("Enter username: ")
+    password = getpass.getpass("Enter password: ")
+    user = IDSUser(conn, username, password)
+    print(user)
     # user.authenticate("test", "test")
 
 
