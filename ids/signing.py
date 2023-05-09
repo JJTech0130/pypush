@@ -70,14 +70,14 @@ def _create_payload(
 
 # Returns signature, nonce
 def _sign_payload(
-    private_key: str, bag_key: str, query_string: str, push_token: str, payload: bytes
+    private_key: str, bag_key: str, query_string: str, push_token: str, payload: bytes, nonce = None
 ) -> tuple[str, bytes]:
     # Load the private key
     key = serialization.load_pem_private_key(
         private_key.encode(), password=None, backend=default_backend()
     )
 
-    payload, nonce = _create_payload(bag_key, query_string, push_token, payload)
+    payload, nonce = _create_payload(bag_key, query_string, push_token, payload, nonce)
 
     sig = key.sign(payload, padding.PKCS1v15(), hashes.SHA1())  # type: ignore
 
@@ -116,9 +116,10 @@ def add_id_signature(
     bag_key: str,
     id_key: KeyPair,
     push_token: str,
+    nonce=None,
 ):
-    id_sig, id_nonce = _sign_payload(id_key.key, bag_key, "", push_token, body)
+    id_sig, id_nonce = _sign_payload(id_key.key, bag_key, "", push_token, body, nonce)
     headers["x-id-sig"] = id_sig
-    headers["x-id-nonce"] = b64encode(id_nonce)
+    headers["x-id-nonce"] = b64encode(id_nonce).decode()
     headers["x-id-cert"] = dearmour(id_key.cert)
     headers["x-push-token"] = push_token

@@ -68,5 +68,5 @@ class IDSUser:
         self._id_keypair = id_keypair
 
     def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> any:
-        return query.lookup(self.push_connection, self.handles[0], self._id_keypair, topic, uris)
+        return query.lookup(self.push_connection, self.handles[0], self._id_keypair, uris, topic)
         
