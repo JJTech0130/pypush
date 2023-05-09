@@ -47,6 +47,9 @@ def _create_payload(
         nonce = generate_nonce()
     push_token = b64decode(push_token)
 
+    if payload is None:
+        payload = b""
+
     return (
         nonce
         + len(bag_key).to_bytes(4, "big")
@@ -190,7 +193,8 @@ def _get_auth_token(
     username: str, password: str, factor_gen: callable = None
 ) -> tuple[str, str]:
     from sys import platform
-    #if use_gsa:
+
+    # if use_gsa:
     if platform == "darwin":
         g = gsa.authenticate(username, password, gsa.Anisette())
         pet = g["t"]["com.apple.gs.idms.pet"]["token"]
@@ -311,7 +315,7 @@ def _register_request(
         .replace("-----END CERTIFICATE-----", ""),
         "x-auth-user-id-0": info["user_id"],
         "x-auth-nonce-0": b64encode(auth_nonce),
-        #"x-pr-nonce": b64encode(auth_nonce),
+        # "x-pr-nonce": b64encode(auth_nonce),
         "x-push-token": push_token,
         "x-push-sig": push_sig,
         "x-push-cert": push_cert.replace("\n", "")
@@ -333,73 +337,99 @@ def _register_request(
     # TODO: Do validation of nested statuses
     return r
 
+
+def mini_cert(cert: str):
+    return (
+        cert.replace("\n", "")
+        .replace("-----BEGIN CERTIFICATE-----", "")
+        .replace("-----END CERTIFICATE-----", "")
+    )
+
+
+def add_signatures(
+    headers: dict,
+    body: bytes,
+    bag_key: str,
+    auth_key: KeyPair,
+    push_key: KeyPair,
+    push_token: str,
+    auth_number=None,
+):
+    push_sig, push_nonce = sign_payload(push_key.key, bag_key, "", push_token, body)
+    headers["x-push-sig"] = push_sig
+    headers["x-push-nonce"] = b64encode(push_nonce)
+    headers["x-push-cert"] = mini_cert(push_key.cert)
+    headers["x-push-token"] = push_token
+
+    auth_sig, auth_nonce = sign_payload(auth_key.key, bag_key, "", push_token, body)
+    auth_postfix = "-" + str(auth_number) if auth_number is not None else ""
+    headers["x-auth-sig" + auth_postfix] = auth_sig
+    headers["x-auth-nonce" + auth_postfix] = b64encode(auth_nonce)
+    headers["x-auth-cert" + auth_postfix] = mini_cert(auth_key.cert)
+
+
+PROTOCOL_VERSION = "1640"
+
+
 def _get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
-    body = {}
-    body = plistlib.dumps(body)
-    body = gzip.compress(body, mtime=0)
-
-    push_sig, push_nonce = sign_payload(push_key.key, "id-get-handles", "", push_token, body)
-    auth_sig, auth_nonce = sign_payload(auth_key.key, "id-get-handles", "", push_token, body)
-
     headers = {
-        "x-protocol-version": "1640",
-        "content-type": "application/x-apple-plist",
-        "content-encoding": "gzip",
-        "x-auth-sig": auth_sig,
-        "x-auth-cert": auth_key.cert.replace("\n", "")
-        .replace("-----BEGIN CERTIFICATE-----", "")
-        .replace("-----END CERTIFICATE-----", ""),
+        "x-protocol-version": PROTOCOL_VERSION,
         "x-auth-user-id": user_id,
-        "x-auth-nonce": b64encode(auth_nonce),
-       #"x-pr-nonce": b64encode(auth_nonce),
-        "x-push-token": push_token,
-        "x-push-sig": push_sig,
-        "x-push-cert": push_key.cert.replace("\n", "")
-        .replace("-----BEGIN CERTIFICATE-----", "")
-        .replace("-----END CERTIFICATE-----", ""),
-        "x-push-nonce": b64encode(push_nonce),
     }
+    add_signatures(headers, None, "id-get-handles", auth_key, push_key, push_token)
 
-    r = requests.post(
+    r = requests.get(
         "https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/idsGetHandles",
         headers=headers,
-        data=body,
         verify=False,
     )
 
     r = plistlib.loads(r.content)
 
-    return [handle['uri'] for handle in r['handles']]
+    if not "handles" in r:
+        raise Exception("No handles in response: " + str(r))
 
-
-    #print(r.content)
-
-
-
-
+    return [handle["uri"] for handle in r["handles"]]
 
 
 class IDSUser:
-    def _authenticate_for_token(self, username: str, password: str, factor_callback: callable = None):
-        self.user_id, self._auth_token = _get_auth_token(username, password, factor_callback)
-    
+    def _authenticate_for_token(
+        self, username: str, password: str, factor_callback: callable = None
+    ):
+        self.user_id, self._auth_token = _get_auth_token(
+            username, password, factor_callback
+        )
+
     def _authenticate_for_cert(self):
         self._auth_keypair = _get_auth_cert(self.user_id, self._auth_token)
-    
+
     # Factor callback will be called if a 2FA code is necessary
-    def __init__(self, push_connection: apns.APNSConnection, username: str, password: str, factor_callback: callable = None):
+    def __init__(
+        self,
+        push_connection: apns.APNSConnection,
+        username: str,
+        password: str,
+        factor_callback: callable = None,
+    ):
         self.push_connection = push_connection
         self._authenticate_for_token(username, password, factor_callback)
         self._authenticate_for_cert()
-        self.handles = _get_handles(b64encode(self.push_connection.token), self.user_id, self._auth_keypair, KeyPair(self.push_connection.private_key, self.push_connection.cert))
-    
+        self.handles = _get_handles(
+            b64encode(self.push_connection.token),
+            self.user_id,
+            self._auth_keypair,
+            KeyPair(self.push_connection.private_key, self.push_connection.cert),
+        )
+
+
 def test():
     conn = apns.APNSConnection()
     conn.connect()
     user = IDSUser(conn, "jjtech@jjtech.dev", "whiteCart25")
     print(user.handles)
-    #user.authenticate("test", "test")
+    # user.authenticate("test", "test")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test()
-#def register(users: list[])
+# def register(users: list[])
