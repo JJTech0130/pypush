@@ -2,7 +2,7 @@ from base64 import b64encode
 
 import apns
 
-from . import _helpers, identity, profile
+from . import _helpers, identity, profile, query
 
 
 class IDSUser:
@@ -66,3 +66,7 @@ class IDSUser:
 
     def restore_identity(self, id_keypair: _helpers.KeyPair):
         self._id_keypair = id_keypair
+
+    def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> any:
+        return query.lookup(self.push_connection, self.handles[0], self._id_keypair, topic, uris)
+        

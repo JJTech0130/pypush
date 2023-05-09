@@ -51,6 +51,8 @@ else:
     vd = input_multiline("Enter validation data: ")
     user.register(vd)
 
+print(user.lookup(["mailto:textgpt@icloud.com"]))
+
 # Write config.json
 CONFIG["id"] = {
     "key": user._id_keypair.key,

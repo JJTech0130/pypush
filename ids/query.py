@@ -6,7 +6,8 @@ from base64 import b64encode
 import apns
 import bags
 
-from . import USER_AGENT, KeyPair, signing
+from ._helpers import USER_AGENT, KeyPair
+from . import signing
 
 
 def _send_request(
@@ -15,7 +16,7 @@ def _send_request(
     topic: str,
     body: bytes,
     keypair: KeyPair,
-    username: str,
+    self_uri: str,
 ) -> bytes:
     body = gzip.compress(body, mtime=0)
 
@@ -25,10 +26,11 @@ def _send_request(
     # signature, nonce = _sign_payload(keypair.key, bag_key, "", push_token, body)
 
     headers = {
-        "x-id-self-uri": "mailto:" + username,
+        "x-id-self-uri": self_uri,
         "User-Agent": USER_AGENT,
         "x-protocol-version": "1630",
     }
+    print(headers)
     signing.add_id_signature(headers, body, bag_key, keypair, push_token)
 
     # print(headers)
@@ -46,6 +48,7 @@ def _send_request(
         "b": body,
     }
 
+    print(req)
     conn.send_message(topic, plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
     # resp = conn.wait_for_packet(0x0A)
 
@@ -73,11 +76,11 @@ def _send_request(
 # topic: the IDS topic to query
 # query: a list of URIs to query
 def lookup(
-    conn: apns.APNSConnection, self: str, keypair: KeyPair, topic: str, query: list[str]
+    conn: apns.APNSConnection, self_uri: str, id_keypair: KeyPair, topic: str, query: list[str]
 ) -> any:
     conn.filter([topic])
     query = {"uris": query}
-    resp = _send_request(conn, "id-query", topic, plistlib.dumps(query), keypair, self)
+    resp = _send_request(conn, "id-query", topic, plistlib.dumps(query), id_keypair, self_uri)
     # resp = plistlib.loads(resp)
     # print(resp)
     resp = gzip.decompress(resp["b"])
