@@ -9,8 +9,11 @@ from hashlib import sha1
 import tlslite
 
 import albert
+import bags
 
-COURIER_HOST = "windows.courier.push.apple.com"  # TODO: Get this from config
+#COURIER_HOST = "windows.courier.push.apple.com"  # TODO: Get this from config
+# Pick a random courier server from 01 to APNSCourierHostcount
+COURIER_HOST = f"{random.randint(1, bags.apns_init_bag()['APNSCourierHostcount'])}-{bags.apns_init_bag()['APNSCourierHostname']}"
 COURIER_PORT = 5223
 ALPN = [b"apns-security-v2"]
 
