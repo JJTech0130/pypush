@@ -61,4 +61,9 @@ def lookup(
     resp = plistlib.loads(resp)
     resp = gzip.decompress(resp["b"])
     resp = plistlib.loads(resp)
-    return resp
+
+    if resp['status'] != 0:
+        raise Exception(f'Query failed: {resp}')
+    if not 'results' in resp:
+        raise Exception(f'No results in response: {resp}')
+    return resp['results']

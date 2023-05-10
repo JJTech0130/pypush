@@ -3,7 +3,7 @@ import plistlib
 import requests
 
 
-def apns_init_bag():
+def apns_init_bag_old():
     r = requests.get("https://init.push.apple.com/bag", verify=False)
     if r.status_code != 200:
         raise Exception("Failed to get APNs init bag")
@@ -15,7 +15,7 @@ def apns_init_bag():
 
 
 # This is the same as the above, but the response has a signature which we unwrap
-def apns_init_bag_2():
+def apns_init_bag():
     r = requests.get("http://init-p01st.push.apple.com/bag", verify=False)
     if r.status_code != 200:
         raise Exception("Failed to get APNs init bag 2")

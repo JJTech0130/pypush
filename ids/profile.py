@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 
 import gsa
+import bags
 
 from . import signing
 from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
@@ -27,6 +28,7 @@ def _auth_token_request(username: str, password: str) -> any:
     data = plistlib.dumps(data)
 
     r = requests.post(
+        # TODO: Figure out which URL bag we can get this from
         "https://setup.icloud.com/setup/prefpane/loginDelegates",
         auth=(username, password),
         data=data,
@@ -40,7 +42,7 @@ def _auth_token_request(username: str, password: str) -> any:
 # Will use native Grand Slam on macOS
 # If factor_gen is not None, it will be called to get the 2FA code, otherwise it will be prompted
 # Returns (realm user id, auth token)
-def _get_auth_token(
+def get_auth_token(
     username: str, password: str, factor_gen: callable = None
 ) -> tuple[str, str]:
     from sys import platform
@@ -92,7 +94,9 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
 
 # Gets an IDS auth cert for the given user id and auth token
 # Returns [private key PEM, certificate PEM]
-def _get_auth_cert(user_id, token) -> KeyPair:
+def get_auth_cert(user_id, token) -> KeyPair:
+    BAG_KEY = "id-authenticate-ds-id"
+
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
     )
@@ -105,7 +109,8 @@ def _get_auth_cert(user_id, token) -> KeyPair:
     body = plistlib.dumps(body)
 
     r = requests.post(
-        "https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/authenticateDS",
+        bags.ids_bag()[BAG_KEY],
+        #"https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/authenticateDS",
         data=body,
         headers={"x-protocol-version": "1630"},
         verify=False,
@@ -126,17 +131,19 @@ def _get_auth_cert(user_id, token) -> KeyPair:
     )
 
 
-def _get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
+def get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
+    BAG_KEY = "id-get-handles"
+
     headers = {
         "x-protocol-version": PROTOCOL_VERSION,
         "x-auth-user-id": user_id,
     }
     signing.add_auth_signature(
-        headers, None, "id-get-handles", auth_key, push_key, push_token
+        headers, None, BAG_KEY, auth_key, push_key, push_token
     )
 
     r = requests.get(
-        "https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/idsGetHandles",
+        bags.ids_bag()[BAG_KEY],
         headers=headers,
         verify=False,
     )

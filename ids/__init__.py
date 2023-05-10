@@ -10,13 +10,13 @@ class IDSUser:
     def _authenticate_for_token(
         self, username: str, password: str, factor_callback: callable = None
     ):
-        self.user_id, self._auth_token = profile._get_auth_token(
+        self.user_id, self._auth_token = profile.get_auth_token(
             username, password, factor_callback
         )
 
     # Sets self._auth_keypair using self.user_id and self._auth_token
     def _authenticate_for_cert(self):
-        self._auth_keypair = profile._get_auth_cert(self.user_id, self._auth_token)
+        self._auth_keypair = profile.get_auth_cert(self.user_id, self._auth_token)
 
     # Factor callback will be called if a 2FA code is necessary
     def __init__(
@@ -37,7 +37,7 @@ class IDSUser:
     ):
         self._authenticate_for_token(username, password, factor_callback)
         self._authenticate_for_cert()
-        self.handles = profile._get_handles(
+        self.handles = profile.get_handles(
             b64encode(self.push_connection.token),
             self.user_id,
             self._auth_keypair,
