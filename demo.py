@@ -5,6 +5,18 @@ from base64 import b64decode
 import apns
 import ids
 
+import logging
+from rich.logging import RichHandler
+
+FORMAT = "%(message)s"
+logging.basicConfig(
+    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+)
+
+# Set sane log levels
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("jelly").setLevel(logging.INFO)
+logging.getLogger("nac").setLevel(logging.INFO)
 
 def input_multiline(prompt):
     print(prompt)
@@ -83,6 +95,7 @@ else:
     import emulated.nac
     vd = emulated.nac.generate_validation_data()
     vd = b64encode(vd).decode()
+    raise Exception("No")
     user.register(vd)
 
 print(user.lookup(["mailto:textgpt@icloud.com"]))

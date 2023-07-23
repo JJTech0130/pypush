@@ -1,9 +1,8 @@
 from io import BytesIO
 import unicorn
 from . import mparser as macholibre
-
-print = lambda *args, **kwargs: None
-
+import logging
+logger = logging.getLogger("jelly")
 
 STOP_ADDRESS = 0x00900000 # Used as a return address when calling functions
 
@@ -38,7 +37,7 @@ class VirtualInstructions:
 
     
     def call(self, address: int, args: list[int] = []):
-        print(f"Calling {hex(address)} with args {args}")
+        logger.debug(f"Calling {hex(address)} with args {args}")
         self.push(STOP_ADDRESS)
         self._set_args(args)
         self.uc.emu_start(address, STOP_ADDRESS)
@@ -105,7 +104,7 @@ class Jelly:
         self.uc.mem_write(self.HEAP_BASE, b"\x00" * self.HEAP_SIZE)
 
     def debug_registers(self):
-        print(f"""
+        logger.debug(f"""
         RAX: {hex(self.uc.reg_read(unicorn.x86_const.UC_X86_REG_RAX))}
         RBX: {hex(self.uc.reg_read(unicorn.x86_const.UC_X86_REG_RBX))}
         RCX: {hex(self.uc.reg_read(unicorn.x86_const.UC_X86_REG_RCX))}
@@ -132,11 +131,9 @@ class Jelly:
                     args.append(self.instr.pop())
             #print(ARG_REGISTERS[1])
             #self.debug_registers()
-            print(f"calling {func.__name__}", end="")
+            logger.debug(f"calling {func.__name__}")
             if args != []:
-                print(f" with args: {args}")
-            else:
-                print()
+                logger.debug(f" with args: {args}")
             ret = func(self, *args)
             if ret is not None:
                 self.uc.reg_write(unicorn.x86_const.UC_X86_REG_RAX, ret)
@@ -157,7 +154,7 @@ class Jelly:
     def _resolve_hook(uc: unicorn.Uc, address: int, size: int, self: 'Jelly'):
         for name, addr in self._resolved_hooks.items():
             if addr == address:
-                print(f"{name}: ", end="")
+                logger.debug(f"{name}: ")
                 self._hooks[name](self)
     
     def _setup_hooks(self):
@@ -207,7 +204,7 @@ class Jelly:
             raise NotImplementedError(f"Unknown bind type {type}")
         
     def _parse_lazy_binds(self, mu: unicorn.Uc, indirect_offset, section, dysimtab, strtab, symtab):
-        print(f"Doing binds for {section['name']}")
+        logger.debug(f"Doing binds for {section['name']}")
         for i in range(0, int(section['size']/8)):     
             # Parse into proper list?   
             dysym = dysimtab[(indirect_offset + i)*4:(indirect_offset + i)*4+4]
@@ -241,7 +238,7 @@ class Jelly:
             #print(f"{hex(offset)}: {hex(opcode)} {hex(immediate)}")
 
             if opcode == BIND_OPCODE_DONE:
-                print("BIND_OPCODE_DONE")
+                logger.debug("BIND_OPCODE_DONE")
                 break
             elif opcode == BIND_OPCODE_SET_DYLIB_ORDINAL_IMM:
                 ordinal = immediate   
@@ -307,7 +304,7 @@ class Jelly:
                 # }
                 #raise NotImplementedError("BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB")
             else:
-                print(f"Unknown bind opcode {opcode}")
+                logger.error(f"Unknown bind opcode {opcode}")
 
 # Mach-O defines
 BIND_OPCODE_DONE = 0x00

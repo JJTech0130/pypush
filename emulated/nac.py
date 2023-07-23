@@ -2,6 +2,8 @@ import hashlib
 from . import mparser as macholibre
 from .jelly import Jelly
 import plistlib
+import logging
+logger = logging.getLogger("nac")
 
 BINARY_HASH = "e1181ccad82e6629d52c6a006645ad87ee59bd13"
 BINARY_PATH = "emulated/IMDAppleServices"
@@ -15,12 +17,13 @@ def load_binary() -> bytes:
     # Download the binary if it doesn't exist
     import os, requests
     if not os.path.exists(BINARY_PATH):
-        print("Downloading binary...")
+        logger.info("Downloading IMDAppleServices")
         resp = requests.get(BINARY_URL)
         b = resp.content
         # Save the binary
         open(BINARY_PATH, "wb").write(b)
     else:
+        logger.debug("Using already downloaded IMDAppleServices")
         b = open(BINARY_PATH, "rb").read()
     if hashlib.sha1(b).hexdigest() != BINARY_HASH:
         raise Exception("Hashes don't match")
@@ -73,7 +76,7 @@ def nac_init(j: Jelly, cert: bytes):
     request_bytes_addr = int.from_bytes(request_bytes_addr, 'little')
     request_len = int.from_bytes(request_len, 'little')
 
-    print(f"Request @ {hex(request_bytes_addr)} : {hex(request_len)}")
+    logger.debug(f"Request @ {hex(request_bytes_addr)} : {hex(request_len)}")
 
     request = j.uc.mem_read(request_bytes_addr, request_len)
     
@@ -133,7 +136,7 @@ def nac_generate(j: Jelly, validation_ctx: int):
 
 
 def hook_code(uc, address: int, size: int, user_data):
-    print(">>> Tracing instruction at 0x%x, instruction size = 0x%x" % (address, size))
+    logger.debug(">>> Tracing instruction at 0x%x, instruction size = 0x%x" % (address, size))
 
 
 def malloc(j: Jelly, len: int) -> int:
@@ -144,7 +147,7 @@ def malloc(j: Jelly, len: int) -> int:
 
 
 def memset_chk(j: Jelly, dest: int, c: int, len: int, destlen: int):
-    print(
+    logger.debug(
         "memset_chk called with dest = 0x%x, c = 0x%x, len = 0x%x, destlen = 0x%x"
         % (dest, c, len, destlen)
     )
@@ -157,7 +160,7 @@ def sysctlbyname(j: Jelly):
 
 
 def memcpy(j: Jelly, dest: int, src: int, len: int):
-    print("memcpy called with dest = 0x%x, src = 0x%x, len = 0x%x" % (dest, src, len))
+    logger.debug("memcpy called with dest = 0x%x, src = 0x%x, len = 0x%x" % (dest, src, len))
     orig = j.uc.mem_read(src, len)
     j.uc.mem_write(dest, bytes(orig))
     return 0
@@ -187,12 +190,12 @@ def IORegistryEntryCreateCFProperty(j: Jelly, entry: int, key: int, allocator: i
     key_str = _parse_cfstr_ptr(j, key)
     if key_str in FAKE_DATA["iokit"]:
         fake = FAKE_DATA["iokit"][key_str]
-        print(f"IOKit Entry: {key_str} -> {fake}")
+        logger.debug(f"IOKit Entry: {key_str} -> {fake}")
         # Return the index of the fake data in CF_OBJECTS
         CF_OBJECTS.append(fake)
         return len(CF_OBJECTS) # NOTE: We will have to subtract 1 from this later, can't return 0 here since that means NULL
     else:
-        print(f"IOKit Entry: {key_str} -> None")
+        logger.debug(f"IOKit Entry: {key_str} -> None")
         return 0
         
 def CFGetTypeID(j: Jelly, obj: int):
@@ -216,7 +219,7 @@ def CFDataGetBytes(j: Jelly, obj: int, range_start: int, range_end: int, buf: in
     if isinstance(obj, bytes):
         data = obj[range_start:range_end]
         j.uc.mem_write(buf, data)
-        print(f"CFDataGetBytes: {hex(range_start)}-{hex(range_end)} -> {hex(buf)}")
+        logger.debug(f"CFDataGetBytes: {hex(range_start)}-{hex(range_end)} -> {hex(buf)}")
         return len(data)
     else:
         raise Exception("Unknown CF object type")
@@ -238,7 +241,7 @@ def maybe_object_maybe_string(j: Jelly, obj: int):
         return CF_OBJECTS[obj - 1]
 
 def CFDictionaryGetValue(j: Jelly, d: int, key: int) -> int:
-    print(f"CFDictionaryGetValue: {d} {hex(key)}")
+    logger.debug(f"CFDictionaryGetValue: {d} {hex(key)}")
     d = CF_OBJECTS[d - 1]
     if key == 0xc3c3c3c3c3c3c3c3:
         key = "DADiskDescriptionVolumeUUIDKey" # Weirdness, this is a hack
@@ -246,7 +249,7 @@ def CFDictionaryGetValue(j: Jelly, d: int, key: int) -> int:
     if isinstance(d, dict):
         if key in d:
             val = d[key]
-            print(f"CFDictionaryGetValue: {key} -> {val}")
+            logger.debug(f"CFDictionaryGetValue: {key} -> {val}")
             CF_OBJECTS.append(val)
             return len(CF_OBJECTS)
         else:
@@ -285,7 +288,7 @@ def CFStringGetCString(j: Jelly, string: int, buf: int, buf_len: int, encoding: 
     if isinstance(string, str):
         data = string.encode("utf-8")
         j.uc.mem_write(buf, data)
-        print(f"CFStringGetCString: {string} -> {hex(buf)}")
+        logger.debug(f"CFStringGetCString: {string} -> {hex(buf)}")
         return len(data)
     else:
         raise Exception("Unknown CF object type")
@@ -293,7 +296,7 @@ def CFStringGetCString(j: Jelly, string: int, buf: int, buf_len: int, encoding: 
 def IOServiceMatching(j: Jelly, name: int) -> int:
     # Read the raw c string pointed to by name
     name = _parse_cstr_ptr(j, name)
-    print(f"IOServiceMatching: {name}")
+    logger.debug(f"IOServiceMatching: {name}")
     # Create a CFString from the name
     name = CFStringCreate(j, name)
     # Create a dictionary
@@ -400,18 +403,21 @@ def load_nac() -> Jelly:
     return j
 
 def generate_validation_data() -> bytes:
+    logger.info("Generating validation data")
     j = load_nac()
+    logger.debug("Loaded NAC library")
     val_ctx, req = nac_init(j,get_cert())
+    logger.debug("Initialized NAC")
     session_info = get_session_info(req)
+    logger.debug("Got session info")
     nac_submit(j, val_ctx, session_info)
+    logger.debug("Submitted session info")
     val_data = nac_generate(j, val_ctx)
+    logger.info("Generated validation data")
     return bytes(val_data)
 
 if __name__ == "__main__":
     from base64 import b64encode
     val_data = generate_validation_data()
-    print(f"Validation Data: {b64encode(val_data).decode()}")
+    logger.info(f"Validation Data: {b64encode(val_data).decode()}")
     #main()
-else:
-    # lazy hack: Disable print so that it's clean when not debugging
-    print = lambda *args, **kwargs: None

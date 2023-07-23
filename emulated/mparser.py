@@ -23,6 +23,9 @@ from plistlib import loads
 
 from io import BytesIO
 
+import logging
+logger = logging.getLogger("jelly")
+
 
 class Parser():
     """Main object containing all the necessary functions to parse
@@ -1686,7 +1689,7 @@ class Parser():
 
         if self.__file.read(4) != b'\xca\xfe\xba\xbe':
             # Throw a fit
-            print("NOT A UNI MACHO???")
+            logger.critical("Wrong magic for universal binary?")
 
         n_machos = self.get_int(ignore_endian=True)
 
@@ -1712,7 +1715,7 @@ class Parser():
                 if subtype in mdictionary.cputypes[cputype]:
                     subtype = mdictionary.cputypes[cputype][subtype]
             else:
-                print("UNKNOWN CPU TYPE: " + str(cputype))
+                logger.debug("UNKNOWN CPU TYPE: " + str(cputype))
 
             cputype = mdictionary.cputypes[cputype][-2]
 
