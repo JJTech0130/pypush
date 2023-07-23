@@ -2,6 +2,9 @@ from io import BytesIO
 import unicorn
 from . import mparser as macholibre
 
+print = lambda *args, **kwargs: None
+
+
 STOP_ADDRESS = 0x00900000 # Used as a return address when calling functions
 
 ARG_REGISTERS = [

@@ -79,7 +79,10 @@ if CONFIG.get("id", {}).get("cert") is not None:
     id_keypair = ids._helpers.KeyPair(CONFIG["id"]["key"], CONFIG["id"]["cert"])
     user.restore_identity(id_keypair)
 else:
-    vd = input_multiline("Enter validation data: ")
+    #vd = input_multiline("Enter validation data: ")
+    import emulated.nac
+    vd = emulated.nac.generate_validation_data()
+    vd = b64encode(vd).decode()
     user.register(vd)
 
 print(user.lookup(["mailto:textgpt@icloud.com"]))

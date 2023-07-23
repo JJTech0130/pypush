@@ -350,11 +350,12 @@ def arc4random(j: Jelly) -> int:
     return random.randint(0, 0xFFFFFFFF)
     #return 0
 
-def main():
+def load_nac() -> Jelly:
     binary = load_binary()
     binary = get_x64_slice(binary)
     # Create a Jelly object from the binary
     j = Jelly(binary)
+
     hooks = {
         "_malloc": malloc,
         "___stack_chk_guard": lambda: 0,
@@ -395,22 +396,22 @@ def main():
         "_arc4random": arc4random
     }
     j.setup(hooks)
-    #j.uc.hook_add(unicorn.UC_HOOK_CODE, hook_code)
 
-    from base64 import b64encode
-    cert = get_cert()
-    val_ctx, req = nac_init(j,cert)
-    print(f"Validation Context: {hex(val_ctx)}")
-    print(f"Request: {b64encode(req).decode()}")
+    return j
 
+def generate_validation_data() -> bytes:
+    j = load_nac()
+    val_ctx, req = nac_init(j,get_cert())
     session_info = get_session_info(req)
-    print(f"Session Info: {b64encode(session_info).decode()}")
-
     nac_submit(j, val_ctx, session_info)
-
     val_data = nac_generate(j, val_ctx)
-
-    print(f"Validation Data: {b64encode(val_data).decode()}")
+    return bytes(val_data)
 
 if __name__ == "__main__":
-    main()
+    from base64 import b64encode
+    val_data = generate_validation_data()
+    print(f"Validation Data: {b64encode(val_data).decode()}")
+    #main()
+else:
+    # lazy hack: Disable print so that it's clean when not debugging
+    print = lambda *args, **kwargs: None
