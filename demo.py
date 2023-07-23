@@ -95,7 +95,6 @@ else:
     import emulated.nac
     vd = emulated.nac.generate_validation_data()
     vd = b64encode(vd).decode()
-    raise Exception("No")
     user.register(vd)
 
 print(user.lookup(["mailto:textgpt@icloud.com"]))
