@@ -83,7 +83,7 @@ def nac_init(j: Jelly, cert: bytes):
     validation_ctx_addr = int.from_bytes(validation_ctx_addr, 'little')
     return validation_ctx_addr, request
 
-def nac_submit(j: Jelly, validation_ctx: int, response: bytes):
+def nac_key_establishment(j: Jelly, validation_ctx: int, response: bytes):
     response_addr = j.malloc(len(response))
     j.uc.mem_write(response_addr, response)
 
@@ -101,7 +101,7 @@ def nac_submit(j: Jelly, validation_ctx: int, response: bytes):
         n = (n ^ 0x80000000) - 0x80000000
         raise Exception(f"Error calling nac_submit: {n}")
     
-def nac_generate(j: Jelly, validation_ctx: int):
+def nac_sign(j: Jelly, validation_ctx: int):
     #void *validation_ctx, void *unk_bytes, int unk_len,
     #            void **validation_data, int *validation_data_len
     
@@ -410,9 +410,9 @@ def generate_validation_data() -> bytes:
     logger.debug("Initialized NAC")
     session_info = get_session_info(req)
     logger.debug("Got session info")
-    nac_submit(j, val_ctx, session_info)
+    nac_key_establishment(j, val_ctx, session_info)
     logger.debug("Submitted session info")
-    val_data = nac_generate(j, val_ctx)
+    val_data = nac_sign(j, val_ctx)
     logger.info("Generated validation data")
     return bytes(val_data)
 
