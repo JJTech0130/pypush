@@ -1,13 +1,13 @@
 import hashlib
-import mparser as macholibre
-from jelly import Jelly
+from . import mparser as macholibre
+from .jelly import Jelly
 import plistlib
 
 BINARY_HASH = "e1181ccad82e6629d52c6a006645ad87ee59bd13"
-BINARY_PATH = "/Users/jjtech/Downloads/IMDAppleServices"
+BINARY_PATH = "emulated/IMDAppleServices"
 BINARY_URL = "https://github.com/JJTech0130/nacserver/raw/main/IMDAppleServices"
 
-FAKE_DATA = plistlib.load(open("data.plist", "rb"))
+FAKE_DATA = plistlib.load(open("emulated/data.plist", "rb"))
 
 def load_binary() -> bytes:
     # Open the file at BINARY_PATH, check the hash, and return the binary
@@ -18,6 +18,8 @@ def load_binary() -> bytes:
         print("Downloading binary...")
         resp = requests.get(BINARY_URL)
         b = resp.content
+        # Save the binary
+        open(BINARY_PATH, "wb").write(b)
     else:
         b = open(BINARY_PATH, "rb").read()
     if hashlib.sha1(b).hexdigest() != BINARY_HASH:

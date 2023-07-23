@@ -1,6 +1,6 @@
 from io import BytesIO
 import unicorn
-import mparser as macholibre
+from . import mparser as macholibre
 
 STOP_ADDRESS = 0x00900000 # Used as a return address when calling functions
 
