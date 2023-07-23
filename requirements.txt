@@ -5,3 +5,4 @@ tlslite-ng==0.8.0a43
 srp
 pbkdf2
 unicorn
+rich
