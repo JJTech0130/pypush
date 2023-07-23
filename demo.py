@@ -5,6 +5,18 @@ from base64 import b64decode
 import apns
 import ids
 
+import logging
+from rich.logging import RichHandler
+
+FORMAT = "%(message)s"
+logging.basicConfig(
+    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+)
+
+# Set sane log levels
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("jelly").setLevel(logging.INFO)
+logging.getLogger("nac").setLevel(logging.INFO)
 
 def input_multiline(prompt):
     print(prompt)
@@ -79,7 +91,10 @@ if CONFIG.get("id", {}).get("cert") is not None:
     id_keypair = ids._helpers.KeyPair(CONFIG["id"]["key"], CONFIG["id"]["cert"])
     user.restore_identity(id_keypair)
 else:
-    vd = input_multiline("Enter validation data: ")
+    #vd = input_multiline("Enter validation data: ")
+    import emulated.nac
+    vd = emulated.nac.generate_validation_data()
+    vd = b64encode(vd).decode()
     user.register(vd)
 
 print(user.lookup(["mailto:textgpt@icloud.com"]))
