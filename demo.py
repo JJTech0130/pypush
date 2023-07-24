@@ -78,6 +78,7 @@ def safe_b64decode(s):
         return None
 conn.connect(token=safe_b64decode(CONFIG.get("push", {}).get("token")))
 conn.set_state(1)
+conn.filter(["com.apple.madrid"])
 #print(b64encode(conn.token).decode())
 user = ids.IDSUser(conn)
 
