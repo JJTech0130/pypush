@@ -53,7 +53,7 @@ def lookup(
         if resp_body is None:
             return False
         resp_body = plistlib.loads(resp_body)
-        return resp_body["U"] == msg_id
+        return resp_body.get('U') == msg_id
 
     # Lambda to check if the response is the one we want
     payload = conn.incoming_queue.wait_pop_find(check_response)
