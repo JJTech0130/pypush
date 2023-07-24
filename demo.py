@@ -17,7 +17,7 @@ logging.basicConfig(
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.INFO)
+logging.getLogger("apns").setLevel(logging.DEBUG)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.DEBUG)
@@ -77,6 +77,8 @@ def safe_b64decode(s):
     except:
         return None
 conn.connect(token=safe_b64decode(CONFIG.get("push", {}).get("token")))
+conn.set_state(1)
+conn.connect(root=False, token=b64decode("E2qx2kiU0KxnyhcLErUHEnVQABEaEQfPEEISmUx+4j4="))
 #print(b64encode(conn.token).decode())
 user = ids.IDSUser(conn)
 
@@ -110,13 +112,21 @@ while True:
     if line == "":
         break
     # Look up the username
-    logging.info(f"Looked up {line}, got response: {user.lookup([line])}")
+    resp = user.lookup([line])
+    #logging.info(f"Looked up {line}, got response: {user.lookup([line])}")
+    info = resp[line]
+    identities = info["identities"]
+    logging.info(f"Identities: {len(identities)}")
+    for identity in identities:
+        logging.info(f"Identity: [yellow]{b64encode(identity['push-token']).decode()}[/] ({len(identity)} properties)", extra={"markup": True})
+        if len(identity) > 5:
+            logging.warning(identity)
 
 # Write config.json
-CONFIG["id"] = {
-    "key": user._id_keypair.key,
-    "cert": user._id_keypair.cert,
-}
+#CONFIG["id"] = {
+#    "key": user._id_keypair.key,
+#    "cert": user._id_keypair.cert,
+#}
 CONFIG["auth"] = {
     "key": user._auth_keypair.key,
     "cert": user._auth_keypair.cert,

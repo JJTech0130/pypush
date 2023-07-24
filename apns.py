@@ -102,6 +102,7 @@ class APNSConnection:
             if payload is not None:
                 # print("QUEUE: Received payload: " + str(payload))
                 # print("QUEUE: Received payload type: " + hex(payload[0]))
+                logger.debug(f"Received payload: {payload}")
                 self.incoming_queue.append(payload)
         # print("QUEUE: Thread ended")
 
