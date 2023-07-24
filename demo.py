@@ -101,7 +101,16 @@ else:
     vd = b64encode(vd).decode()
     user.register(vd)
 
-logging.info(f"Looked up textgpt@icloud.com, got response: {user.lookup(['mailto:textgpt@icloud.com'])}")
+#logging.info(f"Looked up textgpt@icloud.com, got response: {user.lookup(['mailto:textgpt@icloud.com'])}")
+
+logging.info("Enter a username to look up, for example: mailto:textgpt@icloud.com")
+while True:
+    # Read a line from stdin
+    line = input("> ")
+    if line == "":
+        break
+    # Look up the username
+    logging.info(f"Looked up {line}, got response: {user.lookup([line])}")
 
 # Write config.json
 CONFIG["id"] = {
