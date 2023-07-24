@@ -78,7 +78,6 @@ def safe_b64decode(s):
         return None
 conn.connect(token=safe_b64decode(CONFIG.get("push", {}).get("token")))
 conn.set_state(1)
-conn.connect(root=False, token=b64decode("E2qx2kiU0KxnyhcLErUHEnVQABEaEQfPEEISmUx+4j4="))
 #print(b64encode(conn.token).decode())
 user = ids.IDSUser(conn)
 
