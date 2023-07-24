@@ -1,6 +1,8 @@
 import plistlib
 
 import requests
+import logging
+logger = logging.getLogger("bags")
 
 
 def apns_init_bag_old():
@@ -10,6 +12,8 @@ def apns_init_bag_old():
 
     # Parse the config as a plist
     bag = plistlib.loads(r.content)
+
+    logger.debug("Received APNs old-style init bag")
 
     return bag
 
@@ -22,6 +26,8 @@ def apns_init_bag():
 
     content = plistlib.loads(r.content)
     bag = plistlib.loads(content["bag"])
+
+    logger.debug("Received APNs new init bag")
 
     return bag
 
@@ -37,6 +43,8 @@ def ids_bag():
     content = plistlib.loads(r.content)
     # Load the inner bag
     bag = plistlib.loads(content["bag"])
+
+    logger.debug("Recieved IDS bag")
 
     return bag
 

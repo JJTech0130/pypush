@@ -16,6 +16,9 @@ import bags
 from . import signing
 from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
 
+import logging
+logger = logging.getLogger("ids")
+
 
 def _auth_token_request(username: str, password: str) -> any:
     # Turn the PET into an auth token
@@ -49,9 +52,11 @@ def get_auth_token(
 
     # if use_gsa:
     if platform == "darwin":
+        logger.debug("Using GrandSlam to authenticate (native Anisette)")
         g = gsa.authenticate(username, password, gsa.Anisette())
         pet = g["t"]["com.apple.gs.idms.pet"]["token"]
     else:
+        logger.debug("Using old-style authentication")
         # Make the request without the 2FA code to make the prompt appear
         _auth_token_request(username, password)
         # TODO: Make sure we actually need the second request, some rare accounts don't have 2FA
@@ -68,6 +73,7 @@ def get_auth_token(
     realm_user_id = service_data["realm-user-id"]
     auth_token = service_data["auth-token"]
     # print(f"Auth token for {realm_user_id}: {auth_token}")
+    logger.debug(f"Got auth token for IDS: {auth_token}")
     return realm_user_id, auth_token
 
 
@@ -119,6 +125,7 @@ def get_auth_cert(user_id, token) -> KeyPair:
     if r["status"] != 0:
         raise (Exception(f"Failed to get auth cert: {r}"))
     cert = x509.load_der_x509_certificate(r["cert"])
+    logger.debug("Got auth cert from token")
     return KeyPair(
         private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
@@ -153,4 +160,5 @@ def get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
     if not "handles" in r:
         raise Exception("No handles in response: " + str(r))
 
+    logger.debug(f"User {user_id} has handles {r['handles']}")
     return [handle["uri"] for handle in r["handles"]]

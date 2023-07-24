@@ -403,7 +403,6 @@ def load_nac() -> Jelly:
     return j
 
 def generate_validation_data() -> bytes:
-    logger.info("Generating validation data")
     j = load_nac()
     logger.debug("Loaded NAC library")
     val_ctx, req = nac_init(j,get_cert())

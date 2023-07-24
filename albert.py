@@ -10,6 +10,9 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 
+import logging
+logger = logging.getLogger("albert")
+
 # These can probably be any valid chain and key in a similar format? Seems like a CoreTrust-like bug in validation?
 # I got them from https://github.com/MiUnlockCode/albertsimlockapple/blob/main/ALBERTBUGBYMIUNLOCK.php
 FAIRPLAY_PRIVATE_KEY = b64decode(
@@ -60,6 +63,8 @@ def generate_push_cert() -> tuple[str, str]:
         "UniqueDeviceID": str(uuid.uuid4()),
     }
 
+    logger.debug(f"Generated activation info (with UUID: {activation_info['UniqueDeviceID']})")
+    
     activation_info = plistlib.dumps(activation_info)
 
     # Load the private key
@@ -85,6 +90,8 @@ def generate_push_cert() -> tuple[str, str]:
 
     protocol = re.search("<Protocol>(.*)</Protocol>", resp.text).group(1) # type: ignore
     protocol = plistlib.loads(protocol.encode("utf-8"))
+
+    logger.debug("Recieved push certificate from Albert")
 
     return (
         private_key.private_bytes(

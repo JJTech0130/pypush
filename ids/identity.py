@@ -6,10 +6,14 @@ import requests
 from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
 from .signing import add_auth_signature, armour_cert
 
+import logging
+logger = logging.getLogger("ids")
+
 
 def register(
     push_token, handles, user_id, auth_key: KeyPair, push_key: KeyPair, validation_data
 ):
+    logger.debug(f"Registering IDS identity for {handles}")
     uris = [{"uri": handle} for handle in handles]
 
     body = {
@@ -47,7 +51,8 @@ def register(
         verify=False,
     )
     r = plistlib.loads(r.content)
-    print(f'Response code: {r["status"]}')
+    #print(f'Response code: {r["status"]}')
+    logger.debug(f"Recieved response to IDS registration: {r}")
     if "status" in r and r["status"] == 6004:
         raise Exception("Validation data expired!")
     # TODO: Do validation of nested statuses

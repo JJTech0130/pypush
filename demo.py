@@ -17,6 +17,10 @@ logging.basicConfig(
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
+logging.getLogger("apns").setLevel(logging.INFO)
+logging.getLogger("albert").setLevel(logging.INFO)
+logging.getLogger("ids").setLevel(logging.DEBUG)
+logging.getLogger("bags").setLevel(logging.DEBUG)
 
 def input_multiline(prompt):
     print(prompt)
@@ -97,7 +101,7 @@ else:
     vd = b64encode(vd).decode()
     user.register(vd)
 
-print(user.lookup(["mailto:textgpt@icloud.com"]))
+logging.info(f"Looked up textgpt@icloud.com, got response: {user.lookup(['mailto:textgpt@icloud.com'])}")
 
 # Write config.json
 CONFIG["id"] = {

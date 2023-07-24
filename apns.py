@@ -5,6 +5,7 @@ import socket
 import threading
 import time
 from hashlib import sha1
+from base64 import b64encode, b64decode
 import logging
 logger = logging.getLogger("apns")
 
@@ -34,6 +35,8 @@ def _connect(private_key: str, cert: str) -> tlslite.TLSConnection:
     private_key = tlslite.parsePEMKey(private_key, private=True)
     # Handshake with the server
     sock.handshakeClientCert(cert, private_key, alpn=ALPN)
+
+    logger.info(f"Connected to APNs ({COURIER_HOST})")
 
     return sock
 
@@ -128,6 +131,7 @@ class APNSConnection:
     def __init__(self, private_key=None, cert=None):
         # Generate the private key and certificate if they're not provided
         if private_key is None or cert is None:
+            logger.debug("APNs needs a new push certificate")
             self.private_key, self.cert = albert.generate_push_cert()
         else:
             self.private_key, self.cert = private_key, cert
@@ -141,6 +145,10 @@ class APNSConnection:
         self.queue_filler_thread.start()
 
     def connect(self, root: bool = True, token: bytes = None):
+        if token is None:
+            logger.debug(f"Sending connect message without token (root={root})")
+        else:
+            logger.debug(f"Sending connect message with token {b64encode(token).decode()} (root={root})")
         flags = 0b01000001
         if root:
             flags |= 0b0100
@@ -177,10 +185,13 @@ class APNSConnection:
             self.token = token
         else:
             raise Exception("No token")
+        
+        logger.debug(f"Recieved connect response with token {b64encode(self.token).decode()}")
 
         return self.token
 
     def filter(self, topics: list[str]):
+        logger.debug(f"Sending filter message with topics {topics}")
         fields = [(1, self.token)]
 
         for topic in topics:
@@ -191,6 +202,7 @@ class APNSConnection:
         self.sock.write(payload)
 
     def send_message(self, topic: str, payload: str, id=None):
+        logger.debug(f"Sending message to topic {topic} with payload {payload}")
         if id is None:
             id = random.randbytes(4)
 
@@ -213,6 +225,7 @@ class APNSConnection:
             raise Exception("Failed to send message")
 
     def set_state(self, state: int):
+        logger.debug(f"Sending state message with state {state}")
         self.sock.write(
             _serialize_payload(
                 0x14,
@@ -221,6 +234,7 @@ class APNSConnection:
         )
 
     def keep_alive(self):
+        logger.debug("Sending keep alive message")
         self.sock.write(_serialize_payload(0x0C, []))
 
     # def _send_ack(self, id: bytes):
