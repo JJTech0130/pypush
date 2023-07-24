@@ -5,11 +5,13 @@ import socket
 import threading
 import time
 from hashlib import sha1
+import logging
+logger = logging.getLogger("apns")
 
 import tlslite
 if tlslite.__version__ != "0.8.0-alpha43":
-    print("WARNING: tlslite-ng is not the correct version!")
-    print("Please install tlslite-ng==0.8.0a43 or you will experience issues!!!")
+    logger.warning("tlslite-ng is not the correct version!")
+    logger.warning("Please install tlslite-ng==0.8.0a43 or you will experience issues!")
 
 import albert
 import bags
