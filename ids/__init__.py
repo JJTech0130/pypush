@@ -2,7 +2,7 @@ from base64 import b64encode
 
 import apns
 
-from . import _helpers, identity, profile, query
+from . import _helpers, identity, profile, query, keydec
 
 
 class IDSUser:
@@ -53,13 +53,14 @@ class IDSUser:
         self.handles = handles
 
     # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
-    def register(self, validation_data: str):
+    def register(self, validation_data: str, published_keys: keydec.IdentityKeys):
         cert = identity.register(
             b64encode(self.push_connection.token),
             self.handles,
             self.user_id,
             self._auth_keypair,
             self._push_keypair,
+            published_keys,
             validation_data,
         )
         self._id_keypair = _helpers.KeyPair(self._auth_keypair.key, cert)

@@ -5,13 +5,14 @@ import requests
 
 from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
 from .signing import add_auth_signature, armour_cert
+from .keydec import IdentityKeys
 
 import logging
 logger = logging.getLogger("ids")
 
 
 def register(
-    push_token, handles, user_id, auth_key: KeyPair, push_key: KeyPair, validation_data
+    push_token, handles, user_id, auth_key: KeyPair, push_key: KeyPair, published_keys: IdentityKeys, validation_data
 ):
     logger.debug(f"Registering IDS identity for {handles}")
     uris = [{"uri": handle} for handle in handles]
@@ -30,39 +31,39 @@ def register(
                         "client-data": {
                             'is-c2k-equipment': True,
 						    'optionally-receive-typing-indicators': True,
-						    'public-message-identity-key': b64decode("""MIH2gUMAQQSYmvE+hYOWVGotZUCd
-						M6zoW/2clK8RIzUtE6JAmWSCwj7d
-						B213vxEBNAPHefEtlxkVKlQH6bsw
-						ja5qYyl3Fh28goGuAKwwgakCgaEA
-						4lw3MrXOFIWWIi3TTUGksXVCIz92
-						R3AG3ghBa1ZBoZ6rIJHeuxhD2vTV
-						hicpW7kvZ/+AFgE4vFFef/9TjG6C
-						rsBtWUUfPtYHqc7+uaghVW13qfYC
-						tdGsW8Apvf6MJqsRmITJjoYZ5kwl
-						scp5Xw/1KVQzKMfZrwZeLC/UZ6O1
-						41u4Xvm+u40e+Ky/wMCOwLGBG0Ag
-						ZBH91Xrq+S8izgSLmQIDAQAB"""),
-						
-						'public-message-identity-version':2,
-						'show-peer-errors': True,
-						'supports-ack-v1': True,
-						'supports-activity-sharing-v1': True,
-						'supports-audio-messaging-v2': True,
-						"supports-autoloopvideo-v1": True,
-						'supports-be-v1': True,
-						'supports-ca-v1': True,
-						'supports-fsm-v1': True,
-						'supports-fsm-v2': True,
-						'supports-fsm-v3': True,
-						'supports-ii-v1': True,
-						'supports-impact-v1': True,
-						'supports-inline-attachments': True,
-						'supports-keep-receipts': True,
-						"supports-location-sharing": True,
-						'supports-media-v2': True,
-						'supports-photos-extension-v1': True,
-						'supports-st-v1': True,
-						'supports-update-attachments-v1': True,
+						    'public-message-identity-key': published_keys.encode(),
+                            # 'public-message-identity-key': b64decode("""MIH2gUMAQQSYmvE+hYOWVGotZUCd
+						    #     M6zoW/2clK8RIzUtE6JAmWSCwj7d
+                            #     B213vxEBNAPHefEtlxkVKlQH6bsw
+                            #     ja5qYyl3Fh28goGuAKwwgakCgaEA
+                            #     4lw3MrXOFIWWIi3TTUGksXVCIz92
+                            #     R3AG3ghBa1ZBoZ6rIJHeuxhD2vTV
+                            #     hicpW7kvZ/+AFgE4vFFef/9TjG6C
+                            #     rsBtWUUfPtYHqc7+uaghVW13qfYC
+                            #     tdGsW8Apvf6MJqsRmITJjoYZ5kwl
+                            #     scp5Xw/1KVQzKMfZrwZeLC/UZ6O1
+                            #     41u4Xvm+u40e+Ky/wMCOwLGBG0Ag
+                            #     ZBH91Xrq+S8izgSLmQIDAQAB""".replace("\n", "").replace(" ", "").replace("\t", "")),
+						    'public-message-identity-version':2,
+                            'show-peer-errors': True,
+                            'supports-ack-v1': True,
+                            'supports-activity-sharing-v1': True,
+                            'supports-audio-messaging-v2': True,
+                            "supports-autoloopvideo-v1": True,
+                            'supports-be-v1': True,
+                            'supports-ca-v1': True,
+                            'supports-fsm-v1': True,
+                            'supports-fsm-v2': True,
+                            'supports-fsm-v3': True,
+                            'supports-ii-v1': True,
+                            'supports-impact-v1': True,
+                            'supports-inline-attachments': True,
+                            'supports-keep-receipts': True,
+                            "supports-location-sharing": True,
+                            'supports-media-v2': True,
+                            'supports-photos-extension-v1': True,
+                            'supports-st-v1': True,
+                            'supports-update-attachments-v1': True,
                         },
                         "uris": uris,
                         "user-id": user_id,
