@@ -17,7 +17,7 @@ logging.basicConfig(
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.DEBUG)
+logging.getLogger("apns").setLevel(logging.INFO)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.DEBUG)
@@ -137,7 +137,7 @@ else:
 #         if len(identity) > 5:
 #             logging.warning(identity)
 
-logging.debug(user.lookup(["mailto:usert4@icloud.com", "mailto:jjtech@jjtech.dev"]))
+#logging.debug(user.lookup(["mailto:usert4@icloud.com", "mailto:jjtech@jjtech.dev"]))
 # resp = user.lookup(["mailto:jjtech@jjtech.dev"])
 # info = resp["mailto:jjtech@jjtech.dev"]
 # identities = info["identities"]
@@ -215,7 +215,8 @@ def decrypt(payload):
     #print(pt)
     pt = gzip.decompress(pt)
     payload = plistlib.loads(pt)
-    logging.info(f"Got payload: {payload}")
+    #logging.debug(f"Got payload: {payload}")
+    return payload
 
 
 import plistlib
@@ -235,6 +236,7 @@ while True:
     resp_body = plistlib.loads(resp_body)
     #logging.info(f"Got response: {resp_body}")
     payload = resp_body["P"]
-    decrypt(payload)
+    payload = decrypt(payload)
+    logging.info(f"Got message: {payload['t']} from {payload['p'][1]}")
 
         
