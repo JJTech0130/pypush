@@ -238,10 +238,10 @@ class APNSConnection:
         logger.debug("Sending keep alive message")
         self.sock.write(_serialize_payload(0x0C, []))
 
-    # def _send_ack(self, id: bytes):
-    #     print(f"Sending ACK for message {id}")
-    #     payload = _serialize_payload(0x0B, [(1, self.token), (4, id), (8, b"\x00")])
-    #     self.sock.write(payload)
+    def _send_ack(self, id: bytes):
+        logger.debug(f"Sending ACK for message {id}")
+        payload = _serialize_payload(0x0B, [(1, self.token), (4, id), (8, b"\x00")])
+        self.sock.write(payload)
     #     #self.sock.write(_serialize_payload(0x0B, [(4, id)])
     #     #pass
 

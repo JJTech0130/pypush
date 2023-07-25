@@ -233,6 +233,8 @@ while True:
         return True
     payload = conn.incoming_queue.wait_pop_find(check_response)
     resp_body = apns._get_field(payload[1], 3)
+    id = apns._get_field(payload[1], 4)
+    conn._send_ack(id)
     resp_body = plistlib.loads(resp_body)
     #logging.info(f"Got response: {resp_body}")
     payload = resp_body["P"]
