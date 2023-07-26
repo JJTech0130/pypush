@@ -15,7 +15,6 @@ class IdentityKeys():
 
         assert input.read(5) == b'\x30\x81\xF6\x81\x43' # DER header
         raw_ecdsa = input.read(67)
-        print(b64encode(raw_ecdsa).decode())
         assert input.read(3) == b'\x82\x81\xAE' # DER header
         raw_rsa = input.read(174)
 
@@ -28,13 +27,19 @@ class IdentityKeys():
         rsa_modulus = int.from_bytes(rsa_modulus, "big")
         assert raw_rsa.read(5) == b'\x02\x03\x01\x00\x01' # Exponent, should always be 65537
 
-        # TODO: Parse the ECDSA key
+        # Parse the EC key
+        assert raw_ecdsa[:3] == b'\x00\x41\x04'
+        raw_ecdsa = raw_ecdsa[3:]
+        ec_x = int.from_bytes(raw_ecdsa[:32], "big")
+        ec_y = int.from_bytes(raw_ecdsa[32:], "big")
 
-        # Construct a public key
+        ec_key = ec.EllipticCurvePublicNumbers(ec_x, ec_y, ec.SECP256R1())
+        ec_key = ec_key.public_key()
+
         rsa_key = rsa.RSAPublicNumbers(e=65537, n=rsa_modulus)
         rsa_key = rsa_key.public_key()
 
-        return IdentityKeys(None, rsa_key)
+        return IdentityKeys(ec_key, rsa_key)
     
     def encode(self) -> bytes:
         output = BytesIO()
@@ -44,10 +49,13 @@ class IdentityKeys():
         raw_rsa.write(b'\x30\x81\xA9')
         raw_rsa.write(b'\x02\x81\xA1')
         raw_rsa.write(self.rsa_key.public_numbers().n.to_bytes(161, "big"))
-        raw_rsa.write(b'\x02\x03\x01\x00\x01')
+        raw_rsa.write(b'\x02\x03\x01\x00\x01') # Hardcode the exponent
 
         output.write(b'\x30\x81\xF6\x81\x43')
-        output.write(b64decode("AEEEmJrxPoWDllRqLWVAnTOs6Fv9nJSvESM1LROiQJlkgsI+3Qdtd78RATQDx3nxLZcZFSpUB+m7MI2uamMpdxYdvA=="))
+        output.write(b'\x00\x41\x04')
+        output.write(self.ecdsa_key.public_numbers().x.to_bytes(32, "big"))
+        output.write(self.ecdsa_key.public_numbers().y.to_bytes(32, "big"))
+
         output.write(b'\x82\x81\xAE')
         output.write(raw_rsa.getvalue())
 
