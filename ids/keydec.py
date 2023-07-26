@@ -1,9 +1,35 @@
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
 from base64 import b64decode, b64encode
 
 from io import BytesIO
+
+def generate_keys() -> tuple[str, str, 'IdentityKeys']:
+    """
+    ECDSA key, RSA key, IdentityKeys
+    """
+    ecdsa_key = ec.generate_private_key(ec.SECP256R1())
+    rsa_key = rsa.generate_private_key(65537, 1280)
+
+    # Serialize the keys into PEM
+    ecdsa_key_p = ecdsa_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8").strip()
+    rsa_key_p = rsa_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8").strip()
+    return ecdsa_key_p, rsa_key_p, IdentityKeys(ecdsa_key.public_key(), rsa_key.public_key())
+
+def load_keys(ecdsa_key_p: str, rsa_key_p: str) -> 'IdentityKeys':
+    ecdsa_key = serialization.load_pem_private_key(ecdsa_key_p.encode(), password=None)
+    rsa_key = serialization.load_pem_private_key(rsa_key_p.encode(), password=None)
+    return IdentityKeys(ecdsa_key.public_key(), rsa_key.public_key())
 
 class IdentityKeys():
     def __init__(self, ecdsa_key: ec.EllipticCurvePublicKey, rsa_key: rsa.RSAPublicKey):

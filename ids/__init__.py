@@ -28,6 +28,8 @@ class IDSUser:
             self.push_connection.private_key, self.push_connection.cert
         )
 
+        self.ec_key = self.rsa_key = None
+
     def __str__(self):
         return f"IDSUser(user_id={self.user_id}, handles={self.handles}, push_token={b64encode(self.push_connection.token).decode()})"
 
@@ -50,10 +52,19 @@ class IDSUser:
     ):
         self._auth_keypair = auth_keypair
         self.user_id = user_id
-        self.handles = handles
+        self.handles = handles 
 
     # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
-    def register(self, validation_data: str, published_keys: keydec.IdentityKeys):
+    def register(self, validation_data: str):
+        """
+        self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
+        if they are not already set
+        """
+        if self.ec_key is None or self.rsa_key is None:
+            self.ec_key, self.rsa_key, published_keys = keydec.generate_keys()
+        else:
+            published_keys = keydec.load_keys(self.ec_key, self.rsa_key)
+        
         cert = identity.register(
             b64encode(self.push_connection.token),
             self.handles,

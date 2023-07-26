@@ -17,9 +17,8 @@ import apns
 import ids
 from ids.keydec import IdentityKeys
 
-FORMAT = "%(message)s"
 logging.basicConfig(
-    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+    level=logging.NOTSET, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
 )
 
 # Set sane log levels
@@ -67,28 +66,22 @@ else:
 
     user.authenticate(username, password)
 
-# Generate a new RSA keypair for the identity
-# Load the old keypair if it exists
-if CONFIG.get("encrypt") is not None:
-    priv_enc = load_pem_private_key(CONFIG["encrypt"].encode(), password=None)
-else:
-    priv_enc = rsa.generate_private_key(public_exponent=65537, key_size=1280)
-pub_enc = priv_enc.public_key()
+user.ec_key = CONFIG.get("encryption", {}).get("ec_key")
+user.rsa_key = CONFIG.get("encryption", {}).get("rsa_key")
 
-if CONFIG.get("id", {}).get("cert") is not None:
+if CONFIG.get("id", {}).get("cert") is not None and user.ec_key is not None and user.rsa_key is not None:
     id_keypair = ids._helpers.KeyPair(CONFIG["id"]["key"], CONFIG["id"]["cert"])
     user.restore_identity(id_keypair)
 else:
-    # vd = input_multiline("Enter validation data: ")
+    logging.info("Registering new identity...")
     import emulated.nac
 
     vd = emulated.nac.generate_validation_data()
     vd = b64encode(vd).decode()
 
-    published_keys = IdentityKeys(None, pub_enc)
-    user.register(vd, published_keys)
+    user.register(vd)
 
-logging.info("Waiting for incomming messages...")
+logging.info("Waiting for incoming messages...")
 
 # Create a thread to send keepalive messages
 
@@ -102,6 +95,10 @@ def keepalive():
 threading.Thread(target=keepalive, daemon=True).start()
 
 # Write config.json
+CONFIG["encryption"] = {
+    "ec_key": user.ec_key,
+    "rsa_key": user.rsa_key,
+}
 CONFIG["id"] = {
     "key": user._id_keypair.key,
     "cert": user._id_keypair.cert,
@@ -118,20 +115,10 @@ CONFIG["push"] = {
     "cert": user.push_connection.cert,
 }
 
-
-CONFIG["encrypt"] = (
-    priv_enc.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    .decode("utf-8")
-    .strip()
-)
-
 with open("config.json", "w") as f:
     json.dump(CONFIG, f, indent=4)
 
+user_rsa_key = load_pem_private_key(user.rsa_key.encode(), password=None)
 
 def decrypt(payload):
     # print(payload[1:3])
@@ -140,7 +127,7 @@ def decrypt(payload):
     payload = payload[3 : length + 3]
     # print("Decrypting payload", payload)
 
-    decrypted1 = priv_enc.decrypt(
+    decrypted1 = user_rsa_key.decrypt(
         payload[:160],
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA1()),
