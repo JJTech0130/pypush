@@ -50,8 +50,16 @@ def get_auth_token(
 ) -> tuple[str, str]:
     from sys import platform
 
-    # if use_gsa:
-    if platform == "darwin":
+    use_gsa = False
+    # Check if objc is importable
+    try:
+        if platform == "darwin":
+            import objc
+            use_gsa = True
+    except ImportError:
+        pass
+
+    if use_gsa:
         logger.debug("Using GrandSlam to authenticate (native Anisette)")
         g = gsa.authenticate(username, password, gsa.Anisette())
         pet = g["t"]["com.apple.gs.idms.pet"]["token"]
