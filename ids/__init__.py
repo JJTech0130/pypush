@@ -2,7 +2,7 @@ from base64 import b64encode
 
 import apns
 
-from . import _helpers, identity, profile, query, keydec
+from . import _helpers, identity, profile, query
 
 
 class IDSUser:
@@ -60,10 +60,9 @@ class IDSUser:
         self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
         if they are not already set
         """
-        if self.ec_key is None or self.rsa_key is None:
-            self.ec_key, self.rsa_key, published_keys = keydec.generate_keys()
-        else:
-            published_keys = keydec.load_keys(self.ec_key, self.rsa_key)
+        if self.encryption_identity is None:
+            self.encryption_identity = identity.IDSIdentity()
+        
         
         cert = identity.register(
             b64encode(self.push_connection.token),
@@ -71,7 +70,7 @@ class IDSUser:
             self.user_id,
             self._auth_keypair,
             self._push_keypair,
-            published_keys,
+            self.encryption_identity,
             validation_data,
         )
         self._id_keypair = _helpers.KeyPair(self._auth_keypair.key, cert)

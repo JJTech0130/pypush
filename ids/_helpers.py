@@ -14,3 +14,29 @@ def dearmour(armoured: str) -> str:
     return re.sub(r"-----BEGIN .*-----|-----END .*-----", "", armoured).replace(
         "\n", ""
     )
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.types import (
+    PrivateKeyTypes,
+    PublicKeyTypes,
+)
+def parse_key(key: str):
+    # Check if it is a public or private key
+    if "PUBLIC" in key:
+        return serialization.load_pem_public_key(key.encode())
+    else:
+        return serialization.load_pem_private_key(key.encode(), None)
+
+def serialize_key(key: PrivateKeyTypes | PublicKeyTypes):
+    if isinstance(key, PrivateKeyTypes):
+        return key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        ).decode("utf-8").strip()
+    else:
+        return key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode("utf-8").strip()
+    

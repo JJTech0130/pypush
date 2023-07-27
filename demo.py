@@ -15,7 +15,6 @@ from rich.logging import RichHandler
 
 import apns
 import ids
-from ids.keydec import IdentityKeys
 
 logging.basicConfig(
     level=logging.NOTSET, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
@@ -66,13 +65,11 @@ else:
 
     user.authenticate(username, password)
 
-user.ec_key = CONFIG.get("encryption", {}).get("ec_key")
-user.rsa_key = CONFIG.get("encryption", {}).get("rsa_key")
+user.encryption_identity = ids.identity.IDSIdentity(encryption_key=CONFIG.get("encryption", {}).get("rsa_key"), signing_key=CONFIG.get("encryption", {}).get("ec_key"))
 
 if (
     CONFIG.get("id", {}).get("cert") is not None
-    and user.ec_key is not None
-    and user.rsa_key is not None
+    and user.encryption_identity is not None
 ):
     id_keypair = ids._helpers.KeyPair(CONFIG["id"]["key"], CONFIG["id"]["cert"])
     user.restore_identity(id_keypair)
@@ -100,8 +97,8 @@ threading.Thread(target=keepalive, daemon=True).start()
 
 # Write config.json
 CONFIG["encryption"] = {
-    "ec_key": user.ec_key,
-    "rsa_key": user.rsa_key,
+    "rsa_key": user.encryption_identity.encryption_key,
+    "ec_key": user.encryption_identity.signing_key,
 }
 CONFIG["id"] = {
     "key": user._id_keypair.key,
@@ -122,8 +119,7 @@ CONFIG["push"] = {
 with open("config.json", "w") as f:
     json.dump(CONFIG, f, indent=4)
 
-user_rsa_key = load_pem_private_key(user.rsa_key.encode(), password=None)
-
+user_rsa_key = ids._helpers.parse_key(user.encryption_identity.encryption_key)
 NORMAL_NONCE = b"\x00" * 15 + b"\x01"
 
 def decrypt(payload, sender_token, rsa_key: rsa.RSAPrivateKey = user_rsa_key):
@@ -187,9 +183,9 @@ def decrypt(payload, sender_token, rsa_key: rsa.RSAPrivateKey = user_rsa_key):
         logging.error(f"Failed to find identity for {sender_token}")
 
     identity_keys = sender['client-data']['public-message-identity-key']
-    identity_keys = IdentityKeys.decode(identity_keys)
+    identity_keys = ids.identity.IDSIdentity.decode(identity_keys)
 
-    sender_ec_key = identity_keys.ecdsa_key
+    sender_ec_key = ids._helpers.parse_key(identity_keys.signing_public_key)
 
     from cryptography.hazmat.primitives.asymmetric import ec
     #logging.debug(f"Verifying signature {signature} with key {sender_ec_key.public_numbers()} and data {body}")
