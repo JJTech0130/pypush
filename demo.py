@@ -169,14 +169,14 @@ def decrypt(payload, sender_token, rsa_key: rsa.RSAPrivateKey = user_rsa_key):
 
     signature_len = payload.read(1)[0]
     signature = payload.read(signature_len)
-    logging.info(f"Signature: {signature}")
-    logging.info(f"Decrypted: {decrypted}")
+    #logging.info(f"Signature: {signature}")
+    #logging.info(f"Decrypted: {decrypted}")
 
     # Verify the signature
     sender = decrypted["p"][-1]
     # Lookup the public key for the sender
     lookup = user.lookup([sender])[sender]
-    logging.debug(f"Lookup: {lookup}")
+    #logging.debug(f"Lookup: {lookup}")
     sender = None
     for identity in lookup['identities']:
         if identity['push-token'] == sender_token:
@@ -222,7 +222,7 @@ while True:
     conn._send_ack(id)
     resp_body = plistlib.loads(resp_body)
     # logging.info(f"Got response: {resp_body}")
-    logging.debug(f"Got response: {resp_body}")
+    logging.debug(f"Got message: {resp_body}")
     token = resp_body['t']
     payload = resp_body["P"]
     payload = decrypt(payload, token)
