@@ -16,10 +16,7 @@ def dearmour(armoured: str) -> str:
     )
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.types import (
-    PrivateKeyTypes,
-    PublicKeyTypes,
-)
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 def parse_key(key: str):
     # Check if it is a public or private key
     if "PUBLIC" in key:
@@ -27,8 +24,8 @@ def parse_key(key: str):
     else:
         return serialization.load_pem_private_key(key.encode(), None)
 
-def serialize_key(key: PrivateKeyTypes | PublicKeyTypes):
-    if isinstance(key, PrivateKeyTypes):
+def serialize_key(key):
+    if isinstance(key, ec.EllipticCurvePrivateKey) or isinstance(key, rsa.RSAPrivateKey):
         return key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
