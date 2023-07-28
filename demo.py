@@ -1,20 +1,15 @@
-import gzip
 import json
 import logging
-import plistlib
 import threading
 import time
 from base64 import b64decode, b64encode
 from getpass import getpass
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from rich.logging import RichHandler
 
 import apns
 import ids
+import imessage
 
 logging.basicConfig(
     level=logging.NOTSET, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
@@ -65,7 +60,10 @@ else:
 
     user.authenticate(username, password)
 
-user.encryption_identity = ids.identity.IDSIdentity(encryption_key=CONFIG.get("encryption", {}).get("rsa_key"), signing_key=CONFIG.get("encryption", {}).get("ec_key"))
+user.encryption_identity = ids.identity.IDSIdentity(
+    encryption_key=CONFIG.get("encryption", {}).get("rsa_key"),
+    signing_key=CONFIG.get("encryption", {}).get("ec_key"),
+)
 
 if (
     CONFIG.get("id", {}).get("cert") is not None
@@ -83,17 +81,6 @@ else:
     user.register(vd)
 
 logging.info("Waiting for incoming messages...")
-
-# Create a thread to send keepalive messages
-
-
-def keepalive():
-    while True:
-        time.sleep(300)
-        conn.keep_alive()
-
-
-threading.Thread(target=keepalive, daemon=True).start()
 
 # Write config.json
 CONFIG["encryption"] = {
@@ -119,12 +106,8 @@ CONFIG["push"] = {
 with open("config.json", "w") as f:
     json.dump(CONFIG, f, indent=4)
 
-import imessage
 im = imessage.iMessageUser(conn, user)
 
-#import time
-#time.sleep(4)
-#onn._send_ack(b'\t-\x97\x96')
 while True:
     msg = im.receive()
     if msg is not None:

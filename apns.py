@@ -107,6 +107,11 @@ class APNSConnection:
                 self.incoming_queue.append(payload)
                 logger.debug(f"Queue length: {len(self.incoming_queue)}")
 
+    def _keep_alive_loop(self):
+        while True and not self.sock.closed:
+            time.sleep(300)
+            self._keep_alive()
+
     def __init__(self, private_key=None, cert=None):
         # Generate the private key and certificate if they're not provided
         if private_key is None or cert is None:
@@ -117,11 +122,16 @@ class APNSConnection:
 
         self.sock = _connect(self.private_key, self.cert)
 
-        # Start the queue filler thread
         self.queue_filler_thread = threading.Thread(
             target=self._queue_filler, daemon=True
         )
         self.queue_filler_thread.start()
+
+        self.keep_alive_thread = threading.Thread(
+            target=self._keep_alive_loop, daemon=True
+        )
+        self.keep_alive_thread.start()
+
 
     def connect(self, root: bool = True, token: bytes = None):
         if token is None:
@@ -212,7 +222,7 @@ class APNSConnection:
             )
         )
 
-    def keep_alive(self):
+    def _keep_alive(self):
         logger.debug("Sending keep alive message")
         self.sock.write(_serialize_payload(0x0C, []))
         # Remove any keep alive responses we have or missed
