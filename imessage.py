@@ -16,6 +16,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 import gzip
+import uuid
+import random
 
 from hashlib import sha1
 import logging
@@ -31,13 +33,15 @@ class BalloonBody:
         # TODO : Register handlers based on type id
 
 class iMessage:
-    text: str
+    text: str = ""
     xml: str | None = None
-    participants: list[str]
-    sender: str
-    id: str
-    group_id: str
+    participants: list[str] = []
+    sender: str | None = None
+    id: str | None = None
+    group_id: str | None = None
     body: BalloonBody | None = None
+
+    _compressed: bool = True
 
     _raw: dict | None = None
 
@@ -61,6 +65,9 @@ class iMessage:
             # This is a message extension body
             self.body = BalloonBody(message['bid'], message['b'])
 
+        if 'compressed' in message: # This is a hack, not a real field
+            self._compressed = message['compressed']
+
         return self
 
     def to_raw(self) -> dict:
@@ -70,6 +77,7 @@ class iMessage:
             "p": self.participants,
             "r": self.id,
             "gid": self.group_id,
+            "compressed": self._compressed,
         }
     
     def __str__(self):
@@ -114,9 +122,6 @@ class iMessageUser:
     def _send_raw_message(self, message: dict):
         pass
 
-    def _encrypt_message(self, message: dict) -> dict:
-        pass
-
     def _sign_message(self, message: dict) -> dict:
         pass
 
@@ -124,6 +129,7 @@ class iMessageUser:
         payload = BytesIO(payload)
 
         tag = payload.read(1)
+        print("TAG", tag)
         body_length = int.from_bytes(payload.read(2), "big")
         body = payload.read(body_length)
         
@@ -131,6 +137,58 @@ class iMessageUser:
         signature = payload.read(signature_len)
 
         return (body, signature)
+    
+    def _construct_payload(body: bytes, signature: bytes) -> bytes:
+        payload = b"\x02" + len(body).to_bytes(2, "big") + body + len(signature).to_bytes(1, "big") + signature
+        return payload
+    
+    # Look up the public keys for the participants (except the sender)
+    # def test():
+    #     lookup = self.user.lookup(message['p'][:-1])
+
+    #     # Get the public keys for the participants
+    #     public_keys = {}
+    #     for participant in message['p'][:-1]:
+    #         for identity in lookup[participant]['identities']:
+    #             logger.debug(identity)
+    #             if 'client-data' in identity and 'public-message-identity-key' in identity['client-data'] and 'push-token' in identity:
+    #                 public_keys[identity['push-token']] = identity['client-data']['public-message-identity-key']
+
+    #     logger.debug(public_keys)
+
+    def _encrypt_sign_payload(self, key: ids.identity.IDSIdentity, message: dict) -> dict[str, bytes]:
+        # Dump the message plist
+        compressed = message.get('compressed', False)
+        message = plistlib.dumps(message, fmt=plistlib.FMT_BINARY)
+
+        # Compress the message
+        if compressed:
+            message = gzip.compress(message, mtime=0)
+
+        # Generate a random AES key
+        aes_key = random.randbytes(16)
+
+        # Encrypt the message with the AES key
+        cipher = Cipher(algorithms.AES(aes_key), modes.CTR(NORMAL_NONCE))
+        encrypted = cipher.encryptor().update(message)
+
+        # Encrypt the AES key with the public key of the recipient
+        recipient_key = ids._helpers.parse_key(key.encryption_public_key)
+        rsa_body = recipient_key.encrypt(
+             aes_key + encrypted[:100],
+             padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA1()),
+                    algorithm=hashes.SHA1(),
+                    label=None,
+                ),
+        )
+
+        # Construct the payload
+        body = rsa_body + encrypted[100:]
+        sig = ids._helpers.parse_key(self.user.encryption_identity.signing_key).sign(body, ec.ECDSA(hashes.SHA1()))
+        payload = iMessageUser._construct_payload(body, sig)
+
+        return payload
     
     def _decrypt_payload(self, payload: bytes) -> dict:
         payload = iMessageUser._parse_payload(payload)
@@ -145,16 +203,23 @@ class iMessageUser:
             ),
         )
 
+        logger.debug(f"RSA BODY LEN: {len(rsa_body)}")
+
         cipher = Cipher(algorithms.AES(rsa_body[:16]), modes.CTR(NORMAL_NONCE))
         decrypted = cipher.decryptor().update(rsa_body[16:] + body.read())
         
         # Try to gzip decompress the payload
+        compressed = False
         try:
             decrypted = gzip.decompress(decrypted)
+            compressed = True
         except:
             pass
 
-        return plistlib.loads(decrypted)
+        pl = plistlib.loads(decrypted)
+        pl['compressed'] = compressed # This is a hack so that messages can be re-encrypted with the same compression
+
+        return pl
 
     def _verify_payload(self, payload: bytes, sender: str, sender_token: str) -> bool:
         # Get the public key for the sender
@@ -194,6 +259,7 @@ class iMessageUser:
             return None
         body = apns._get_field(raw[1], 3)
         body = plistlib.loads(body)
+        logger.debug(f"Got body message {body}")
         payload = body["P"]
         decrypted = self._decrypt_payload(payload)
         if "p" in decrypted:
@@ -205,4 +271,43 @@ class iMessageUser:
         return iMessage.from_raw(decrypted)
     
     def send(self, message: iMessage):
-        logger.error(f"Sending {message}")
+        # Set the sender, if it isn't already
+        if message.sender is None:
+            message.sender = self.user.handles[0] # TODO : Which handle to use?
+        if message.sender not in message.participants:
+            message.participants.append(message.sender)
+
+        # Set the group id, if it isn't already
+        if message.group_id is None:
+            message.group_id = str(uuid.uuid4()).upper() # TODO: Keep track of group ids?
+        mid = uuid.uuid4()
+        if message.id is None:
+            message.id = str(mid).upper()
+
+        # Turn the message into a raw message
+        raw = message.to_raw()
+
+        # Encrypt the message for each participant
+        lookup = self.user.lookup(message.participants[:-1])
+        for participant in message.participants[:-1]:            
+            for identity in lookup[participant]['identities']:
+                if 'client-data' in identity and 'public-message-identity-key' in identity['client-data'] and 'push-token' in identity:
+                    push_token = identity['push-token']
+                    identity_keys = ids.identity.IDSIdentity.decode(identity['client-data']['public-message-identity-key'])
+                    payload = self._encrypt_sign_payload(identity_keys, raw)
+                    body = {
+                        "t": push_token,
+                        "P": payload,
+                        "c": 100,
+                        "E": "pair",
+                        "sP": self.user.handles[0],
+                        "tP": participant,
+                        "U": mid.hex,
+                        'v': 8,
+                        'D': True
+                    }
+                    body = plistlib.dumps(body, fmt=plistlib.FMT_BINARY)
+                    self.connection.send_message("com.apple.madrid", body)
+            
+
+        logger.error(f"Sent {message}")
