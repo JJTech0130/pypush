@@ -61,6 +61,8 @@ def lookup(
     resp = plistlib.loads(resp)
     resp = gzip.decompress(resp["b"])
     resp = plistlib.loads(resp)
+    # Acknowledge the message
+    #conn._send_ack(apns._get_field(payload[1], 4))
 
     if resp['status'] != 0:
         raise Exception(f'Query failed: {resp}')

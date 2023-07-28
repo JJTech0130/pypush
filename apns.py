@@ -73,6 +73,10 @@ class IncomingQueue:
                 # We have the lock, so we can safely remove it
                 self.queue.remove(found)
             return found
+        
+    def remove_all(self, id):
+        with self.lock:
+            self.queue = [i for i in self.queue if i[0] != id]
 
     def wait_pop_find(self, finder, delay=0.1):
         found = None
@@ -92,42 +96,16 @@ class APNSConnection:
 
     def _queue_filler(self):
         while True and not self.sock.closed:
-            # print(self.sock.closed)
-            # print("QUEUE: Waiting for payload...")
-            # self.sock.read(1)
-            # print("QUEUE: Got payload?")
             payload = _deserialize_payload(self.sock)
-            # print("QUEUE: Got payload?")
 
             if payload is not None:
-                # print("QUEUE: Received payload: " + str(payload))
-                # print("QUEUE: Received payload type: " + hex(payload[0]))
+                # Automatically ACK incoming notifications to prevent APNs from getting mad at us
+                if payload[0] == 0x0A:
+                    logger.debug("Sending automatic ACK")
+                    self._send_ack(_get_field(payload[1], 4))
                 logger.debug(f"Received payload: {payload}")
                 self.incoming_queue.append(payload)
-        # print("QUEUE: Thread ended")
-
-    # def _pop_by_id(self, id: int) -> tuple[int, list[tuple[int, bytes]]] | None:
-    #     def finder(item):
-    #         return item[0] == id
-    #     return self.incoming_queue.find(finder)
-    #     # print("QUEUE: Looking for id " + str(id) + " in " + str(self.incoming_queue))
-    #     #for i in range(len(self.incoming_queue)):
-    #     #    if self.incoming_queue[i][0] == id:
-    #     #        return self.incoming_queue.pop(i)
-    #     #return None
-
-    # def wait_for_packet(self, id: int) -> tuple[int, list[tuple[int, bytes]]]:
-    #     found = None
-    #     while found is None:
-    #         found = self._pop_by_id(id)
-    #         if found is None:
-    #             time.sleep(0.1)
-    #     return found
-
-    # def find_packet(self, finder) ->
-
-    # def replace_packet(self, payload: tuple[int, list[tuple[int, bytes]]]):
-    #    self.incoming_queue.append(payload)
+                logger.debug(f"Queue length: {len(self.incoming_queue)}")
 
     def __init__(self, private_key=None, cert=None):
         # Generate the private key and certificate if they're not provided
@@ -237,6 +215,9 @@ class APNSConnection:
     def keep_alive(self):
         logger.debug("Sending keep alive message")
         self.sock.write(_serialize_payload(0x0C, []))
+        # Remove any keep alive responses we have or missed
+        self.incoming_queue.remove_all(0x0D)
+        
 
     def _send_ack(self, id: bytes):
         logger.debug(f"Sending ACK for message {id}")

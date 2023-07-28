@@ -17,10 +17,66 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 import gzip
 
+from hashlib import sha1
 import logging
 logger = logging.getLogger("imessage")
 
 NORMAL_NONCE = b"\x00" * 15 + b"\x01"
+
+class BalloonBody:
+    def __init__(self, type: str, data: bytes):
+        self.type = type
+        self.data = data
+
+        # TODO : Register handlers based on type id
+
+class iMessage:
+    text: str
+    xml: str | None = None
+    participants: list[str]
+    sender: str
+    id: str
+    group_id: str
+    body: BalloonBody | None = None
+
+    _raw: dict | None = None
+
+    def from_raw(message: dict) -> 'iMessage':
+        self = iMessage()
+
+        self._raw = message
+
+        self.text = message.get('t')
+        self.xml = message.get('x')
+        self.participants = message.get('p', [])
+        if self.participants != []:
+            self.sender = self.participants[-1]
+        else:
+            self.sender = None
+
+        self.id = message.get('r')
+        self.group_id = message.get('gid')
+
+        if 'bid' in message:
+            # This is a message extension body
+            self.body = BalloonBody(message['bid'], message['b'])
+
+        return self
+
+    def to_raw(self) -> dict:
+        return {
+            "t": self.text,
+            "x": self.xml,
+            "p": self.participants,
+            "r": self.id,
+            "gid": self.group_id,
+        }
+    
+    def __str__(self):
+        if self._raw is not None:
+            return str(self._raw)
+        else:
+            return f"iMessage({self.text} from {self.sender})"
 
 class iMessageUser:
 
@@ -31,21 +87,27 @@ class iMessageUser:
     def _get_raw_message(self):
         """
         Returns a raw APNs message corresponding to the next conforming notification in the queue
+        Returns None if no conforming notification is found
         """
         def check_response(x):
             if x[0] != 0x0A:
                 return False
+            if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
+                return False
             resp_body = apns._get_field(x[1], 3)
             if resp_body is None:
+                #logger.debug("Rejecting madrid message with no body")
                 return False
             resp_body = plistlib.loads(resp_body)
             if "P" not in resp_body:
+                #logger.debug(f"Rejecting madrid message with no payload : {resp_body}")
                 return False
             return True
         
-        payload = self.connection.incoming_queue.wait_pop_find(check_response)
+        payload = self.connection.incoming_queue.pop_find(check_response)
+        if payload is None:
+            return None
         id = apns._get_field(payload[1], 4)
-        self.connection._send_ack(id)
 
         return payload
 
@@ -123,8 +185,13 @@ class iMessageUser:
         except:
             return False
 
-    def receive(self) -> 'iMessage':
+    def receive(self) -> iMessage | None:
+        """
+        Will return the next iMessage in the queue, or None if there are no messages
+        """
         raw = self._get_raw_message()
+        if raw is None:
+            return None
         body = apns._get_field(raw[1], 3)
         body = plistlib.loads(body)
         payload = body["P"]
@@ -137,69 +204,5 @@ class iMessageUser:
             return self.receive() # Call again to get the next message
         return iMessage.from_raw(decrypted)
     
-    def send(self, message: dict):
+    def send(self, message: iMessage):
         logger.error(f"Sending {message}")
-
-    def receive_message(self) -> str:
-        pass
-
-    def send_message(self, message: str, to: str):
-        pass
-
-class ExtendedBody:
-    def __init__(self, type: str, data: bytes):
-        self.type = type
-        self.data = data
-
-        # TODO : Register handlers based on type id
-
-class iMessage:
-    text: str
-    xml: str | None = None
-    participants: list[str]
-    sender: str
-    id: str
-    group_id: str
-    body: ExtendedBody | None = None
-
-    _raw: dict | None = None
-
-    def from_raw(message: dict) -> 'iMessage':
-        self = iMessage()
-
-        self._raw = message
-
-        self.text = message.get('t')
-        self.xml = message.get('x')
-        self.participants = message.get('p', [])
-        if self.participants != []:
-            self.sender = self.participants[-1]
-        else:
-            self.sender = None
-
-        self.id = message.get('r')
-        self.group_id = message.get('gid')
-
-        if 'bid' in message:
-            # This is a message extension body
-            self.body = ExtendedBody(message['bid'], message['b'])
-
-        return self
-
-    def to_raw(self) -> dict:
-        return {
-            "t": self.text,
-            "x": self.xml,
-            "p": self.participants,
-            "r": self.id,
-            "gid": self.group_id,
-        }
-    
-    def __str__(self):
-        if self._raw is not None:
-            return str(self._raw)
-        else:
-            return f"iMessage({self.text} from {self.sender})"
-
-        
-    

@@ -24,7 +24,7 @@ logging.basicConfig(
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.INFO)
+logging.getLogger("apns").setLevel(logging.DEBUG)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.DEBUG)
@@ -89,7 +89,7 @@ logging.info("Waiting for incoming messages...")
 
 def keepalive():
     while True:
-        time.sleep(5)
+        time.sleep(300)
         conn.keep_alive()
 
 
@@ -122,6 +122,10 @@ with open("config.json", "w") as f:
 import imessage
 im = imessage.iMessageUser(conn, user)
 
+#import time
+#time.sleep(4)
+#onn._send_ack(b'\t-\x97\x96')
 while True:
     msg = im.receive()
-    print(f"Got message {msg}")
+    if msg is not None:
+        print(f"Got message {msg}")
