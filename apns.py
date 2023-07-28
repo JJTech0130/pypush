@@ -50,7 +50,7 @@ class IncomingQueue:
         with self.lock:
             self.queue.append(item)
 
-    def pop(self, index):
+    def pop(self, index = -1):
         with self.lock:
             return self.queue.pop(index)
 
