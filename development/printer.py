@@ -219,7 +219,9 @@ def pretty_print_payload(
 
         if topic == "com.apple.madrid":
             print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
+            orig_payload = payload
             payload = plistlib.loads(_get_field(payload[1], 3))
+
             # print(payload)
             if "cT" in payload and False:
                 # It's HTTP over APNs
@@ -248,9 +250,29 @@ def pretty_print_payload(
                     if b"plist" in body:
                         body = plistlib.loads(body)
                     print(f" {bcolors.FAIL}Body{bcolors.ENDC}: {body}", end="")
-            if not "cT" in payload:
-                for key in payload:
-                    print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {payload[key]}")
+            #if not "cT" in payload:
+            for key in payload:
+                print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {payload[key]}")
+
+            if 'dtl' in payload:
+                print("OVERRIDE DTL")
+                payload['dtl'][0].update({'sT': b64decode("jJ86jTYbv1mGVwO44PyfuZ9lh3o56QjOE39Jk8Z99N8=")})
+
+                # Re-serialize the payload
+                payload = plistlib.dumps(payload, fmt=plistlib.FMT_BINARY)
+                # Construct APNS message
+                # Get the original fields except 3
+                fields = orig_payload[1]
+                fields = [field for field in fields if field[0] != 3]
+                # Add the new field
+                fields.append((3, payload))
+                payload = apns._serialize_payload(0xA, fields)
+
+                # Use the override payload
+
+                #print(payload, orig_payload)
+                #print(payload == orig_payload)
+                return payload
 
         print()
 
