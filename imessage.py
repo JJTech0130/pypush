@@ -252,8 +252,8 @@ class iMessageUser:
             return self.receive() # Call again to get the next message
         return iMessage.from_raw(decrypted)
     
-    KEY_CACHE: dict[str, str] = {} # Mapping of push token : public key
-    USER_CACHE: dict[str, list[str]] = {} # Mapping of handle : [push tokens]
+    KEY_CACHE: dict[bytes, tuple[bytes, bytes]] = {} # Mapping of push token : (public key, session token)
+    USER_CACHE: dict[str, list[bytes]] = {} # Mapping of handle : [push tokens]
     def _cache_keys(self, participants: list[str]):
         # Look up the public keys for the participants, and cache a token : public key mapping
         lookup = self.user.lookup(participants)
@@ -269,10 +269,14 @@ class iMessageUser:
                     continue
                 if not 'push-token' in identity:
                     continue
+                if not 'session-token' in identity:
+                    continue
 
                 self.USER_CACHE[key].append(identity['push-token'])
 
-                self.KEY_CACHE[identity['push-token']] = identity['client-data']['public-message-identity-key']
+                print(identity)
+
+                self.KEY_CACHE[identity['push-token']] = (identity['client-data']['public-message-identity-key'], identity['session-token'])
     
     def send(self, message: iMessage):
         # Set the sender, if it isn't already
@@ -297,14 +301,16 @@ class iMessageUser:
         bundled_payloads = []
         for participant in message.participants:
             for push_token in self.USER_CACHE[participant]:
-                identity_keys = ids.identity.IDSIdentity.decode(self.KEY_CACHE[push_token])
+                identity_keys = ids.identity.IDSIdentity.decode(self.KEY_CACHE[push_token][0])
                 payload = self._encrypt_sign_payload(identity_keys, raw)
 
                 bundled_payloads.append({
                     'tP': participant,
                     'D': not participant == message.sender, # TODO: Should this be false sometimes? For self messages?
+                    'sT': self.KEY_CACHE[push_token][1],
                     #'sT': self.connection.token,
-                    'sT': base64.b64decode("jJ86jTYbv1mGVwO44PyfuZ9lh3o56QjOE39Jk8Z99N8="),
+                    #'sT': base64.b64decode("jJ86jTYbv1mGVwO44PyfuZ9lh3o56QjOE39Jk8Z99N8="),
+                    #'sT': b'\x06\x01(\x1b\xc8\x9d\x9b\x956\xf8\xb2m\xc14F\xffKLze\x04\xd4\x16\x9f\xd01\xd48d\xbf\xf1\x1f1\x1a',
                     'P': payload,
                     't': push_token
                 })
