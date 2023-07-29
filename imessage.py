@@ -295,19 +295,54 @@ class iMessageUser:
                     push_token = identity['push-token']
                     identity_keys = ids.identity.IDSIdentity.decode(identity['client-data']['public-message-identity-key'])
                     payload = self._encrypt_sign_payload(identity_keys, raw)
+                    import time
                     body = {
-                        "t": push_token,
+                        "t": self.connection.token,
                         "P": payload,
                         "c": 100,
                         "E": "pair",
                         "sP": self.user.handles[0],
                         "tP": participant,
-                        "U": mid.hex,
+                        "U": mid.bytes,
                         'v': 8,
-                        'D': True
+                        'D': True,
+                        'e': time.time_ns(),
+                        'htu': True
+                        #'e': 1,
+                        # missing 'e'????
                     }
+                    logger.debug(f"body {body}")
                     body = plistlib.dumps(body, fmt=plistlib.FMT_BINARY)
+                    from base64 import b64encode
+                    logger.debug(f"Sending message to {participant} with payload {body} and token {b64encode(push_token)}")
                     self.connection.send_message("com.apple.madrid", body)
-            
+
+                    # Wait for a response
+                    def check_response(x):
+                        if x[0] != 0x0A:
+                            return False
+                        if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
+                            return False
+                        resp_body = apns._get_field(x[1], 3)
+                        if resp_body is None:
+                            return False
+                        resp_body = plistlib.loads(resp_body)
+                        return True
+                    
+                    # Wait for a few sec to wait for it
+                    for i in range(10):
+                        payload = self.connection.incoming_queue.wait_pop_find(check_response)
+                        if payload is not None:
+                            break
+                        time.sleep(0.1)
+
+                    if payload is None:
+                        raise Exception("Failed to send message")
+                    
+                    # Check the response
+                    resp_body = apns._get_field(payload[1], 3)
+                    resp_body = plistlib.loads(resp_body)
+                    logger.error(resp_body)
+                    
 
         logger.error(f"Sent {message}")
