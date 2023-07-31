@@ -126,6 +126,26 @@ threading.Thread(target=input_thread, daemon=True).start()
 
 print("Type 'help' for help")  
 
+def fixup_handle(handle):
+    if handle.startswith('tel:+'):
+        return handle
+    elif handle.startswith('mailto:'):
+        return handle
+    elif handle.startswith('tel:'):
+        return 'tel:+' + handle[4:]
+    elif handle.startswith('+'):
+        return 'tel:' + handle
+    # If the handle starts with a number
+    elif handle[0].isdigit():
+        # If the handle is 10 digits, assume it's a US number
+        if len(handle) == 10:
+            return 'tel:+1' + handle
+        # If the handle is 11 digits, assume it's a US number with country code
+        elif len(handle) == 11:
+            return 'tel:+' + handle
+    else: # Assume it's an email
+        return 'mailto:' + handle
+
 current_participants = []
 current_effect = None
 while True:
@@ -160,17 +180,21 @@ while True:
             if len(msg) < 2 or msg[1] == '':
                 print('filter [recipients]')
             else:
-                print(f'Filtering to {msg[1:]}')
-                current_participants = msg[1:]
+                print(f'Filtering to {[fixup_handle(h) for h in msg[1:]]}')
+                current_participants = [fixup_handle(h) for h in msg[1:]]
         elif msg == 'handle' or msg.startswith('handle '):
             msg = msg.split(' ')
             if len(msg) < 2 or msg[1] == '':
                 print('handle [handle]')
                 print('Available handles:')
                 for h in user.handles:
-                    print(f'\t{h}')
+                    if h == user.current_handle:
+                        print(f'\t{h} (current)')
+                    else:
+                        print(f'\t{h}')
             else:
                 h = msg[1]
+                h = fixup_handle(h)
                 if h in user.handles:
                     print(f'Using {h} as handle')
                     user.current_handle = h
@@ -189,6 +213,8 @@ while True:
             current_effect = None
         else:
             print('No chat selected, use help for help')
+
+    time.sleep(0.1)
         
         # elif msg.startswith('send') or msg.startswith('s'):
         #     msg = msg.split(' ')
