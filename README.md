@@ -1,6 +1,6 @@
 # pypush
 `pypush` is a POC demo of my recent iMessage reverse-engineering.
-It can currently register as a new device on an Apple ID, set up encryption keys, and ***send and recieve iMessages***!
+It can currently register as a new device on an Apple ID, set up encryption keys, and ***send and receive iMessages***!
 
 `pypush` is completely platform-independent, and does not require a Mac or other Apple device to use!
 
@@ -28,6 +28,6 @@ This is only necessary during initial registration, so theoretically you can reg
 to another device that doesn't support the Unicorn emulator. Or you could switch out the emulator for another x86 emualtor if you really wanted to.
 
 ### Public key caching
-iMessage will cache public keys. If you get decryption errors in pypush or can only send and not recive messages from another device,
+iMessage will cache public keys. If you get decryption errors in pypush or can only send and not receive messages from another device,
 try logging out and back into iMessage on that device, forcing it to refresh it's key cache. Alternatively, you can wait and the cache should
 expire eventually.
