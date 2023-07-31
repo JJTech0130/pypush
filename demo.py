@@ -127,10 +127,11 @@ threading.Thread(target=input_thread, daemon=True).start()
 print("Type 'help' for help")  
 
 current_participants = []
+current_effect = None
 while True:
     msg = im.receive()
     if msg is not None:
-        print(f'[{msg.sender}] {msg.text}')
+        print(msg.to_string())
     
     if len(INPUT_QUEUE) > 0:
         msg = INPUT_QUEUE.pop()
@@ -140,10 +141,18 @@ while True:
             print('quit (q): quit')
             #print('send (s) [recipient] [message]: send a message')
             print('filter (f) [recipient]: set the current chat')
+            print('effect (e): adds an iMessage effect to the next sent message')
             print('note: recipient must start with tel: or mailto: and include the country code')
             print('\\: escape commands (will be removed from message)')
         elif msg == 'quit' or msg == 'q':
             break
+        elif msg.startswith("effect ") or msg.startswith("e "):
+            msg = msg.split(" ")
+            if len(msg) < 2 or msg[1] == "":
+                print("effect [effect namespace]")
+            else:
+                print(f"next message will be sent with [{msg[1]}]")
+                current_effect = msg[1]
         elif msg.startswith('filter ') or msg.startswith('f '):
             # Set the curernt chat
             msg = msg.split(' ')
@@ -158,8 +167,10 @@ while True:
             im.send(imessage.iMessage(
                 text=msg,
                 participants=current_participants,
-                sender=user.handles[0]
+                sender=user.handles[0],
+                effect=current_effect
             ))
+            current_effect = None
         else:
             print('No chat selected, use help for help')
         
