@@ -10,6 +10,9 @@ It's pretty self explanatory:
 2. `pip3 install -r requirements.txt`
 3. `python3 ./demo.py`
 
+## Troubleshooting
+If you have any issues, please join [the Discord](https://discord.gg/BVvNukmfTC) and ask for help.
+
 ## Operation
 `pypush` will generate a `config.json` in the repository when you run demo.py. DO NOT SHARE THIS FILE.
 It contains all the encryption keys necessary to log into you Apple ID and send iMessages as you.
