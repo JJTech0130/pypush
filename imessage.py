@@ -125,6 +125,7 @@ class iMessage:
             "pv": 0,
             "gv": "8",
             "v": "1",
+            "iid": self.effect
         }
 
         # Remove keys that are None
