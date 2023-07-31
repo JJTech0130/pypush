@@ -101,8 +101,8 @@ class iMessage:
             xml=message.get("x"),
             participants=message.get("p", []),
             sender=message.get("p", [])[-1] if message.get("p", []) != [] else None,
-            _id=uuid.UUID(message.get("r")),
-            group_id=uuid.UUID(message.get("gid")),
+            _id=uuid.UUID(message.get("r")) if "r" in message else None,
+            group_id=uuid.UUID(message.get("gid")) if "gid" in message else None,
             body=BalloonBody(message["bid"], message["b"])
             if "bid" in message
             else None,
