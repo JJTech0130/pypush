@@ -20,7 +20,7 @@ import uuid
 import random
 import time 
 
-from hashlib import sha1
+from hashlib import sha1, sha256
 import logging
 logger = logging.getLogger("imessage")
 
@@ -72,7 +72,7 @@ class iMessage:
         return self
 
     def to_raw(self) -> dict:
-        return {
+        d = {
             "t": self.text,
             "x": self.xml,
             "p": self.participants,
@@ -80,9 +80,11 @@ class iMessage:
             "gid": self.group_id,
             "compressed": self._compressed,
             "pv": 0,
-            "gv": 8,
-            "v": 1
+            "gv": '8',
+            "v": '1'
         }
+        # Remove keys that are None
+        return {k: v for k, v in d.items() if v is not None}
     
     def __str__(self):
         if self._raw is not None:
@@ -140,6 +142,23 @@ class iMessageUser:
         payload = b"\x02" + len(body).to_bytes(2, "big") + body + len(signature).to_bytes(1, "big") + signature
         return payload
 
+    def _hash_identity(id: bytes) -> bytes:
+        iden = ids.identity.IDSIdentity.decode(id)
+
+        # TODO: Combine this with serialization code in ids.identity
+        output = BytesIO()
+        output.write(b'\x00\x41\x04')
+        output.write(ids._helpers.parse_key(iden.signing_public_key).public_numbers().x.to_bytes(32, "big"))
+        output.write(ids._helpers.parse_key(iden.signing_public_key).public_numbers().y.to_bytes(32, "big"))
+
+        output.write(b'\x00\xAC')
+        output.write(b'\x30\x81\xA9')
+        output.write(b'\x02\x81\xA1')
+        output.write(ids._helpers.parse_key(iden.encryption_public_key).public_numbers().n.to_bytes(161, "big"))
+        output.write(b'\x02\x03\x01\x00\x01')
+
+        return sha256(output.getvalue()).digest()
+    
     def _encrypt_sign_payload(self, key: ids.identity.IDSIdentity, message: dict) -> bytes:
         # Dump the message plist
         compressed = message.get('compressed', False)
@@ -156,7 +175,14 @@ class iMessageUser:
             message = gzip.compress(message, mtime=0)
 
         # Generate a random AES key
-        aes_key = random.randbytes(16)
+        random_seed = random.randbytes(11)
+        # Create the HMAC
+        import hmac
+        hm = hmac.new(random_seed, message + b"\x02" + iMessageUser._hash_identity(self.user.encryption_identity.encode()) + iMessageUser._hash_identity(key.encode()), sha256).digest()
+
+        aes_key = random_seed + hm[:5]
+
+        #print(len(aes_key))
 
         # Encrypt the message with the AES key
         cipher = Cipher(algorithms.AES(aes_key), modes.CTR(NORMAL_NONCE))
