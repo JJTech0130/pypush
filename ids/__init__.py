@@ -45,6 +45,8 @@ class IDSUser:
             self._auth_keypair,
             self._push_keypair,
         )
+        self.current_handle = self.handles[0]
+
 
     # Uses an existing authentication keypair
     def restore_authentication(
@@ -53,6 +55,7 @@ class IDSUser:
         self._auth_keypair = auth_keypair
         self.user_id = user_id
         self.handles = handles 
+        self.current_handle = self.handles[0]
 
     # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
     def register(self, validation_data: str):
@@ -79,5 +82,5 @@ class IDSUser:
         self._id_keypair = id_keypair
 
     def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> any:
-        return query.lookup(self.push_connection, self.handles[0], self._id_keypair, uris, topic)
+        return query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)
         

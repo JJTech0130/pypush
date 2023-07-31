@@ -57,9 +57,6 @@ class MMCSFile(AttachmentFile):
             url=self.url,
             headers={
                 "User-Agent": f"IMTransferAgent/900 CFNetwork/596.2.3 Darwin/12.2.0 (x86_64) (Macmini5,1)",
-                "x-apple-mmcs-proto-version": f"basic {base64.encodebytes(f'benjiebabioles@outlook.com:!Qwerty4!'.encode('utf-8'))}",
-                "x-apple-mmcs-dataclass": f"basic {base64.encodebytes(f'benjiebabioles@outlook.com:!Qwerty4!'.encode('utf-8'))}",
-                # "Authorization": f"basic {base64.encodebytes(f'benjiebabioles@outlook.com:!Qwerty4!'.encode('utf-8'))}",
                 # "MMCS-Url": self.url,
                 # "MMCS-Signature": str(base64.encodebytes(self.signature)),
                 # "MMCS-Owner": self.owner
@@ -146,6 +143,8 @@ class iMessage:
     """Group ID of the message, will be randomly generated if not provided"""
     body: BalloonBody | None = None
     """BalloonBody, may be None"""
+    effect: str | None = None
+    """iMessage effect sent with this message, may be None"""
 
     _compressed: bool = True
     """Internal property representing whether the message should be compressed"""
@@ -184,7 +183,7 @@ class iMessage:
 
         return True
 
-    def from_raw(message: bytes) -> "iMessage":
+    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
         """Create an `iMessage` from raw message bytes"""
         compressed = False
         try:
@@ -199,12 +198,11 @@ class iMessage:
             text=message.get("t", ""),
             xml=message.get("x"),
             participants=message.get("p", []),
-            sender=message.get("p", [])[-1] if message.get("p", []) != [] else None,
+            sender=sender if sender is not None else message.get("p", [])[-1] if "p" in message else None,
             id=uuid.UUID(message.get("r")) if "r" in message else None,
             group_id=uuid.UUID(message.get("gid")) if "gid" in message else None,
-            body=BalloonBody(message["bid"], message["b"])
-            if "bid" in message and "b" in message
-            else None,
+            body=BalloonBody(message["bid"], message["b"]) if "bid" in message and "b" in message else None,
+            effect=message["iid"] if "iid" in message else None,
             _compressed=compressed,
             _raw=message,
         )
@@ -223,6 +221,7 @@ class iMessage:
             "pv": 0,
             "gv": "8",
             "v": "1",
+            "iid": self.effect
         }
 
         # Remove keys that are None
@@ -236,6 +235,12 @@ class iMessage:
             d = gzip.compress(d, mtime=0)
 
         return d
+
+    def to_string(self) -> str:
+        message_str = f"[{self.sender}] '{self.text}'"
+        if self.effect is not None:
+            message_str += f" with effect [{self.effect}]"
+        return message_str
 
 
 class iMessageUser:
@@ -432,14 +437,21 @@ class iMessageUser:
         
         decrypted = self._decrypt_payload(payload)
         
-        return iMessage.from_raw(decrypted)
+        return iMessage.from_raw(decrypted, body['sP'])
 
+    KEY_CACHE_HANDLE: str = ""
     KEY_CACHE: dict[bytes, tuple[bytes, bytes]] = {}
     """Mapping of push token : (public key, session token)"""
     USER_CACHE: dict[str, list[bytes]] = {}
     """Mapping of handle : [push tokens]"""
 
     def _cache_keys(self, participants: list[str]):
+        # Clear the cache if the handle has changed
+        if self.KEY_CACHE_HANDLE != self.user.current_handle:
+            self.KEY_CACHE_HANDLE = self.user.current_handle
+            self.KEY_CACHE = {}
+            self.USER_CACHE = {}
+        
         # Check to see if we have cached the keys for all of the participants
         if all([p in self.USER_CACHE for p in participants]):
             return
