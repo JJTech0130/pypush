@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>iokit</key>
+	<dict>
+		<key>4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:MLB</key>
+		<data>
+		QzAyOTIzMjAwS1ZLTjNZQUc=
+		</data>
+		<key>4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:ROM</key>
+		<data>
+		V9BNndaG
+		</data>
+		<key>Fyp98tpgj</key>
+		<data>
+		jGguP3mQH+Vw6dMAWrqZOnk=
+		</data>
+		<key>Gq3489ugfi</key>
+		<data>
+		c3kZ7+WofxcjaBTInJCwSV0=
+		</data>
+		<key>IOMACAddress</key>
+		<data>
+		pIPnEUcc
+		</data>
+		<key>IOPlatformSerialNumber</key>
+		<string>C02YT1YMJK7M</string>
+		<key>IOPlatformUUID</key>
+		<string>11D299A5-CF0B-544D-BAD3-7AC7A6E452D7</string>
+		<key>abKPld1EcMni</key>
+		<data>
+		CKp4ROiInBYAdvnbrbNjjkM=
+		</data>
+		<key>board-id</key>
+		<data>
+		TWFjLTgyN0ZBQzU4QThGREZBMjIA
+		</data>
+		<key>kbjfrfpoJU</key>
+		<data>
+		VvJODAsuSRdGQlhB5kPgf2M=
+		</data>
+		<key>oycqAZloTNDm</key>
+		<data>
+		wWF12gciXzN/96bIt/ufTB0=
+		</data>
+		<key>product-name</key>
+		<data>
+		TWFjQm9va0FpcjgsMQA=
+		</data>
+	</dict>
+	<key>root_disk_uuid</key>
+	<string>FCDB63B5-D208-4AEE-B368-3DE952B911FF</string>
+</dict>
+</plist>
