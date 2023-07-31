@@ -19,10 +19,11 @@ logging.basicConfig(
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.DEBUG)
+logging.getLogger("apns").setLevel(logging.INFO)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
-logging.getLogger("bags").setLevel(logging.DEBUG)
+logging.getLogger("bags").setLevel(logging.INFO)
+logging.getLogger("imessage").setLevel(logging.DEBUG)
 
 # Try and load config.json
 try:
@@ -108,61 +109,42 @@ with open("config.json", "w") as f:
 
 im = imessage.iMessageUser(conn, user)
 
-# while True:
-#     i = im.receive()
-#     if i is not None:
-#         print(f"Got message {i}")
-imsg = imessage.iMessage()
-imsg.sender = user.handles[0]
-imsg.participants = ["mailto:jjtech@jjtech.dev"]
-imsg.text = "Hello world!"
+INPUT_QUEUE = apns.IncomingQueue()
 
-time.sleep(1)
-im.send(imsg)
+def input_thread():
+    while True:
+        from prompt_toolkit import prompt
 
-for i in range(10):
-    z = im.receive()
-    if z is not None:
-        print(f"Got message {z}")
-    time.sleep(1)
-# # Create a thread to take user input
-# INPUT_QUEUE = apns.IncomingQueue()
+        try:
+            msg = prompt('>> ')
+        except:
+            msg = 'quit'
+        INPUT_QUEUE.append(msg)
 
-# def input_thread():
-#     while True:
-#         from prompt_toolkit import prompt
-
-#         try:
-#             msg = prompt('>> ')
-#         except:
-#             msg = 'quit'
-#         INPUT_QUEUE.append(msg)
-
-# threading.Thread(target=input_thread, daemon=True).start()
+threading.Thread(target=input_thread, daemon=True).start()
         
         
-# while True:
-#     msg = im.receive()
-#     if msg is not None:
-#         print(f"Got message {msg}")
+while True:
+    msg = im.receive()
+    if msg is not None:
+        print(f"Got message {msg}")
     
-#     if len(INPUT_QUEUE) > 0:
-#         msg = INPUT_QUEUE.pop()
-#         if msg == 'help' or msg == 'h':
-#             print('help (h): show this message')
-#             print('quit (q): quit')
-#             print('send (s) [recipiant] [message]: send a message')
-#         elif msg == 'quit' or msg == 'q':
-#             break
-#         elif msg.startswith('send') or msg.startswith('s'):
-#             msg = msg.split(' ')
-#             if len(msg) < 3:
-#                 print('send [recipiant] [message]')
-#             else:
-#                 imsg = imessage.iMessage()
-#                 imsg.text = ' '.join(msg[2:])
-#                 imsg.participants = [msg[1], user.handles[0]]
-#                 imsg.sender = user.handles[0]
-
-#                 im.send(imsg)
+    if len(INPUT_QUEUE) > 0:
+        msg = INPUT_QUEUE.pop()
+        if msg == 'help' or msg == 'h':
+            print('help (h): show this message')
+            print('quit (q): quit')
+            print('send (s) [recipiant] [message]: send a message')
+        elif msg == 'quit' or msg == 'q':
+            break
+        elif msg.startswith('send') or msg.startswith('s'):
+            msg = msg.split(' ')
+            if len(msg) < 3:
+                print('send [recipiant] [message]')
+            else:
+                im.send(imessage.iMessage(
+                    text=' '.join(msg[2:]),
+                    participants=[msg[1], user.handles[0]],
+                    #sender=user.handles[0]
+                ))
         

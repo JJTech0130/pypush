@@ -179,7 +179,7 @@ class iMessageUser:
         payload = BytesIO(payload)
 
         tag = payload.read(1)
-        print("TAG", tag)
+        #print("TAG", tag)
         body_length = int.from_bytes(payload.read(2), "big")
         body = payload.read(body_length)
 
@@ -289,7 +289,7 @@ class iMessageUser:
 
         cipher = Cipher(algorithms.AES(rsa_body[:16]), modes.CTR(NORMAL_NONCE))
         decrypted = cipher.decryptor().update(rsa_body[16:] + body.read())
-        
+
         return decrypted
 
     def _verify_payload(self, payload: bytes, sender: str, sender_token: str) -> bool:
@@ -325,7 +325,7 @@ class iMessageUser:
             return None
         body = apns._get_field(raw[1], 3)
         body = plistlib.loads(body)
-        print(f"Got body message {body}")
+        #print(f"Got body message {body}")
         payload = body["P"]
 
         if not self._verify_payload(payload, body['sP'], body["t"]):
@@ -419,28 +419,32 @@ class iMessageUser:
 
         self.connection.send_message("com.apple.madrid", body, msg_id)
 
-        def check_response(x):
-            if x[0] != 0x0A:
-                return False
-            if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
-                return False
-            resp_body = apns._get_field(x[1], 3)
-            if resp_body is None:
-                return False
-            resp_body = plistlib.loads(resp_body)
-            if "c" not in resp_body or resp_body["c"] != 255:
-                return False
-            return True
+        # This code can check to make sure we got a success response, but waiting for the response is annoying,
+        # so for now we just YOLO it and assume it worked
 
-        num_recv = 0
-        while True:
-            if num_recv == len(bundled_payloads):
-                break
-            payload = self.connection.incoming_queue.wait_pop_find(check_response)
-            if payload is None:
-                continue
+        # def check_response(x):
+        #     if x[0] != 0x0A:
+        #         return False
+        #     if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
+        #         return False
+        #     resp_body = apns._get_field(x[1], 3)
+        #     if resp_body is None:
+        #         return False
+        #     resp_body = plistlib.loads(resp_body)
+        #     if "c" not in resp_body or resp_body["c"] != 255:
+        #         return False
+        #     return True
+        
 
-            resp_body = apns._get_field(payload[1], 3)
-            resp_body = plistlib.loads(resp_body)
-            logger.error(resp_body)
-            num_recv += 1
+        # num_recv = 0
+        # while True:
+        #     if num_recv == len(bundled_payloads):
+        #         break
+        #     payload = self.connection.incoming_queue.wait_pop_find(check_response)
+        #     if payload is None:
+        #         continue
+
+        #     resp_body = apns._get_field(payload[1], 3)
+        #     resp_body = plistlib.loads(resp_body)
+        #     logger.error(resp_body)
+        #     num_recv += 1
