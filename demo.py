@@ -143,17 +143,18 @@ while True:
             print('filter (f) [recipient]: set the current chat')
             print('effect (e): adds an iMessage effect to the next sent message')
             print('note: recipient must start with tel: or mailto: and include the country code')
+            print('handle <handle>: set the current handle (for sending messages)')
             print('\\: escape commands (will be removed from message)')
         elif msg == 'quit' or msg == 'q':
             break
-        elif msg.startswith("effect ") or msg.startswith("e "):
+        elif msg == 'effect' or msg == 'e' or msg.startswith("effect ") or msg.startswith("e "):
             msg = msg.split(" ")
             if len(msg) < 2 or msg[1] == "":
                 print("effect [effect namespace]")
             else:
                 print(f"next message will be sent with [{msg[1]}]")
                 current_effect = msg[1]
-        elif msg.startswith('filter ') or msg.startswith('f '):
+        elif msg == 'filter' or msg == 'f' or msg.startswith('filter ') or msg.startswith('f '):
             # Set the curernt chat
             msg = msg.split(' ')
             if len(msg) < 2 or msg[1] == '':
@@ -161,13 +162,28 @@ while True:
             else:
                 print(f'Filtering to {msg[1:]}')
                 current_participants = msg[1:]
+        elif msg == 'handle' or msg.startswith('handle '):
+            msg = msg.split(' ')
+            if len(msg) < 2 or msg[1] == '':
+                print('handle [handle]')
+                print('Available handles:')
+                for h in user.handles:
+                    print(f'\t{h}')
+            else:
+                h = msg[1]
+                if h in user.handles:
+                    print(f'Using {h} as handle')
+                    user.current_handle = h
+                else:
+                    print(f'Handle {h} not found')
+
         elif current_participants != []:
             if msg.startswith('\\'):
                 msg = msg[1:]
             im.send(imessage.iMessage(
                 text=msg,
                 participants=current_participants,
-                sender=user.handles[0],
+                sender=user.current_handle,
                 effect=current_effect
             ))
             current_effect = None

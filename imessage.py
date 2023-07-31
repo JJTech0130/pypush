@@ -343,12 +343,19 @@ class iMessageUser:
         
         return iMessage.from_raw(decrypted, body['sP'])
 
+    KEY_CACHE_HANDLE: str = ""
     KEY_CACHE: dict[bytes, tuple[bytes, bytes]] = {}
     """Mapping of push token : (public key, session token)"""
     USER_CACHE: dict[str, list[bytes]] = {}
     """Mapping of handle : [push tokens]"""
 
     def _cache_keys(self, participants: list[str]):
+        # Clear the cache if the handle has changed
+        if self.KEY_CACHE_HANDLE != self.user.current_handle:
+            self.KEY_CACHE_HANDLE = self.user.current_handle
+            self.KEY_CACHE = {}
+            self.USER_CACHE = {}
+        
         # Check to see if we have cached the keys for all of the participants
         if all([p in self.USER_CACHE for p in participants]):
             return
