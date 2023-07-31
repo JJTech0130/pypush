@@ -126,10 +126,10 @@ threading.Thread(target=input_thread, daemon=True).start()
 
 print("Type 'help' for help")  
 
-current_chat = None
+current_participants = []
 while True:
     msg = im.receive()
-    if msg is not None and msg.sender != user.handles[0]:
+    if msg is not None:
         print(f'[{msg.sender}] {msg.text}')
     
     if len(INPUT_QUEUE) > 0:
@@ -144,20 +144,21 @@ while True:
             print('\\: escape commands (will be removed from message)')
         elif msg == 'quit' or msg == 'q':
             break
-        elif msg.startswith('filter') or msg.startswith('f'):
+        elif msg.startswith('filter ') or msg.startswith('f '):
             # Set the curernt chat
             msg = msg.split(' ')
-            if len(msg) < 2:
-                print('filter [recipient]')
+            if len(msg) < 2 or msg[1] == '':
+                print('filter [recipients]')
             else:
-                current_chat = msg[1]
-        elif current_chat is not None:
+                print(f'Filtering to {msg[1:]}')
+                current_participants = msg[1:]
+        elif current_participants != []:
             if msg.startswith('\\'):
                 msg = msg[1:]
             im.send(imessage.iMessage(
                 text=msg,
-                participants=[current_chat, user.handles[0]],
-                #sender=user.handles[0]
+                participants=current_participants,
+                sender=user.handles[0]
             ))
         else:
             print('No chat selected, use help for help')

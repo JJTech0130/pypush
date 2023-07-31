@@ -386,6 +386,9 @@ class iMessageUser:
         bundled_payloads = []
         for participant in message.participants:
             for push_token in self.USER_CACHE[participant]:
+                if push_token == self.connection.token:
+                    continue # Don't send to ourselves
+
                 identity_keys = ids.identity.IDSIdentity.decode(
                     self.KEY_CACHE[push_token][0]
                 )
