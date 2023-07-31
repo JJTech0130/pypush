@@ -25,7 +25,7 @@ Once it loads, it should prompt you with `>>`. Type `help` and press enter for a
 in order to call some obfuscated functions.
 
 This is only necessary during initial registration, so theoretically you can register on one device, and then copy the `config.json`
-to another device that doesn't support the Unicorn emulator. Or you could switch out the emulator for another x86 emualtor if you really wanted to.
+to another device that doesn't support the Unicorn emulator. Or you could switch out the emulator for another x86 emulator if you really wanted to.
 
 ### Public key caching
 iMessage will cache public keys. If you get decryption errors in pypush or can only send and not receive messages from another device,
