@@ -53,6 +53,8 @@ class iMessage:
     """Group ID of the message, will be randomly generated if not provided"""
     body: BalloonBody | None = None
     """BalloonBody, may be None"""
+    effect: str | None = None
+    """iMessage effect sent with this message, may be None"""
 
     _compressed: bool = True
     """Internal property representing whether the message should be compressed"""
@@ -103,9 +105,8 @@ class iMessage:
             sender=message.get("p", [])[-1] if message.get("p", []) != [] else None,
             _id=uuid.UUID(message.get("r")) if "r" in message else None,
             group_id=uuid.UUID(message.get("gid")) if "gid" in message else None,
-            body=BalloonBody(message["bid"], message["b"])
-            if "bid" in message
-            else None,
+            body=BalloonBody(message["bid"], message["b"]) if "bid" in message else None,
+            effect=message["iid"] if "iid" in message else None,
             _compressed=compressed,
             _raw=message,
         )
@@ -137,6 +138,12 @@ class iMessage:
             d = gzip.compress(d, mtime=0)
 
         return d
+
+    def to_string(self) -> str:
+        message_str = f"[{self.sender}] '{self.text}'"
+        if self.effect is not None:
+            message_str += f" with effect [{self.effect}]"
+        return message_str
 
 
 class iMessageUser:

@@ -130,7 +130,7 @@ current_participants = []
 while True:
     msg = im.receive()
     if msg is not None:
-        print(f'[{msg.sender}] {msg.text}')
+        print(msg.to_string())
     
     if len(INPUT_QUEUE) > 0:
         msg = INPUT_QUEUE.pop()
