@@ -55,6 +55,7 @@ class IDSUser:
         self._auth_keypair = auth_keypair
         self.user_id = user_id
         self.handles = handles 
+        self.current_handle = self.handles[0]
 
     # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
     def register(self, validation_data: str):
