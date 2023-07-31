@@ -17,6 +17,7 @@ logging.basicConfig(
 
 # Set sane log levels
 logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
 logging.getLogger("apns").setLevel(logging.INFO)
@@ -112,8 +113,8 @@ im = imessage.iMessageUser(conn, user)
 INPUT_QUEUE = apns.IncomingQueue()
 
 def input_thread():
+    from prompt_toolkit import prompt
     while True:
-        from prompt_toolkit import prompt
 
         try:
             msg = prompt('>> ')
@@ -122,29 +123,53 @@ def input_thread():
         INPUT_QUEUE.append(msg)
 
 threading.Thread(target=input_thread, daemon=True).start()
-        
-        
+
+print("Type 'help' for help")  
+
+current_chat = None
 while True:
     msg = im.receive()
-    if msg is not None:
-        print(f"Got message {msg}")
+    if msg is not None and msg.sender != user.handles[0]:
+        print(f'[{msg.sender}] {msg.text}')
     
     if len(INPUT_QUEUE) > 0:
         msg = INPUT_QUEUE.pop()
+        if msg == '': continue
         if msg == 'help' or msg == 'h':
             print('help (h): show this message')
             print('quit (q): quit')
-            print('send (s) [recipiant] [message]: send a message')
+            #print('send (s) [recipient] [message]: send a message')
+            print('filter (f) [recipient]: set the current chat')
+            print('note: recipient must start with tel: or mailto: and include the country code')
+            print('\\: escape commands (will be removed from message)')
         elif msg == 'quit' or msg == 'q':
             break
-        elif msg.startswith('send') or msg.startswith('s'):
+        elif msg.startswith('filter') or msg.startswith('f'):
+            # Set the curernt chat
             msg = msg.split(' ')
-            if len(msg) < 3:
-                print('send [recipiant] [message]')
+            if len(msg) < 2:
+                print('filter [recipient]')
             else:
-                im.send(imessage.iMessage(
-                    text=' '.join(msg[2:]),
-                    participants=[msg[1], user.handles[0]],
-                    #sender=user.handles[0]
-                ))
+                current_chat = msg[1]
+        elif current_chat is not None:
+            if msg.startswith('\\'):
+                msg = msg[1:]
+            im.send(imessage.iMessage(
+                text=msg,
+                participants=[current_chat, user.handles[0]],
+                #sender=user.handles[0]
+            ))
+        else:
+            print('No chat selected, use help for help')
+        
+        # elif msg.startswith('send') or msg.startswith('s'):
+        #     msg = msg.split(' ')
+        #     if len(msg) < 3:
+        #         print('send [recipient] [message]')
+        #     else:
+        #         im.send(imessage.iMessage(
+        #             text=' '.join(msg[2:]),
+        #             participants=[msg[1], user.handles[0]],
+        #             #sender=user.handles[0]
+        #         ))
         
