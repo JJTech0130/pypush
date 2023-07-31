@@ -85,7 +85,7 @@ class iMessage:
 
         return True
 
-    def from_raw(message: bytes) -> "iMessage":
+    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
         """Create an `iMessage` from raw message bytes"""
         compressed = False
         try:
@@ -100,7 +100,7 @@ class iMessage:
             text=message.get("t", ""),
             xml=message.get("x"),
             participants=message.get("p", []),
-            sender=message.get("p", [])[-1] if message.get("p", []) != [] else None,
+            sender=sender if sender is not None else message.get("p", [])[-1] if "p" in message else None,
             _id=uuid.UUID(message.get("r")) if "r" in message else None,
             group_id=uuid.UUID(message.get("gid")) if "gid" in message else None,
             body=BalloonBody(message["bid"], message["b"])
@@ -333,7 +333,7 @@ class iMessageUser:
         
         decrypted = self._decrypt_payload(payload)
         
-        return iMessage.from_raw(decrypted)
+        return iMessage.from_raw(decrypted, body['sP'])
 
     KEY_CACHE: dict[bytes, tuple[bytes, bytes]] = {}
     """Mapping of push token : (public key, session token)"""
