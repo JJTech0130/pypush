@@ -4,6 +4,7 @@
 ## HAVE ANOTHER FILE TO SETUP EVERYTHING AUTOMATICALLY, etc
 # JSON parsing of keys, don't pass around strs??
 
+import base64
 import gzip
 import logging
 import plistlib
@@ -16,6 +17,8 @@ from io import BytesIO
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+from xml.etree import ElementTree
 
 import apns
 import ids
@@ -35,6 +38,96 @@ class BalloonBody:
         # TODO : Register handlers based on type id
 
 
+class AttachmentFile:
+    def data(self) -> bytes:
+        raise NotImplementedError()
+
+
+@dataclass
+class MMCSFile(AttachmentFile):
+    url: str | None = None
+    size: int | None = None
+    owner: str | None = None
+    signature: bytes | None = None
+    decryption_key: bytes | None = None
+
+    def data(self) -> bytes:
+        import requests
+        logger.info(requests.get(
+            url=self.url,
+            headers={
+                "User-Agent": f"IMTransferAgent/900 CFNetwork/596.2.3 Darwin/12.2.0 (x86_64) (Macmini5,1)",
+                "x-apple-mmcs-proto-version": f"basic {base64.encodebytes(f'benjiebabioles@outlook.com:!Qwerty4!'.encode('utf-8'))}",
+                "x-apple-mmcs-dataclass": f"basic {base64.encodebytes(f'benjiebabioles@outlook.com:!Qwerty4!'.encode('utf-8'))}",
+                # "Authorization": f"basic {base64.encodebytes(f'benjiebabioles@outlook.com:!Qwerty4!'.encode('utf-8'))}",
+                # "MMCS-Url": self.url,
+                # "MMCS-Signature": str(base64.encodebytes(self.signature)),
+                # "MMCS-Owner": self.owner
+            },
+        ).headers)
+        return b""
+
+
+@dataclass
+class InlineFile(AttachmentFile):
+    _data: bytes
+
+    def data(self) -> bytes:
+        return self._data
+
+
+@dataclass
+class Attachment:
+    name: str
+    mime_type: str
+    versions: list[AttachmentFile]
+
+    def __init__(self, message_raw_content: dict, xml_element: ElementTree.Element):
+        attrs = xml_element.attrib
+
+        self.name = attrs["name"] if "name" in attrs else None
+        self.mime_type = attrs["mime-type"] if "mime-type" in attrs else None
+
+        if "inline-attachment" in attrs:
+            # just grab the inline attachment !
+            self.versions = [InlineFile(message_raw_content[attrs["inline-attachment"]])]
+        else:
+            # suffer
+            versions = []
+            for attribute in attrs:
+                if attribute.startswith("mmcs") or \
+                   attribute.startswith("decryption-key") or \
+                   attribute.startswith("file-size"):
+                    segments = attribute.split('-')
+                    if segments[-1].isnumeric():
+                        index = int(segments[-1])
+                        attribute_name = segments[:-1]
+                    else:
+                        index = 0
+                        attribute_name = attribute
+
+                    while index >= len(versions):
+                        versions.append(MMCSFile())
+
+                    val = attrs[attribute_name]
+                    match attribute_name:
+                        case "mmcs-url":
+                            versions[index].url = val
+                        case "mmcs-owner":
+                            versions[index].owner = val
+                        case "mmcs-signature-hex":
+                            versions[index].signature = base64.b16decode(val)
+                        case "file-size":
+                            versions[index].size = int(val)
+                        case "decryption-key":
+                            versions[index].decryption_key = base64.b16decode(val)[1:]
+
+            self.versions = versions
+
+    def __repr__(self):
+        return f'<Attachment name="{self.name}" type="{self.mime_type}">'
+
+
 @dataclass
 class iMessage:
     """Represents an iMessage"""
@@ -47,7 +140,7 @@ class iMessage:
     """List of participants in the message, including the sender"""
     sender: str | None = None
     """Sender of the message"""
-    _id: uuid.UUID | None = None
+    id: uuid.UUID | None = None
     """ID of the message, will be randomly generated if not provided"""
     group_id: uuid.UUID | None = None
     """Group ID of the message, will be randomly generated if not provided"""
@@ -60,10 +153,16 @@ class iMessage:
     _raw: dict | None = None
     """Internal property representing the original raw message, may be None"""
 
+    def attachments(self) -> list[Attachment]:
+        if self.xml is not None:
+            return [Attachment(self._raw, elem) for elem in ElementTree.fromstring(self.xml)[0] if elem.tag == "FILE"]
+        else:
+            return []
+
     def sanity_check(self):
         """Corrects any missing fields"""
-        if self._id is None:
-            self._id = uuid.uuid4()
+        if self.id is None:
+            self.id = uuid.uuid4()
 
         if self.group_id is None:
             self.group_id = uuid.uuid4()
@@ -101,10 +200,10 @@ class iMessage:
             xml=message.get("x"),
             participants=message.get("p", []),
             sender=message.get("p", [])[-1] if message.get("p", []) != [] else None,
-            _id=uuid.UUID(message.get("r")) if "r" in message else None,
+            id=uuid.UUID(message.get("r")) if "r" in message else None,
             group_id=uuid.UUID(message.get("gid")) if "gid" in message else None,
             body=BalloonBody(message["bid"], message["b"])
-            if "bid" in message
+            if "bid" in message and "b" in message
             else None,
             _compressed=compressed,
             _raw=message,
@@ -119,7 +218,7 @@ class iMessage:
             "t": self.text,
             "x": self.xml,
             "p": self.participants,
-            "r": str(self._id).upper(),
+            "r": str(self.id).upper(),
             "gid": str(self.group_id).upper(),
             "pv": 0,
             "gv": "8",
@@ -413,7 +512,7 @@ class iMessageUser:
             "ua": "[macOS,13.4.1,22F82,MacBookPro18,3]",
             "v": 8,
             "i": int.from_bytes(msg_id, "big"),
-            "U": message._id.bytes,
+            "U": message.id.bytes,
             "dtl": bundled_payloads,
             "sP": message.sender,
         }

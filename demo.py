@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import threading
 import time
 from base64 import b64decode, b64encode
@@ -131,6 +132,18 @@ while True:
     msg = im.receive()
     if msg is not None:
         print(f'[{msg.sender}] {msg.text}')
+
+        attachments = msg.attachments()
+        if len(attachments) > 0:
+            attachments_path = f"attachments/{msg.id}/"
+            os.makedirs(attachments_path, exist_ok=True)
+
+            for attachment in attachments:
+                with open(attachments_path + attachment.name, "wb") as attachment_file:
+                    attachment_file.write(attachment.versions[0].data())
+
+            print(f"({len(attachments)} attachment{'s' if len(attachments) == 1 else ''} have been downloaded and put "
+                  f"in {attachments_path})")
     
     if len(INPUT_QUEUE) > 0:
         msg = INPUT_QUEUE.pop()
