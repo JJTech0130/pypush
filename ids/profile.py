@@ -23,17 +23,18 @@ logger = logging.getLogger("ids")
 def _auth_token_request(username: str, password: str) -> any:
     # Turn the PET into an auth token
     data = {
-        "apple-id": username,
-        "client-id": str(uuid.uuid4()),
-        "delegates": {"com.apple.private.ids": {"protocol-version": "4"}},
+        "username": username,
+        #"client-id": str(uuid.uuid4()),
+        #"delegates": {"com.apple.private.ids": {"protocol-version": "4"}},
         "password": password,
     }
     data = plistlib.dumps(data)
 
     r = requests.post(
         # TODO: Figure out which URL bag we can get this from
-        "https://setup.icloud.com/setup/prefpane/loginDelegates",
-        auth=(username, password),
+        "https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/authenticateUser",
+        #"https://setup.icloud.com/setup/prefpane/loginDelegates",
+        #auth=(username, password),
         data=data,
         verify=False,
     )
@@ -62,24 +63,38 @@ def get_auth_token(
     if use_gsa:
         logger.debug("Using GrandSlam to authenticate (native Anisette)")
         g = gsa.authenticate(username, password, gsa.Anisette())
-        pet = g["t"]["com.apple.gs.idms.pet"]["token"]
-    else:
-        logger.debug("Using old-style authentication")
-        # Make the request without the 2FA code to make the prompt appear
-        _auth_token_request(username, password)
-        # TODO: Make sure we actually need the second request, some rare accounts don't have 2FA
-        # Now make the request with the 2FA code
-        if factor_gen is None:
-            pet = password + input("Enter 2FA code: ")
-        else:
-            pet = password + factor_gen()
-    r = _auth_token_request(username, pet)
-    # print(r)
-    if "description" in r:
-        raise Exception(f"Error: {r['description']}")
-    service_data = r["delegates"]["com.apple.private.ids"]["service-data"]
-    realm_user_id = service_data["realm-user-id"]
-    auth_token = service_data["auth-token"]
+        password = g["t"]["com.apple.gs.idms.pet"]["token"]
+    
+    result = _auth_token_request(username, password)
+    if result["status"] != 0:
+        if result["status"] == 5000:
+            if factor_gen is None:
+                password = password + input("Enter 2FA code: ")
+            else:
+                password = password + factor_gen()
+            result = _auth_token_request(username, password)
+            if result["status"] != 0:
+                raise Exception(f"Error: {result}")
+    
+    auth_token = result["auth-token"]
+    realm_user_id = result["profile-id"]
+    # else:
+    #     logger.debug("Using old-style authentication")
+    #     # Make the request without the 2FA code to make the prompt appear
+    #     _auth_token_request(username, password)
+    #     # TODO: Make sure we actually need the second request, some rare accounts don't have 2FA
+    #     # Now make the request with the 2FA code
+    #     if factor_gen is None:
+    #         pet = password + input("Enter 2FA code: ")
+    #     else:
+    #         pet = password + factor_gen()
+    # r = _auth_token_request(username, pet)
+    # # print(r)
+    # if "description" in r:
+    #     raise Exception(f"Error: {r['description']}")
+    # service_data = r["delegates"]["com.apple.private.ids"]["service-data"]
+    # realm_user_id = service_data["realm-user-id"]
+    # auth_token = service_data["auth-token"]
     # print(f"Auth token for {realm_user_id}: {auth_token}")
     logger.debug(f"Got auth token for IDS: {auth_token}")
     return realm_user_id, auth_token
