@@ -10,7 +10,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 
-import gsa
 import bags
 
 from . import signing
@@ -50,20 +49,6 @@ def get_auth_token(
     username: str, password: str, factor_gen: callable = None
 ) -> tuple[str, str]:
     from sys import platform
-
-    use_gsa = False
-    # Check if objc is importable
-    try:
-        if platform == "darwin":
-            import objc
-            use_gsa = True
-    except ImportError:
-        pass
-
-    if use_gsa:
-        logger.debug("Using GrandSlam to authenticate (native Anisette)")
-        g = gsa.authenticate(username, password, gsa.Anisette())
-        password = g["t"]["com.apple.gs.idms.pet"]["token"]
     
     result = _auth_token_request(username, password)
     if result["status"] != 0:
