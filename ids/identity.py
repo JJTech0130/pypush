@@ -36,8 +36,9 @@ class IDSIdentity:
             self.encryption_key = serialize_key(rsa.generate_private_key(65537, 1280))
             self.encryption_public_key = serialize_key(parse_key(self.encryption_key).public_key())
         
-    def decode(input: bytes) -> 'IDSIdentity':
-        input = BytesIO(input)
+    @classmethod
+    def decode(cls, input_bytes: bytes) -> 'IDSIdentity':
+        input = BytesIO(input_bytes)
 
         assert input.read(5) == b'\x30\x81\xF6\x81\x43' # DER header
         raw_ecdsa = input.read(67)

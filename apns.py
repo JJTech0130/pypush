@@ -5,8 +5,10 @@ import socket
 import threading
 import time
 from hashlib import sha1
-from base64 import b64encode, b64decode
+from base64 import b64encode
 import logging
+from typing import Any, Callable
+
 logger = logging.getLogger("apns")
 
 import tlslite
@@ -25,14 +27,14 @@ ALPN = [b"apns-security-v2"]
 
 
 # Connect to the courier server
-def _connect(private_key: str, cert: str) -> tlslite.TLSConnection:
+def _connect(private_key_str: str, cert_str: str) -> tlslite.TLSConnection:
     # Connect to the courier server
     sock = socket.create_connection((COURIER_HOST, COURIER_PORT))
     # Wrap the socket in TLS
     sock = tlslite.TLSConnection(sock)
     # Parse the certificate and private key
-    cert = tlslite.X509CertChain([tlslite.X509().parse(cert)])
-    private_key = tlslite.parsePEMKey(private_key, private=True)
+    cert = tlslite.X509CertChain([tlslite.X509().parse(cert_str)])
+    private_key = tlslite.parsePEMKey(private_key_str, private=True)
     # Handshake with the server
     sock.handshakeClientCert(cert, private_key, alpn=ALPN)
 
@@ -40,33 +42,33 @@ def _connect(private_key: str, cert: str) -> tlslite.TLSConnection:
 
     return sock
 
-
-class IncomingQueue:
+QueueItem = tuple[int, list[tuple[int, bytes]]]
+class IncomingQueue():
     def __init__(self):
-        self.queue = []
+        self.queue: list[QueueItem] = []
         self.lock = threading.Lock()
 
-    def append(self, item):
+    def append(self, item: QueueItem):
         with self.lock:
             self.queue.append(item)
 
-    def pop(self, index = -1):
+    def pop(self, index: int = -1) -> QueueItem:
         with self.lock:
             return self.queue.pop(index)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> QueueItem:
         with self.lock:
             return self.queue[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         with self.lock:
             return len(self.queue)
 
-    def find(self, finder):
+    def find(self, finder: Callable[[QueueItem], bool]):
         with self.lock:
             return next((i for i in self.queue if finder(i)), None)
 
-    def pop_find(self, finder):
+    def pop_find(self, finder: Callable[[QueueItem], bool]):
         with self.lock:
             found = next((i for i in self.queue if finder(i)), None)
             if found is not None:
@@ -74,11 +76,11 @@ class IncomingQueue:
                 self.queue.remove(found)
             return found
         
-    def remove_all(self, id):
+    def remove_all(self, id: int):
         with self.lock:
             self.queue = [i for i in self.queue if i[0] != id]
 
-    def wait_pop_find(self, finder, delay=0.1):
+    def wait_pop_find(self, finder: Callable[[QueueItem], bool], delay=0.1):
         found = None
         while found is None:
             found = self.pop_find(finder)
@@ -133,7 +135,7 @@ class APNSConnection:
         self.keep_alive_thread.start()
 
 
-    def connect(self, root: bool = True, token: bytes = None):
+    def connect(self, root: bool = True, token: bytes | None = None):
         if token is None:
             logger.debug(f"Sending connect message without token (root={root})")
         else:
@@ -181,7 +183,7 @@ class APNSConnection:
 
     def filter(self, topics: list[str]):
         logger.debug(f"Sending filter message with topics {topics}")
-        fields = [(1, self.token)]
+        fields: list[tuple[int, bytes]] = [(1, self.token)]
 
         for topic in topics:
             fields.append((2, sha1(topic.encode()).digest()))
@@ -190,20 +192,19 @@ class APNSConnection:
 
         self.sock.write(payload)
 
-    def send_message(self, topic: str, payload: str, id=None):
-        logger.debug(f"Sending message to topic {topic} with payload {payload}")
+    def send_message(self, topic: str, payload_str: str, id=None):
+        logger.debug(f"Sending message to topic {topic} with payload {payload_str}")
         if id is None:
             id = random.randbytes(4)
 
-        payload = _serialize_payload(
-            0x0A,
-            [
-                (4, id),
-                (1, sha1(topic.encode()).digest()),
-                (2, self.token),
-                (3, payload),
-            ],
-        )
+        fields: list[tuple[int, Any]] = [
+            (4, id),
+            (1, sha1(topic.encode()).digest()),
+            (2, self.token),
+            (3, payload_str),
+        ]
+
+        payload = _serialize_payload(0x0A, fields)
 
         self.sock.write(payload)
 
@@ -251,7 +252,7 @@ def _serialize_field(id: int, value: bytes) -> bytes:
     return id.to_bytes(1, "big") + len(value).to_bytes(2, "big") + value
 
 
-def _serialize_payload(id: int, fields: list[(int, bytes)]) -> bytes:
+def _serialize_payload(id: int, fields: list[tuple[int, bytes]]) -> bytes:
     payload = b""
 
     for fid, value in fields:
@@ -316,7 +317,7 @@ def _deserialize_payload_from_buffer(
 
 
 # Returns the value of the first field with the given id
-def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes:
+def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes | None:
     for field_id, value in fields:
         if field_id == id:
             return value

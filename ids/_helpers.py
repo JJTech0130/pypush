@@ -1,5 +1,10 @@
 from collections import namedtuple
 
+from cryptography.hazmat.primitives.asymmetric.types import (
+    PrivateKeyTypes,
+    PublicKeyTypes,
+)
+
 USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
 PROTOCOL_VERSION = "1640"
 
@@ -17,14 +22,14 @@ def dearmour(armoured: str) -> str:
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-def parse_key(key: str):
+def parse_key(key: str) -> PublicKeyTypes | PrivateKeyTypes:
     # Check if it is a public or private key
     if "PUBLIC" in key:
         return serialization.load_pem_public_key(key.encode())
     else:
         return serialization.load_pem_private_key(key.encode(), None)
 
-def serialize_key(key):
+def serialize_key(key) -> str:
     if isinstance(key, ec.EllipticCurvePrivateKey) or isinstance(key, rsa.RSAPrivateKey):
         return key.private_bytes(
             encoding=serialization.Encoding.PEM,

@@ -10,6 +10,7 @@ import logging
 import plistlib
 import random
 import uuid
+from datetime import datetime, date
 from dataclasses import dataclass, field
 from hashlib import sha1, sha256
 from io import BytesIO
@@ -75,8 +76,8 @@ class InlineFile(AttachmentFile):
 
 @dataclass
 class Attachment:
-    name: str
-    mime_type: str
+    name: str | None
+    mime_type: str | None
     versions: list[AttachmentFile]
 
     def __init__(self, message_raw_content: dict, xml_element: ElementTree.Element):
@@ -183,7 +184,8 @@ class iMessage:
 
         return True
 
-    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
+    @classmethod
+    def from_raw(cls, message: bytes, sender: str | None = None) -> "iMessage":
         """Create an `iMessage` from raw message bytes"""
         compressed = False
         try:
@@ -251,13 +253,13 @@ class iMessageUser:
         self.connection = connection
         self.user = user
 
-    def _get_raw_message(self):
+    def _get_raw_message(self) -> apns.QueueItem | None:
         """
         Returns a raw APNs message corresponding to the next conforming notification in the queue
         Returns None if no conforming notification is found
         """
 
-        def check_response(x):
+        def check_response(x: apns.QueueItem):
             if x[0] != 0x0A:
                 return False
             if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
@@ -267,6 +269,12 @@ class iMessageUser:
                 # logger.debug("Rejecting madrid message with no body")
                 return False
             resp_body = plistlib.loads(resp_body)
+
+            if resp_body["c"] == 102:
+                timestamp: date = datetime.fromtimestamp(resp_body["e"] / 1_000_000_000)
+                sender: str = resp_body["sP"]
+                logger.debug(f"{sender} read a message at {timestamp.ctime()}")
+
             if "P" not in resp_body:
                 # logger.debug(f"Rejecting madrid message with no payload : {resp_body}")
                 return False
@@ -279,8 +287,9 @@ class iMessageUser:
 
         return payload
 
-    def _parse_payload(payload: bytes) -> tuple[bytes, bytes]:
-        payload = BytesIO(payload)
+    @classmethod
+    def _parse_payload(cls, payload_bytes: bytes) -> tuple[bytes, bytes]:
+        payload = BytesIO(payload_bytes)
 
         tag = payload.read(1)
         #print("TAG", tag)
@@ -292,7 +301,8 @@ class iMessageUser:
 
         return (body, signature)
 
-    def _construct_payload(body: bytes, signature: bytes) -> bytes:
+    @classmethod
+    def _construct_payload(cls, body: bytes, signature: bytes) -> bytes:
         payload = (
             b"\x02"
             + len(body).to_bytes(2, "big")
@@ -302,7 +312,8 @@ class iMessageUser:
         )
         return payload
 
-    def _hash_identity(id: bytes) -> bytes:
+    @classmethod
+    def _hash_identity(cls, id: bytes) -> bytes:
         iden = ids.identity.IDSIdentity.decode(id)
 
         # TODO: Combine this with serialization code in ids.identity
@@ -310,13 +321,13 @@ class iMessageUser:
         output.write(b"\x00\x41\x04")
         output.write(
             ids._helpers.parse_key(iden.signing_public_key)
-            .public_numbers()
-            .x.to_bytes(32, "big")
+                .public_numbers()
+                .x.to_bytes(32, "big")
         )
         output.write(
             ids._helpers.parse_key(iden.signing_public_key)
-            .public_numbers()
-            .y.to_bytes(32, "big")
+                .public_numbers()
+                .y.to_bytes(32, "big")
         )
 
         output.write(b"\x00\xAC")
@@ -376,8 +387,8 @@ class iMessageUser:
 
         return payload
 
-    def _decrypt_payload(self, payload: bytes) -> dict:
-        payload = iMessageUser._parse_payload(payload)
+    def _decrypt_payload(self, payload_bytes: bytes) -> bytes:
+        payload = iMessageUser._parse_payload(payload_bytes)
 
         body = BytesIO(payload[0])
         rsa_body = ids._helpers.parse_key(
@@ -396,7 +407,7 @@ class iMessageUser:
 
         return decrypted
 
-    def _verify_payload(self, payload: bytes, sender: str, sender_token: str) -> bool:
+    def _verify_payload(self, payload_bytes: bytes, sender: str, sender_token: str) -> bool:
         # Get the public key for the sender
         self._cache_keys([sender])
 
@@ -407,7 +418,7 @@ class iMessageUser:
         identity_keys = ids.identity.IDSIdentity.decode(self.KEY_CACHE[sender_token][0])
         sender_ec_key = ids._helpers.parse_key(identity_keys.signing_public_key)
 
-        payload = iMessageUser._parse_payload(payload)
+        payload = iMessageUser._parse_payload(payload_bytes)
 
         try:
             # Verify the signature (will throw an exception if it fails)
@@ -429,7 +440,7 @@ class iMessageUser:
             return None
         body = apns._get_field(raw[1], 3)
         body = plistlib.loads(body)
-        #print(f"Got body message {body}")
+        # print(f"Got body message {body}")
         payload = body["P"]
 
         if not self._verify_payload(payload, body['sP'], body["t"]):
@@ -492,7 +503,6 @@ class iMessageUser:
 
         # Turn the message into a raw message
         raw = message.to_raw()
-        import base64
 
         bundled_payloads = []
         for participant in message.participants:
