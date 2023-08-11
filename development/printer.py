@@ -217,7 +217,7 @@ def pretty_print_payload(
 
         print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {topic}", end="")
 
-        if topic == "com.apple.madrid":
+        if topic == "com.apple.madrid" or topic == "com.apple.private.alloy.sms":
             print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
             orig_payload = payload
             payload = plistlib.loads(_get_field(payload[1], 3))
@@ -254,7 +254,7 @@ def pretty_print_payload(
             for key in payload:
                 print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {payload[key]}")
 
-            if 'dtl' in payload:
+            if 'dtl' in payload and False:
                 print("OVERRIDE DTL")
                 payload['dtl'][0].update({'sT': b64decode("jJ86jTYbv1mGVwO44PyfuZ9lh3o56QjOE39Jk8Z99N8=")})
 

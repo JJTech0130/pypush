@@ -22,7 +22,7 @@ logging.getLogger("py.warnings").setLevel(logging.ERROR) # Ignore warnings from 
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.INFO)
+logging.getLogger("apns").setLevel(logging.DEBUG)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.INFO)
@@ -51,7 +51,7 @@ def safe_b64decode(s):
 
 conn.connect(token=safe_b64decode(CONFIG.get("push", {}).get("token")))
 conn.set_state(1)
-conn.filter(["com.apple.madrid"])
+conn.filter(["com.apple.madrid", "com.apple.private.alloy.sms"])
 
 user = ids.IDSUser(conn)
 
