@@ -80,44 +80,48 @@ class Attachment:
     versions: list[AttachmentFile]
 
     def __init__(self, message_raw_content: dict, xml_element: ElementTree.Element):
-        attrs = xml_element.attrib
+        attrib = xml_element.attrib
 
-        self.name = attrs["name"] if "name" in attrs else None
-        self.mime_type = attrs["mime-type"] if "mime-type" in attrs else None
+        self.name = attrib["name"] if "name" in attrib else None
+        self.mime_type = attrib["mime-type"] if "mime-type" in attrib else None
 
-        if "inline-attachment" in attrs:
+        if "inline-attachment" in attrib:
             # just grab the inline attachment !
-            self.versions = [InlineFile(message_raw_content[attrs["inline-attachment"]])]
+            self.versions = [InlineFile(message_raw_content[attrib["inline-attachment"]])]
         else:
             # suffer
-            versions = []
-            for attribute in attrs:
-                if attribute.startswith("mmcs") or \
-                   attribute.startswith("decryption-key") or \
-                   attribute.startswith("file-size"):
-                    segments = attribute.split('-')
-                    if segments[-1].isnumeric():
-                        index = int(segments[-1])
-                        attribute_name = segments[:-1]
-                    else:
-                        index = 0
-                        attribute_name = attribute
+            
 
-                    while index >= len(versions):
-                        versions.append(MMCSFile())
+            versions = [InlineFile(b"")]
 
-                    val = attrs[attribute_name]
-                    match attribute_name:
-                        case "mmcs-url":
-                            versions[index].url = val
-                        case "mmcs-owner":
-                            versions[index].owner = val
-                        case "mmcs-signature-hex":
-                            versions[index].signature = base64.b16decode(val)
-                        case "file-size":
-                            versions[index].size = int(val)
-                        case "decryption-key":
-                            versions[index].decryption_key = base64.b16decode(val)[1:]
+            print(attrib)
+            # for attribute in attrs:
+            #     if attribute.startswith("mmcs") or \
+            #        attribute.startswith("decryption-key") or \
+            #        attribute.startswith("file-size"):
+            #         segments = attribute.split('-')
+            #         if segments[-1].isnumeric():
+            #             index = int(segments[-1])
+            #             attribute_name = segments[:-1]
+            #         else:
+            #             index = 0
+            #             attribute_name = attribute
+
+            #         while index >= len(versions):
+            #             versions.append(MMCSFile())
+
+            #         val = attrs[attribute_name]
+            #         match attribute_name:
+            #             case "mmcs-url":
+            #                 versions[index].url = val
+            #             case "mmcs-owner":
+            #                 versions[index].owner = val
+            #             case "mmcs-signature-hex":
+            #                 versions[index].signature = base64.b16decode(val)
+            #             case "file-size":
+            #                 versions[index].size = int(val)
+            #             case "decryption-key":
+            #                 versions[index].decryption_key = base64.b16decode(val)[1:]
 
             self.versions = versions
 
@@ -194,6 +198,8 @@ class iMessage:
 
         message = plistlib.loads(message)
 
+        logger.debug(f"Decompressed message : {message}")
+
         return iMessage(
             text=message.get("t", ""),
             xml=message.get("x"),
@@ -260,7 +266,7 @@ class iMessageUser:
         def check_response(x):
             if x[0] != 0x0A:
                 return False
-            if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
+            if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest() and apns._get_field(x[1], 2) != sha1("com.apple.private.alloy.sms".encode()).digest():
                 return False
             resp_body = apns._get_field(x[1], 3)
             if resp_body is None:
@@ -435,7 +441,11 @@ class iMessageUser:
         if not self._verify_payload(payload, body['sP'], body["t"]):
             raise Exception("Failed to verify payload")
         
+        logger.debug(f"Encrypted body : {body}")
+        
         decrypted = self._decrypt_payload(payload)
+
+        #logger.debug(f"Decrypted payload : {plistlib.loads(decrypted)}")
         
         return iMessage.from_raw(decrypted, body['sP'])
 
