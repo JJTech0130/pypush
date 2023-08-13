@@ -22,11 +22,11 @@ logging.getLogger("py.warnings").setLevel(logging.ERROR) # Ignore warnings from 
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.DEBUG)
+logging.getLogger("apns").setLevel(logging.INFO)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.INFO)
-logging.getLogger("imessage").setLevel(logging.DEBUG)
+logging.getLogger("imessage").setLevel(logging.INFO)
 
 logging.captureWarnings(True)
 
@@ -153,6 +153,8 @@ def fixup_handle(handle):
 current_participants = []
 current_effect = None
 while True:
+    if not im._received_activation_message:
+        im._activate_sms()
     msg = im.receive()
     if msg is not None:
         # print(f'[{msg.sender}] {msg.text}')

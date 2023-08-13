@@ -179,7 +179,12 @@ class APNSConnection:
 
         return self.token
 
+    old_topics = [] # Keep old topics so that we can add topics one by one
     def filter(self, topics: list[str]):
+        if topics == self.old_topics:
+            return
+        topics = list(set(topics + self.old_topics))
+        self.old_topics = topics
         logger.debug(f"Sending filter message with topics {topics}")
         fields = [(1, self.token)]
 
