@@ -39,7 +39,7 @@ def _lookup_topic(hash: bytes):
 
 
 # Returns the value of the first field with the given id
-def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes:
+def _get_field(fields: list[tuple[int, bytes]], id: int) -> bytes | None:
     for field_id, value in fields:
         if field_id == id:
             return value
@@ -117,27 +117,26 @@ def pretty_print_payload(
         _p_filter(prefix, payload[1])
     elif id == 8:
         token_str = ""
-        if _get_field(payload[1], 3):
-            token_str = f"{bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 3)).decode()}"
-        print(
-            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connected{bcolors.ENDC} {token_str} {bcolors.OKBLUE}{_get_field(payload[1], 1).hex()}{bcolors.ENDC}"
-        )
+        if token := _get_field(payload[1], 1):
+            token_str = f"{bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(token).decode()}"
+
+        if connected := _get_field(payload[1], 1):
+            print(
+                f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connected{bcolors.ENDC} {token_str} {bcolors.OKBLUE}{connected.hex()}{bcolors.ENDC}"
+            )
     elif id == 7:
         print(
             f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Connect Request{bcolors.ENDC}",
             end="",
         )
-        if _get_field(payload[1], 1):
+        if token := _get_field(payload[1], 1):
             print(
-                f" {bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(_get_field(payload[1], 1)).decode()}",
+                f" {bcolors.WARNING}Token{bcolors.ENDC}: {b64encode(token).decode()}",
                 end="",
             )
         if _get_field(payload[1], 0x0C):
             print(f" {bcolors.OKBLUE}SIGNED{bcolors.ENDC}", end="")
-        if (
-            _get_field(payload[1], 0x5)
-            and int.from_bytes(_get_field(payload[1], 0x5)) & 0x4
-        ):
+        if (root := _get_field(payload[1], 0x5)) and int.from_bytes(root) & 0x4:
             print(f" {bcolors.FAIL}ROOT{bcolors.ENDC}", end="")
         print()
 
@@ -171,9 +170,10 @@ def pretty_print_payload(
             f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Keep Alive Ack{bcolors.ENDC}"
         )
     elif id == 0x14:
-        print(
-            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Set State{bcolors.ENDC}: {_get_field(payload[1], 1).hex()}"
-        )
+        if set_state := _get_field(payload[1], 1):
+            print(
+                f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Set State{bcolors.ENDC}: {set_state.hex()}"
+            )
     elif id == 0x1D or id == 0x20:
         print(
             f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub ??{bcolors.ENDC}"
@@ -183,7 +183,7 @@ def pretty_print_payload(
             f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}Token Confirmation{bcolors.ENDC}"
         )
     elif id == 0xA:
-        topic = ""
+        topic_field: bytes | None = None
         # topic = _lookup_topic(_get_field(payload[1], 1))
         # if it has apsd -> APNs in the prefix, it's an outgoing notification
         if "apsd -> APNs" in prefix:
@@ -191,7 +191,7 @@ def pretty_print_payload(
                 f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKBLUE}OUTGOING Notification{bcolors.ENDC}",
                 end="",
             )
-            topic = _lookup_topic(_get_field(payload[1], 1))
+            topic_field = _get_field(payload[1], 1)
             # topic = _lookup_topic(_get_field(payload[1], 1))
             # if b"bplist" in _get_field(payload[1], 3):
             #     print(f" {bcolors.OKCYAN}Binary{bcolors.ENDC}", end="")
@@ -210,69 +210,71 @@ def pretty_print_payload(
                 f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.OKCYAN}Notification{bcolors.ENDC}",
                 end="",
             )
-            topic = _lookup_topic(_get_field(payload[1], 2))
+            topic_field = _get_field(payload[1], 2)
             # if b"bplist" in _get_field(payload[1], 3):
             #    print(f" {bcolors.OKBLUE}Binary{bcolors.ENDC}", end="")
             # print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {_lookup_topic(_get_field(payload[1], 2))}")
 
-        print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {topic}", end="")
+        if topic_field is not None:
+            topic = _lookup_topic(topic_field)
+            print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {topic}", end="")
 
-        if topic == "com.apple.madrid":
-            print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
-            orig_payload = payload
-            payload = plistlib.loads(_get_field(payload[1], 3))
+            if topic == "com.apple.madrid":
+                print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
+                orig_payload = payload
+                payload = plistlib.loads(_get_field(payload[1], 3))
 
-            # print(payload)
-            if "cT" in payload and False:
-                # It's HTTP over APNs
-                if "hs" in payload:
+                # print(payload)
+                if "cT" in payload and False:
+                    # It's HTTP over APNs
+                    if "hs" in payload:
+                        print(
+                            f" {bcolors.WARNING}HTTP Response{bcolors.ENDC}: {payload['hs']}",
+                            end="",
+                        )
+                    else:
+                        print(f" {bcolors.WARNING}HTTP Request{bcolors.ENDC}", end="")
+                    # print(f" {bcolors.WARNING}HTTP{bcolors.ENDC} {payload['hs']}", end="")
+                    if "u" in payload:
+                        print(f" {bcolors.OKCYAN}URL{bcolors.ENDC}: {payload['u']}", end="")
                     print(
-                        f" {bcolors.WARNING}HTTP Response{bcolors.ENDC}: {payload['hs']}",
+                        f" {bcolors.FAIL}Content Type{bcolors.ENDC}: {payload['cT']}",
                         end="",
                     )
-                else:
-                    print(f" {bcolors.WARNING}HTTP Request{bcolors.ENDC}", end="")
-                # print(f" {bcolors.WARNING}HTTP{bcolors.ENDC} {payload['hs']}", end="")
-                if "u" in payload:
-                    print(f" {bcolors.OKCYAN}URL{bcolors.ENDC}: {payload['u']}", end="")
-                print(
-                    f" {bcolors.FAIL}Content Type{bcolors.ENDC}: {payload['cT']}",
-                    end="",
-                )
-                if "h" in payload:
-                    print(
-                        f" {bcolors.FAIL}Headers{bcolors.ENDC}: {payload['h']}", end=""
-                    )
-                if "b" in payload:
-                    # What am I really supposed to put in WBITS? Got this from a random SO answer
-                    # print(payload["b"])
-                    body = zlib.decompress(payload["b"], 16 + zlib.MAX_WBITS)
-                    if b"plist" in body:
-                        body = plistlib.loads(body)
-                    print(f" {bcolors.FAIL}Body{bcolors.ENDC}: {body}", end="")
-            #if not "cT" in payload:
-            for key in payload:
-                print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {payload[key]}")
+                    if "h" in payload:
+                        print(
+                            f" {bcolors.FAIL}Headers{bcolors.ENDC}: {payload['h']}", end=""
+                        )
+                    if "b" in payload:
+                        # What am I really supposed to put in WBITS? Got this from a random SO answer
+                        # print(payload["b"])
+                        body = zlib.decompress(payload["b"], 16 + zlib.MAX_WBITS)
+                        if b"plist" in body:
+                            body = plistlib.loads(body)
+                        print(f" {bcolors.FAIL}Body{bcolors.ENDC}: {body}", end="")
+                #if not "cT" in payload:
+                for key in payload:
+                    print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {payload[key]}")
 
-            if 'dtl' in payload:
-                print("OVERRIDE DTL")
-                payload['dtl'][0].update({'sT': b64decode("jJ86jTYbv1mGVwO44PyfuZ9lh3o56QjOE39Jk8Z99N8=")})
+                if 'dtl' in payload:
+                    print("OVERRIDE DTL")
+                    payload['dtl'][0].update({'sT': b64decode("jJ86jTYbv1mGVwO44PyfuZ9lh3o56QjOE39Jk8Z99N8=")})
 
-                # Re-serialize the payload
-                payload = plistlib.dumps(payload, fmt=plistlib.FMT_BINARY)
-                # Construct APNS message
-                # Get the original fields except 3
-                fields = orig_payload[1]
-                fields = [field for field in fields if field[0] != 3]
-                # Add the new field
-                fields.append((3, payload))
-                payload = apns._serialize_payload(0xA, fields)
+                    # Re-serialize the payload
+                    payload = plistlib.dumps(payload, fmt=plistlib.FMT_BINARY)
+                    # Construct APNS message
+                    # Get the original fields except 3
+                    fields = orig_payload[1]
+                    fields = [field for field in fields if field[0] != 3]
+                    # Add the new field
+                    fields.append((3, payload))
+                    payload = apns._serialize_payload(0xA, fields)
 
-                # Use the override payload
+                    # Use the override payload
 
-                #print(payload, orig_payload)
-                #print(payload == orig_payload)
-                return payload
+                    #print(payload, orig_payload)
+                    #print(payload == orig_payload)
+                    return payload
 
         print()
 

@@ -103,8 +103,12 @@ class APNSConnection:
             if payload is not None:
                 # Automatically ACK incoming notifications to prevent APNs from getting mad at us
                 if payload[0] == 0x0A:
-                    logger.debug("Sending automatic ACK")
-                    self._send_ack(_get_field(payload[1], 4))
+                    if ack_data := _get_field(payload[1], 4):
+                        logger.debug("Sending automatic ACK")
+                        self._send_ack(ack_data)
+                    else:
+                        logger.warn("Couldn't send automatic ACK as ack data was None")
+
                 logger.debug(f"Received payload: {payload}")
                 self.incoming_queue.append(payload)
                 logger.debug(f"Queue length: {len(self.incoming_queue)}")

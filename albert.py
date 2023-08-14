@@ -1,7 +1,7 @@
 import plistlib
 import re
 import uuid
-from base64 import b64decode, b64encode
+from base64 import b64decode
 
 import requests
 from cryptography import x509

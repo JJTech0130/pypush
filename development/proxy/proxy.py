@@ -71,29 +71,31 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
                 override = printer.pretty_print_payload(
                     prefix, apns._deserialize_payload_from_buffer(data)
                 )
+
+                if override is not None:
+                    data = override
+                    print("OVERRIDE: ", end="")
+                    printer.pretty_print_payload(
+                        prefix, apns._deserialize_payload_from_buffer(data)
+                    )
+
+                if "apsd -> APNs" in prefix:
+                    global outgoing_list
+                    outgoing_list.insert(0, data)
+                    if len(outgoing_list) > 100:
+                        outgoing_list.pop()
+                elif "APNs -> apsd" in prefix:
+                    global incoming_list
+                    incoming_list.insert(0, data)
+                    if len(incoming_list) > 100:
+                        incoming_list.pop()
+
+                # print(prefix, data)
+                # Write the data to the second connection
+                conn2.write(data)
             except Exception as e:
                 print(e)  # Can't crash the proxy over parsing errors
-            if override is not None:
-                data = override
-                print("OVERRIDE: ", end="")
-                printer.pretty_print_payload(
-                    prefix, apns._deserialize_payload_from_buffer(data)
-                )
 
-            if "apsd -> APNs" in prefix:
-                global outgoing_list
-                outgoing_list.insert(0, data)
-                if len(outgoing_list) > 100:
-                    outgoing_list.pop()
-            elif "APNs -> apsd" in prefix:
-                global incoming_list
-                incoming_list.insert(0, data)
-                if len(incoming_list) > 100:
-                    incoming_list.pop()
-
-            # print(prefix, data)
-            # Write the data to the second connection
-            conn2.write(data)
     except OSError as e:
         if e.errno == 9:
             print(prefix, "Connection closed due to OSError 9")
