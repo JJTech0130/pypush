@@ -132,9 +132,101 @@ class Attachment:
     def __repr__(self):
         return f'<Attachment name="{self.name}" type="{self.mime_type}">'
 
+class Message:
+    def __init__(self, text: str, sender: str, participants: list[str], id: uuid.UUID, _raw: dict, _compressed: bool = True):
+        self.text = text
+        self.sender = sender
+        self.id = id
+        self._raw = _raw
+        self._compressed = _compressed
+    
+    def from_raw(message: bytes, sender: str | None = None) -> "Message":
+        """Create a `Message` from raw message bytes"""
+
+        raise NotImplementedError()
+    
+    def __str__():
+        raise NotImplementedError()
+
+class SMSReflectedMessage(Message):
+    def from_raw(message: bytes, sender: str | None = None) -> "SMSReflectedMessage":
+        """Create a `SMSIncomingMessage` from raw message bytes"""
+
+        # Decompress the message
+        try:
+            message = gzip.decompress(message)
+            compressed = True
+        except:
+            compressed = False
+
+        message = plistlib.loads(message)
+
+        return SMSReflectedMessage(
+            text=message["mD"]["plain-body"],
+            sender=sender,
+            participants=[re["id"] for re in message["re"]] + [sender],
+            id=uuid.UUID(message["mD"]["guid"]),
+            _raw=message,
+            _compressed=compressed,
+        )
+    
+    def __str__(self):
+        return f"[SMS {self.sender}] '{self.text}'"
+
+class SMSIncomingMessage(Message):
+    def from_raw(message: bytes, sender: str | None = None) -> "SMSIncomingMessage":
+        """Create a `SMSIncomingMessage` from raw message bytes"""
+
+        # Decompress the message
+        try:
+            message = gzip.decompress(message)
+            compressed = True
+        except:
+            compressed = False
+
+        message = plistlib.loads(message)
+
+        logger.debug(f"Decompressed message : {message}")
+
+        return SMSIncomingMessage(
+            text=message["k"][0]["data"].decode(),
+            sender=message["h"], # Don't use sender parameter, that is the phone that forwarded the message
+            participants=[message["h"], message["co"]],
+            id=uuid.UUID(message["g"]),
+            _raw=message,
+            _compressed=compressed,
+        )
+
+    def __str__(self):
+        return f"[SMS {self.sender}] '{self.text}'"
+
+class iMessage(Message):
+    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
+        """Create a `iMessage` from raw message bytes"""
+
+        # Decompress the message
+        try:
+            message = gzip.decompress(message)
+            compressed = True
+        except:
+            compressed = False
+
+        message = plistlib.loads(message)
+
+        return iMessage(
+            text=message["t"],
+            participants=message["p"],
+            sender=sender,
+            id=uuid.UUID(message["r"]),
+            _raw=message,
+            _compressed=compressed,
+        )
+    
+    def __str__(self):
+        return f"[iMessage {self.sender}] '{self.text}'"
 
 @dataclass
-class iMessage:
+class OldiMessage:
     """Represents an iMessage"""
 
     text: str = ""
@@ -195,7 +287,7 @@ class iMessage:
 
         return True
 
-    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
+    def from_raw(message: bytes, sender: str | None = None) -> "OldiMessage":
         """Create an `iMessage` from raw message bytes"""
         compressed = False
         try:
@@ -209,7 +301,7 @@ class iMessage:
         logger.debug(f"Decompressed message : {message}")
 
         try:
-            return iMessage(
+            return OldiMessage(
                 text=message[
                     "t"
                 ],  # Cause it to "fail to parse" if there isn't any good text to display, temp hack
@@ -233,7 +325,7 @@ class iMessage:
             #import json
 
             dmp = str(message)
-            return iMessage(text=f"failed to parse: {dmp}", _raw=message)
+            return OldiMessage(text=f"failed to parse: {dmp}", _raw=message)
 
     def to_raw(self) -> bytes:
         """Convert an `iMessage` to raw message bytes"""
@@ -422,26 +514,34 @@ class iMessageUser:
         except:
             return False
 
-    def receive(self) -> iMessage | None:
+    def receive(self) -> Message | None:
         """
         Will return the next iMessage in the queue, or None if there are no messages
         """
         
+        # Check for iMessages
         body = self._receive_raw(100, "com.apple.madrid")
+        t = iMessage
+        if body is None:
+            # Check for SMS messages
+            body = self._receive_raw(143, "com.apple.private.alloy.sms")
+            t = SMSReflectedMessage
+        if body is None:
+            # Check for SMS incoming messages
+            body = self._receive_raw(140, "com.apple.private.alloy.sms")
+            t = SMSIncomingMessage
         if body is None:
             return None
-        payload = body["P"]
+        
 
-        if not self._verify_payload(payload, body["sP"], body["t"]):
+        if not self._verify_payload(body["P"], body["sP"], body["t"]):
             raise Exception("Failed to verify payload")
 
         logger.debug(f"Encrypted body : {body}")
 
-        decrypted = self._decrypt_payload(payload)
+        decrypted = self._decrypt_payload(body["P"])
 
-        # logger.debug(f"Decrypted payload : {plistlib.loads(decrypted)}")
-
-        return iMessage.from_raw(decrypted, body["sP"])
+        return t.from_raw(decrypted, body["sP"])
 
     KEY_CACHE_HANDLE: str = ""
     KEY_CACHE: dict[bytes, dict[str, tuple[bytes, bytes]]] = {}
@@ -550,17 +650,32 @@ class iMessageUser:
 
         self.connection.send_message(topic, body, message_id)
 
-    def _receive_raw(self, type: int, topic: str) -> dict | None:
+    def _receive_raw(self, c: int | list[int], topic: str | list[str]) -> dict | None:
         def check_response(x):
             if x[0] != 0x0A:
                 return False
-            if apns._get_field(x[1], 2) != sha1(topic.encode()).digest():
-                return False
+            # Check if it matches any of the topics
+            if isinstance(topic, list):
+                for t in topic:
+                    if apns._get_field(x[1], 2) == sha1(t.encode()).digest():
+                        break
+                else:
+                    return False
+            else:
+                if apns._get_field(x[1], 2) != sha1(topic.encode()).digest():
+                    return False
+                
             resp_body = apns._get_field(x[1], 3)
             if resp_body is None:
                 return False
             resp_body = plistlib.loads(resp_body)
-            if "c" not in resp_body or resp_body["c"] != type:
+
+            #logger.debug(f"See type {resp_body['c']}")
+
+            if isinstance(c, list):
+                if not resp_body["c"] in c:
+                    return False
+            elif resp_body["c"] != c:
                 return False
             return True
 
@@ -570,8 +685,6 @@ class iMessageUser:
         body = apns._get_field(payload[1], 3)
         body = plistlib.loads(body)
         return body
-
-    _received_activation_message: bool = False
 
     def activate_sms(self) -> bool:
         """
@@ -593,7 +706,7 @@ class iMessageUser:
             }
         )
 
-    def send(self, message: iMessage):
+    def send(self, message: OldiMessage):
         # Set the sender, if it isn't already
         if message.sender is None:
             message.sender = self.user.handles[0]  # TODO : Which handle to use?
