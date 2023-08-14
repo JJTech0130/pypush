@@ -153,8 +153,7 @@ def fixup_handle(handle):
 current_participants = []
 current_effect = None
 while True:
-    if not im._received_activation_message:
-        im._activate_sms()
+    im.activate_sms() # We must call this always since SMS could be turned off and on again, and it might have been on before this.
     msg = im.receive()
     if msg is not None:
         # print(f'[{msg.sender}] {msg.text}')
@@ -201,6 +200,7 @@ while True:
             else:
                 print(f'Filtering to {[fixup_handle(h) for h in msg[1:]]}')
                 current_participants = [fixup_handle(h) for h in msg[1:]]
+                im._cache_keys(current_participants, "com.apple.madrid") # Just to make things faster, and to make it error on invalid addresses
         elif msg == 'handle' or msg.startswith('handle '):
             msg = msg.split(' ')
             if len(msg) < 2 or msg[1] == '':
