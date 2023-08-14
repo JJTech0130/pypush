@@ -132,13 +132,14 @@ class Attachment:
     def __repr__(self):
         return f'<Attachment name="{self.name}" type="{self.mime_type}">'
 
+@dataclass
 class Message:
-    def __init__(self, text: str, sender: str, participants: list[str], id: uuid.UUID, _raw: dict, _compressed: bool = True):
-        self.text = text
-        self.sender = sender
-        self.id = id
-        self._raw = _raw
-        self._compressed = _compressed
+    text: str
+    sender: str
+    participants: list[str]
+    id: uuid.UUID
+    _raw: dict
+    _compressed: bool = True
     
     def from_raw(message: bytes, sender: str | None = None) -> "Message":
         """Create a `Message` from raw message bytes"""
@@ -148,6 +149,7 @@ class Message:
     def __str__():
         raise NotImplementedError()
 
+@dataclass
 class SMSReflectedMessage(Message):
     def from_raw(message: bytes, sender: str | None = None) -> "SMSReflectedMessage":
         """Create a `SMSIncomingMessage` from raw message bytes"""
@@ -173,6 +175,7 @@ class SMSReflectedMessage(Message):
     def __str__(self):
         return f"[SMS {self.sender}] '{self.text}'"
 
+@dataclass
 class SMSIncomingMessage(Message):
     def from_raw(message: bytes, sender: str | None = None) -> "SMSIncomingMessage":
         """Create a `SMSIncomingMessage` from raw message bytes"""
@@ -200,7 +203,10 @@ class SMSIncomingMessage(Message):
     def __str__(self):
         return f"[SMS {self.sender}] '{self.text}'"
 
+@dataclass
 class iMessage(Message):
+    effect: str | None = None
+
     def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
         """Create a `iMessage` from raw message bytes"""
 
@@ -220,6 +226,7 @@ class iMessage(Message):
             id=uuid.UUID(message["r"]),
             _raw=message,
             _compressed=compressed,
+            effect=message["iid"] if "iid" in message else None,
         )
     
     def __str__(self):
