@@ -255,27 +255,18 @@ while True:
         elif current_participants != []:
             if msg.startswith("\\"):
                 msg = msg[1:]
-            im.send(
-                imessage.OldiMessage(
-                    text=msg,
-                    participants=current_participants,
-                    sender=user.current_handle,
-                    effect=current_effect,
-                )
+
+            imsg = imessage.iMessage.create(
+                im,
+                msg,
+                current_participants,
             )
+
+            imsg.effect = current_effect
+
+            im.send(imsg)
             current_effect = None
         else:
             print("No chat selected, use help for help")
 
     time.sleep(0.1)
-
-    # elif msg.startswith('send') or msg.startswith('s'):
-    #     msg = msg.split(' ')
-    #     if len(msg) < 3:
-    #         print('send [recipient] [message]')
-    #     else:
-    #         im.send(imessage.iMessage(
-    #             text=' '.join(msg[2:]),
-    #             participants=[msg[1], user.handles[0]],
-    #             #sender=user.handles[0]
-    #         ))
