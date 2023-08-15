@@ -5,6 +5,7 @@ import threading
 import time
 from base64 import b64decode, b64encode
 from getpass import getpass
+from subprocess import PIPE, Popen
 
 from rich.logging import RichHandler
 
@@ -18,7 +19,7 @@ logging.basicConfig(
 
 # Set sane log levels
 logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("py.warnings").setLevel(logging.ERROR) # Ignore warnings from urllib3
+logging.getLogger("py.warnings").setLevel(logging.ERROR)  # Ignore warnings from urllib3
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
@@ -30,12 +31,24 @@ logging.getLogger("imessage").setLevel(logging.INFO)
 
 logging.captureWarnings(True)
 
+process = Popen(["git", "rev-parse", "HEAD"], stdout=PIPE)
+(commit_hash, err) = process.communicate()
+exit_code = process.wait()
+commit_hash = commit_hash.decode().strip()
+
 # Try and load config.json
 try:
     with open("config.json", "r") as f:
         CONFIG = json.load(f)
 except FileNotFoundError:
     CONFIG = {}
+
+# Re-register if the commit hash has changed
+if CONFIG.get("commit_hash") != commit_hash:
+    logging.warning("pypush commit is different, forcing re-registration...")
+    CONFIG["commit_hash"] = commit_hash
+    if "id" in CONFIG:
+        del CONFIG["id"]
 
 conn = apns.APNSConnection(
     CONFIG.get("push", {}).get("key"), CONFIG.get("push", {}).get("cert")
@@ -116,44 +129,48 @@ im = imessage.iMessageUser(conn, user)
 
 INPUT_QUEUE = apns.IncomingQueue()
 
+
 def input_thread():
     from prompt_toolkit import prompt
-    while True:
 
+    while True:
         try:
-            msg = prompt('>> ')
+            msg = prompt(">> ")
         except:
-            msg = 'quit'
+            msg = "quit"
         INPUT_QUEUE.append(msg)
+
 
 threading.Thread(target=input_thread, daemon=True).start()
 
-print("Type 'help' for help")  
+print("Type 'help' for help")
+
 
 def fixup_handle(handle):
-    if handle.startswith('tel:+'):
+    if handle.startswith("tel:+"):
         return handle
-    elif handle.startswith('mailto:'):
+    elif handle.startswith("mailto:"):
         return handle
-    elif handle.startswith('tel:'):
-        return 'tel:+' + handle[4:]
-    elif handle.startswith('+'):
-        return 'tel:' + handle
+    elif handle.startswith("tel:"):
+        return "tel:+" + handle[4:]
+    elif handle.startswith("+"):
+        return "tel:" + handle
     # If the handle starts with a number
     elif handle[0].isdigit():
         # If the handle is 10 digits, assume it's a US number
         if len(handle) == 10:
-            return 'tel:+1' + handle
+            return "tel:+1" + handle
         # If the handle is 11 digits, assume it's a US number with country code
         elif len(handle) == 11:
-            return 'tel:+' + handle
-    else: # Assume it's an email
-        return 'mailto:' + handle
+            return "tel:+" + handle
+    else:  # Assume it's an email
+        return "mailto:" + handle
+
 
 current_participants = []
 current_effect = None
 while True:
-    im.activate_sms() # We must call this always since SMS could be turned off and on again, and it might have been on before this.
+    im.activate_sms()  # We must call this always since SMS could be turned off and on again, and it might have been on before this.
     msg = im.receive()
     if msg is not None:
         # print(f'[{msg.sender}] {msg.text}')
@@ -170,79 +187,95 @@ while True:
 
         #     print(f"({len(attachments)} attachment{'s have' if len(attachments) != 1 else ' has'} been downloaded and put "
         #           f"in {attachments_path})")
-    
+
     if len(INPUT_QUEUE) > 0:
         msg = INPUT_QUEUE.pop()
-        if msg == '': continue
-        if msg == 'help' or msg == 'h':
-            print('help (h): show this message')
-            print('quit (q): quit')
-            #print('send (s) [recipient] [message]: send a message')
-            print('filter (f) [recipient]: set the current chat')
-            print('effect (e): adds an iMessage effect to the next sent message')
-            print('note: recipient must start with tel: or mailto: and include the country code')
-            print('handle <handle>: set the current handle (for sending messages)')
-            print('\\: escape commands (will be removed from message)')
-        elif msg == 'quit' or msg == 'q':
+        if msg == "":
+            continue
+        if msg == "help" or msg == "h":
+            print("help (h): show this message")
+            print("quit (q): quit")
+            # print('send (s) [recipient] [message]: send a message')
+            print("filter (f) [recipient]: set the current chat")
+            print("effect (e): adds an iMessage effect to the next sent message")
+            print(
+                "note: recipient must start with tel: or mailto: and include the country code"
+            )
+            print("handle <handle>: set the current handle (for sending messages)")
+            print("\\: escape commands (will be removed from message)")
+        elif msg == "quit" or msg == "q":
             break
-        elif msg == 'effect' or msg == 'e' or msg.startswith("effect ") or msg.startswith("e "):
+        elif (
+            msg == "effect"
+            or msg == "e"
+            or msg.startswith("effect ")
+            or msg.startswith("e ")
+        ):
             msg = msg.split(" ")
             if len(msg) < 2 or msg[1] == "":
                 print("effect [effect namespace]")
             else:
                 print(f"next message will be sent with [{msg[1]}]")
                 current_effect = msg[1]
-        elif msg == 'filter' or msg == 'f' or msg.startswith('filter ') or msg.startswith('f '):
+        elif (
+            msg == "filter"
+            or msg == "f"
+            or msg.startswith("filter ")
+            or msg.startswith("f ")
+        ):
             # Set the curernt chat
-            msg = msg.split(' ')
-            if len(msg) < 2 or msg[1] == '':
-                print('filter [recipients]')
+            msg = msg.split(" ")
+            if len(msg) < 2 or msg[1] == "":
+                print("filter [recipients]")
             else:
-                print(f'Filtering to {[fixup_handle(h) for h in msg[1:]]}')
+                print(f"Filtering to {[fixup_handle(h) for h in msg[1:]]}")
                 current_participants = [fixup_handle(h) for h in msg[1:]]
-                im._cache_keys(current_participants, "com.apple.madrid") # Just to make things faster, and to make it error on invalid addresses
-        elif msg == 'handle' or msg.startswith('handle '):
-            msg = msg.split(' ')
-            if len(msg) < 2 or msg[1] == '':
-                print('handle [handle]')
-                print('Available handles:')
+                im._cache_keys(
+                    current_participants, "com.apple.madrid"
+                )  # Just to make things faster, and to make it error on invalid addresses
+        elif msg == "handle" or msg.startswith("handle "):
+            msg = msg.split(" ")
+            if len(msg) < 2 or msg[1] == "":
+                print("handle [handle]")
+                print("Available handles:")
                 for h in user.handles:
                     if h == user.current_handle:
-                        print(f'\t{h} (current)')
+                        print(f"\t{h} (current)")
                     else:
-                        print(f'\t{h}')
+                        print(f"\t{h}")
             else:
                 h = msg[1]
                 h = fixup_handle(h)
                 if h in user.handles:
-                    print(f'Using {h} as handle')
+                    print(f"Using {h} as handle")
                     user.current_handle = h
                 else:
-                    print(f'Handle {h} not found')
+                    print(f"Handle {h} not found")
 
         elif current_participants != []:
-            if msg.startswith('\\'):
+            if msg.startswith("\\"):
                 msg = msg[1:]
-            im.send(imessage.OldiMessage(
-                text=msg,
-                participants=current_participants,
-                sender=user.current_handle,
-                effect=current_effect
-            ))
+            im.send(
+                imessage.OldiMessage(
+                    text=msg,
+                    participants=current_participants,
+                    sender=user.current_handle,
+                    effect=current_effect,
+                )
+            )
             current_effect = None
         else:
-            print('No chat selected, use help for help')
+            print("No chat selected, use help for help")
 
     time.sleep(0.1)
-        
-        # elif msg.startswith('send') or msg.startswith('s'):
-        #     msg = msg.split(' ')
-        #     if len(msg) < 3:
-        #         print('send [recipient] [message]')
-        #     else:
-        #         im.send(imessage.iMessage(
-        #             text=' '.join(msg[2:]),
-        #             participants=[msg[1], user.handles[0]],
-        #             #sender=user.handles[0]
-        #         ))
-        
+
+    # elif msg.startswith('send') or msg.startswith('s'):
+    #     msg = msg.split(' ')
+    #     if len(msg) < 3:
+    #         print('send [recipient] [message]')
+    #     else:
+    #         im.send(imessage.iMessage(
+    #             text=' '.join(msg[2:]),
+    #             participants=[msg[1], user.handles[0]],
+    #             #sender=user.handles[0]
+    #         ))
