@@ -140,6 +140,7 @@ class Message:
     id: uuid.UUID
     _raw: dict
     _compressed: bool = True
+    xml: str | None = None
     
     def from_raw(message: bytes, sender: str | None = None) -> "Message":
         """Create a `Message` from raw message bytes"""
@@ -162,6 +163,8 @@ class SMSReflectedMessage(Message):
             compressed = False
 
         message = plistlib.loads(message)
+
+        logger.debug(f"Decoding SMSReflectedMessage: {message}")
 
         return SMSReflectedMessage(
             text=message["mD"]["plain-body"],
@@ -189,7 +192,7 @@ class SMSIncomingMessage(Message):
 
         message = plistlib.loads(message)
 
-        logger.debug(f"Decompressed message : {message}")
+        logger.debug(f"Decoding SMSIncomingMessage: {message}")
 
         return SMSIncomingMessage(
             text=message["k"][0]["data"].decode(),
@@ -202,6 +205,14 @@ class SMSIncomingMessage(Message):
 
     def __str__(self):
         return f"[SMS {self.sender}] '{self.text}'"
+    
+@dataclass
+class SMSIncomingImage(Message):
+    def from_raw(message: bytes, sender: str | None = None) -> "SMSIncomingImage":
+        """Create a `SMSIncomingImage` from raw message bytes"""
+
+        # TODO: Implement this
+        return "SMSIncomingImage"    
 
 @dataclass
 class iMessage(Message):
@@ -219,11 +230,14 @@ class iMessage(Message):
 
         message = plistlib.loads(message)
 
+        logger.debug(f"Decoding iMessage: {message}")
+
         return iMessage(
             text=message["t"],
             participants=message["p"],
             sender=sender,
             id=uuid.UUID(message["r"]),
+            xml=message["x"] if "x" in message else None,
             _raw=message,
             _compressed=compressed,
             effect=message["iid"] if "iid" in message else None,
@@ -534,9 +548,17 @@ class iMessageUser:
             body = self._receive_raw(143, "com.apple.private.alloy.sms")
             t = SMSReflectedMessage
         if body is None:
+            # Check for SMS reflected images
+            body = self._receive_raw(144, "com.apple.private.alloy.sms")
+            t = SMSReflectedMessage
+        if body is None:
             # Check for SMS incoming messages
             body = self._receive_raw(140, "com.apple.private.alloy.sms")
             t = SMSIncomingMessage
+        if body is None:
+            # Incoming images
+            body = self._receive_raw(141, "com.apple.private.alloy.sms")
+            t = SMSIncomingImage
         if body is None:
             return None
         
@@ -677,7 +699,7 @@ class iMessageUser:
                 return False
             resp_body = plistlib.loads(resp_body)
 
-            #logger.debug(f"See type {resp_body['c']}")
+            #logger.info(f"See type {resp_body['c']}")
 
             if isinstance(c, list):
                 if not resp_body["c"] in c:
