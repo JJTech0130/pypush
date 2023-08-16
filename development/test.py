@@ -16,7 +16,7 @@ NONCE = "AQAAAYeBb0XwKDMBW5PfAPM="
 
 def extract_hash(sig: bytes, cert: str) -> str:
     # sig = b64decode(SIG)[2:]
-    sig = int.from_bytes(sig)
+    sig = int.from_bytes(sig, "big")
 
     # Get the correct hash
     from cryptography.hazmat.backends import default_backend

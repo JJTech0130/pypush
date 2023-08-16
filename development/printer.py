@@ -136,7 +136,7 @@ def pretty_print_payload(
             print(f" {bcolors.OKBLUE}SIGNED{bcolors.ENDC}", end="")
         if (
             _get_field(payload[1], 0x5)
-            and int.from_bytes(_get_field(payload[1], 0x5)) & 0x4
+            and int.from_bytes(_get_field(payload[1], 0x5), "big") & 0x4
         ):
             print(f" {bcolors.FAIL}ROOT{bcolors.ENDC}", end="")
         print()
