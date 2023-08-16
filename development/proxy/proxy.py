@@ -73,6 +73,7 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
                 )
             except Exception as e:
                 print(e)  # Can't crash the proxy over parsing errors
+                override = None
             if override is not None:
                 data = override
                 print("OVERRIDE: ", end="")
