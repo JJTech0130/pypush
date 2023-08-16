@@ -168,6 +168,7 @@ def fixup_handle(handle):
 
 
 current_participants = []
+sms = False
 current_effect = None
 while True:
     im.activate_sms()  # We must call this always since SMS could be turned off and on again, and it might have been on before this.
@@ -228,6 +229,13 @@ while True:
             if len(msg) < 2 or msg[1] == "":
                 print("filter [recipients]")
             else:
+                if msg[1] == "sms":
+                    print("Filtering to SMS")
+                    msg = msg[1:]
+                    sms = True
+                else:
+                    sms = False
+
                 print(f"Filtering to {[fixup_handle(h) for h in msg[1:]]}")
                 current_participants = [fixup_handle(h) for h in msg[1:]]
                 im._cache_keys(
@@ -256,15 +264,16 @@ while True:
             if msg.startswith("\\"):
                 msg = msg[1:]
 
-            imsg = imessage.iMessage.create(
-                im,
-                msg,
-                current_participants,
-            )
+            if sms:
+                import uuid
+                m = imessage.SMSReflectedMessage(
+                    msg, user.current_handle, current_participants, uuid.uuid4()
+                )
+            else:
+                m = imessage.iMessage.create(im, msg, current_participants)
+                m.effect = current_effect
 
-            imsg.effect = current_effect
-
-            im.send(imsg)
+            im.send(m)
             current_effect = None
         else:
             print("No chat selected, use help for help")

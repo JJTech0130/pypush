@@ -147,7 +147,7 @@ class Message:
 @dataclass
 class SMSReflectedMessage(Message):
     def from_raw(message: bytes, sender: str | None = None) -> "SMSReflectedMessage":
-        """Create a `SMSIncomingMessage` from raw message bytes"""
+        """Create a `SMSReflectedMessage` from raw message bytes"""
 
         # Decompress the message
         try:
@@ -158,7 +158,7 @@ class SMSReflectedMessage(Message):
 
         message = plistlib.loads(message)
 
-        logger.debug(f"Decoding SMSReflectedMessage: {message}")
+        logger.info(f"Decoding SMSReflectedMessage: {message}")
 
         return SMSReflectedMessage(
             text=message["mD"]["plain-body"],
@@ -168,7 +168,42 @@ class SMSReflectedMessage(Message):
             _raw=message,
             _compressed=compressed,
         )
-    
+
+    def to_raw(self) -> bytes:
+        #  {'re': [{'id': '+14155086773', 'uID': '4155086773', 'n': 'us'}], 'ic': 0, 'mD': {'handle': '+14155086773', 'guid': imessage.py:201
+        #            '35694E24-E265-4D5C-8CA7-9499E35D0402', 'replyToGUID': '4F9BC76B-B09C-2A60-B312-9029D529706B', 'plain-body': 'Test sms', 'service':                      
+        #            'SMS', 'sV': '1'}, 'fR': True, 'chat-style': 'im'}    
+        #pass
+        # Strip tel: from participants, making sure they are all phone numbers
+        #participants = [p.replace("tel:", "") for p in self.participants]
+
+        d = {
+            "re": [{"id": p} for p in self.participants],
+            "ic": 0,
+            "mD": {
+                "handle": self.participants[0] if len(self.participants) == 1 else None,
+                #"handle": self.sender,
+                "guid": str(self.id).upper(),
+                #"replyToGUID": "3B4B465F-F419-40FD-A8EF-94A110518E9F",
+                #"replyToGUID": str(self.id).upper(),
+                "xhtml": f"<html><body>{self.text}</body></html>",
+                "plain-body": self.text,
+                "service": "SMS",
+                "sV": "1",
+            },
+            #"fR": True,
+            "chat-style": "im" if len(self.participants) == 1 else "chat"
+        }
+
+        # Dump as plist
+        d = plistlib.dumps(d, fmt=plistlib.FMT_BINARY)
+
+        # Compress
+        if self._compressed:
+            d = gzip.compress(d, mtime=0)
+
+        return d
+
     def __str__(self):
         return f"[SMS {self.sender}] '{self.text}'"
 
@@ -278,6 +313,22 @@ class iMessage(Message):
     
     def __str__(self):
         return f"[iMessage {self.sender}] '{self.text}'"
+
+MESSAGE_TYPES = {
+    100: ("com.apple.madrid", iMessage),
+    140: ("com.apple.private.alloy.sms", SMSIncomingMessage),
+    141: ("com.apple.private.alloy.sms", SMSIncomingImage),
+    143: ("com.apple.private.alloy.sms", SMSReflectedMessage),
+    144: ("com.apple.private.alloy.sms", SMSReflectedMessage),
+}
+
+def maybe_decompress(message: bytes) -> bytes:
+    """Decompresses a message if it is compressed, otherwise returns the original message"""
+    try:
+        message = gzip.decompress(message)
+    except:
+        pass
+    return message
 
 class iMessageUser:
     """Represents a logged in and connected iMessage user.
@@ -434,27 +485,12 @@ class iMessageUser:
         """
         Will return the next iMessage in the queue, or None if there are no messages
         """
-        
-        # Check for iMessages
-        body = self._receive_raw(100, "com.apple.madrid")
-        t = iMessage
-        if body is None:
-            # Check for SMS messages
-            body = self._receive_raw(143, "com.apple.private.alloy.sms")
-            t = SMSReflectedMessage
-        if body is None:
-            # Check for SMS reflected images
-            body = self._receive_raw(144, "com.apple.private.alloy.sms")
-            t = SMSReflectedMessage
-        if body is None:
-            # Check for SMS incoming messages
-            body = self._receive_raw(140, "com.apple.private.alloy.sms")
-            t = SMSIncomingMessage
-        if body is None:
-            # Incoming images
-            body = self._receive_raw(141, "com.apple.private.alloy.sms")
-            t = SMSIncomingImage
-        if body is None:
+        for type, (topic, cls) in MESSAGE_TYPES.items():
+            body = self._receive_raw(type, topic)
+            if body is not None:
+                t = cls
+                break
+        else:
             return None
         
 
@@ -485,8 +521,9 @@ class iMessageUser:
             self.USER_CACHE = {}
 
         # Check to see if we have cached the keys for all of the participants
-        if all([p in self.USER_CACHE for p in participants]):
-            return
+        #if all([p in self.USER_CACHE for p in participants]):
+        #    return
+        # TODO: This doesn't work since it doesn't check if they are cached for all topics
 
         # Look up the public keys for the participants, and cache a token : public key mapping
         lookup = self.user.lookup(participants, topic=topic)
@@ -625,6 +662,16 @@ class iMessageUser:
         if act_message is None:
             return False
         
+        logger.info(f"Received SMS activation message : {act_message}")
+        # Decrypt the payload
+        act_message = self._decrypt_payload(act_message["P"])
+        act_message = plistlib.loads(maybe_decompress(act_message))
+
+        if act_message == {'wc': False, 'ar': True}:
+            logger.info("SMS forwarding activated, sending response")
+        else:
+            logger.info("SMS forwarding de-activated, sending response")
+        
         self._send_raw(
             147,
             [self.user.current_handle],
@@ -634,19 +681,28 @@ class iMessageUser:
             }
         )
 
-    def send(self, message: "iMessage"):
-        self._cache_keys(message.participants, "com.apple.madrid")
+    def send(self, message: Message):
+        # Check what type of message we are sending
+        for t, (topic, cls) in MESSAGE_TYPES.items():
+            if isinstance(message, cls):
+                break
+        else:
+            raise Exception("Unknown message type")
+        
+        send_to = message.participants if isinstance(message, iMessage) else [self.user.current_handle]
+
+        self._cache_keys(send_to, topic)
 
         self._send_raw(
-            100,
-            message.participants,
-            "com.apple.madrid",
+            t,
+            send_to,
+            topic,
             message.to_raw(),
             message.id,
             {
-                "E": "pair",
+                "E": "pair", # TODO: Do we need the nr field for SMS?
             }
-        )
+        ) 
 
         # Check for delivery
         count = 0
@@ -655,14 +711,14 @@ class iMessageUser:
         import time
         start = time.time()
 
-        for p in message.participants:
+        for p in send_to:
             for t in self.USER_CACHE[p]:
                 if t == self.connection.token:
                     continue
                 total += 1
 
         while count < total and time.time() - start < 2:
-            resp = self._receive_raw(255, "com.apple.madrid")
+            resp = self._receive_raw(255, topic)
             if resp is None:
                 continue
             count += 1
