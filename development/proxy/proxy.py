@@ -3,12 +3,16 @@
 import socket
 import sys
 import threading
-
 import tlslite
+import os
+from time import sleep
 
-# setting path
-sys.path.append("../")
-sys.path.append("../../")
+# setting path so we can import the needed packages
+sys.path.append(os.path.join(sys.path[0], "../"))
+sys.path.append(os.path.join(sys.path[0], "../../"))
+
+import printer
+import apns
 
 # APNs server to proxy traffic to
 APNS_HOST = "windows.courier.push.apple.com"
@@ -19,11 +23,16 @@ ALPN = b"apns-security-v3"
 
 global_cnt = 0
 
-
 # Connect to the APNs server
-def connect() -> tlslite.TLSConnection:
+def connect() -> tlslite.TLSConnection | None:
     # Connect to the APNs server
-    sock = socket.create_connection((APNS_HOST, APNS_PORT))
+    sock: socket.socket
+    # if we just can't connect rn, return nothing
+    try:
+        sock = socket.create_connection((APNS_HOST, APNS_PORT))
+    except Exception:
+        return None
+
     # Wrap the socket in TLS
     ssock = tlslite.TLSConnection(sock)
     # print("Handshaking with APNs")
@@ -42,25 +51,18 @@ def connect() -> tlslite.TLSConnection:
 
     return ssock
 
-
-cert: str = None
-key: str = None
-
-
-import printer
-
-import apns
+cert: str | None = None
+key: str | None = None
 
 outgoing_list = []
 incoming_list = []
 # last_outgoing = b""
 
-
-def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: str = ""):
+def proxy(incoming: tlslite.TLSConnection, outgoing: tlslite.TLSConnection, prefix: str = ""):
     try:
         while True:
             # Read data from the first connection
-            data = conn1.read()
+            data = incoming.read()
             # print(prefix, "data: ", data)
             # If there is no data, the connection has closed
             if not data:
@@ -68,31 +70,29 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
                 break
 
             try:
-                override = printer.pretty_print_payload(
-                    prefix, apns._deserialize_payload_from_buffer(data)
-                )
+                if deserialized_data := apns._deserialize_payload_from_buffer(data):
+                    override = printer.pretty_print_payload(prefix, deserialized_data)
 
-                if override is not None:
-                    data = override
-                    print("OVERRIDE: ", end="")
-                    printer.pretty_print_payload(
-                        prefix, apns._deserialize_payload_from_buffer(data)
-                    )
+                    if override is not None:
+                        data = override
+                        print("OVERRIDE: ", end="")
+                        if deserialized_override := apns._deserialize_payload_from_buffer(data):
+                            printer.pretty_print_payload(prefix, deserialized_override)
 
-                if "apsd -> APNs" in prefix:
-                    global outgoing_list
-                    outgoing_list.insert(0, data)
-                    if len(outgoing_list) > 100:
-                        outgoing_list.pop()
-                elif "APNs -> apsd" in prefix:
-                    global incoming_list
-                    incoming_list.insert(0, data)
-                    if len(incoming_list) > 100:
-                        incoming_list.pop()
+                    if "apsd -> APNs" in prefix:
+                        global outgoing_list
+                        outgoing_list.insert(0, data)
+                        if len(outgoing_list) > 100:
+                            outgoing_list.pop()
+                    elif "APNs -> apsd" in prefix:
+                        global incoming_list
+                        incoming_list.insert(0, data)
+                        if len(incoming_list) > 100:
+                            incoming_list.pop()
 
                 # print(prefix, data)
                 # Write the data to the second connection
-                conn2.write(data)
+                outgoing.write(data)
             except Exception as e:
                 print(e)  # Can't crash the proxy over parsing errors
 
@@ -106,8 +106,8 @@ def proxy(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection, prefix: st
         print(prefix, "Connection closed abruptly: ", e)
     print("Connection closed")
     # Close the connections
-    conn1.close()
-    conn2.close()
+    incoming.close()
+    outgoing.close()
 
 
 repl_lock = False
@@ -119,9 +119,12 @@ def repl(conn1: tlslite.TLSConnection, conn2: tlslite.TLSConnection):
         print("REPL already running")
         return
     repl_lock = True
-    import IPython
-
-    IPython.embed()
+    try:
+        import IPython
+        IPython.embed()
+    except Exception:
+        # don't care
+        pass
 
 
 def handle(conn: socket.socket):
@@ -140,7 +143,13 @@ def handle(conn: socket.socket):
 
     print("Handling connection")
     # Connect to the APNs server
-    apns = connect()
+    apns_try: tlslite.TLSConnection | None = connect()
+    while apns_try is None:
+        print("Couldn't connect to apns, trying again in a second...")
+        sleep(1)
+        apns_try = connect()
+
+    apns = apns_try
     print("Connected to APNs")
 
     threading.Thread(target=repl, args=(s_conn, apns)).start()
@@ -166,14 +175,16 @@ def serve():
 
     print("Listening for connections...")
 
+    parent_dir: str = os.path.dirname(os.path.realpath(__file__))
+
     # Handshake with the client
     # Read the certificate and private key from the config
-    with open("push_certificate_chain.pem", "r") as f:
+    with open(os.path.join(parent_dir, "push_certificate_chain.pem"), "r") as f:
         global cert
         cert = f.read()
 
     # NEED TO USE OPENSSL, SEE CORETRUST CMD, MIMIC ENTRUST? OR AT LEAST SEE PUSHPROXY FOR EXTRACTION & REPLACEMENT
-    with open("push_key.pem", "r") as f:
+    with open(os.path.join(parent_dir, "push_key.pem"), "r") as f:
         global key
         key = f.read()
 
