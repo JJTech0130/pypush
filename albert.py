@@ -43,9 +43,12 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
     return csr.public_bytes(serialization.Encoding.PEM).decode("utf-8")
 
 
-# Generates an APNs push certificate by talking to Albert
-# Returns [private key PEM, certificate PEM]
 def generate_push_cert() -> tuple[str, str]:
+    """
+    Generates an APNs push certificate by talking to Albert.
+    
+    Returns [private key PEM, certificate PEM]
+    """
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
     )

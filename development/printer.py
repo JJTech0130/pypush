@@ -176,11 +176,11 @@ def pretty_print_payload(
         )
     elif id == 0x1D or id == 0x20:
         print(
-            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub ??{bcolors.ENDC}"
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}PubSub {id}{bcolors.ENDC}"
         )
     elif id == 0xE:
         print(
-            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}Token Confirmation{bcolors.ENDC}"
+            f"{bcolors.OKGREEN}{prefix}{bcolors.ENDC}: {bcolors.WARNING}No Storage{bcolors.ENDC}"
         )
     elif id == 0xA:
         topic = ""
