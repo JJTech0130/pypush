@@ -12,8 +12,8 @@ from ._helpers import KeyPair, dearmour
 
 
 # TODO: Move this helper somewhere else
-def armour_cert(cert: bytes) -> str:
-    cert = x509.load_der_x509_certificate(cert)
+def armour_cert(c: bytes) -> str:
+    cert = x509.load_der_x509_certificate(c)
     return cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip()
 
 
