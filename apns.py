@@ -165,16 +165,23 @@ class APNSConnection:
         self._nursery = nursery
         self.credentials = credentials
 
-    async def connect(self):
-        """Connects to the APNs server and starts the keep alive and queue filler tasks"""
+    async def _connect_socket(self):
         sock = await trio.open_tcp_stream(COURIER_HOST, COURIER_PORT)
 
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+        context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
         context.set_alpn_protocols(["apns-security-v3"])
+        
+        # Turn off certificate verification, for the proxy
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
 
         self.sock = trio.SSLStream(sock, context, server_hostname=COURIER_HOST)
 
         await self.sock.do_handshake()
+
+    async def connect(self):
+        """Connects to the APNs server and starts the keep alive and queue filler tasks"""
+        await self._connect_socket()
 
         logger.info(f"Connected to APNs ({COURIER_HOST})")
 
