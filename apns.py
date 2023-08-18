@@ -215,7 +215,7 @@ class APNSConnection:
             ],
         )
 
-        if token is not None:
+        if token != b"":
             payload.fields.insert(0, APNSField(0x1, token))
 
         await self._send(payload)
@@ -338,12 +338,9 @@ class APNSPayload:
     async def read_from_stream(stream: trio.abc.Stream) -> APNSPayload:
         """Reads a payload from the given stream"""
         id = await stream.receive_some(1)
-        if id is None:
+        if id is None or id == b"":
             raise Exception("Unable to read payload id from stream")
         id = int.from_bytes(id, "big")
-
-        if id == 0x0:
-            raise Exception("Received id 0x0, which is not valid")
 
         length = await stream.receive_some(4)
         if length is None:
