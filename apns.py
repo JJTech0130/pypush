@@ -126,6 +126,12 @@ class APNSConnection:
 
             self._incoming_queue.append(payload)
 
+            # TODO: Hack: Send an ACK if this is a notification
+            # We do this because as of now pypush does not handle all incoming notifications
+            # and if you do not ACK a notification, APNs will keep resending it and eventually kill the connection
+            if payload.id == 0xA:
+                await self._send_ack(payload.fields_with_id(4)[0].value)
+
             # Signal to any waiting tasks that we have a new payload
             self._queue_park.set()
             self._queue_park = trio.Event()  # Reset the event
@@ -292,7 +298,7 @@ class APNSConnection:
             return True
 
         r = await self._receive(0xA, f)
-        await self._send_ack(r.fields_with_id(4)[0].value)
+        #await self._send_ack(r.fields_with_id(4)[0].value)
         return r
 
     async def set_state(self, state: int):

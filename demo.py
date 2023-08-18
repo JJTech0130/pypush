@@ -139,6 +139,7 @@ async def main():
 
         # Send a message to myself
         await im.send(imessage.iMessage.create(im, "Hello, world!", [user.current_handle]))
+        print(await im.receive())
 
 if __name__ == "__main__":
     import trio
