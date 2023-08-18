@@ -100,7 +100,11 @@ class APNSConnection:
         # Check if anything currently in the queue matches the id
         for payload in self._incoming_queue:
             if payload.id == id:
-                return payload
+                if filter is not None:
+                    if filter(payload):
+                        return payload
+                else:
+                    return payload
         while True:
             await self._queue_park.wait()  # Wait for a new payload to be added to the queue
             logger.debug(f"Woken by event, checking for {id}")
@@ -256,6 +260,7 @@ class APNSConnection:
 
     async def send_notification(self, topic: str, payload: bytes, id=None):
         """Sends a notification to the APNs server"""
+        logger.debug(f"Sending notification to topic {topic}")
         if id is None:
             id = random.randbytes(4)
 
@@ -280,7 +285,7 @@ class APNSConnection:
         """Waits for a notification to be received, and acks it"""
 
         def f(payload: APNSPayload):
-            if payload.fields_with_id(1)[0].value != sha1(topic.encode()).digest():
+            if payload.fields_with_id(2)[0].value != sha1(topic.encode()).digest():
                 return False
             if filter is not None:
                 return filter(payload)

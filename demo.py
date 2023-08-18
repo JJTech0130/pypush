@@ -23,15 +23,15 @@ logging.getLogger("py.warnings").setLevel(logging.ERROR)  # Ignore warnings from
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.DEBUG)
+logging.getLogger("apns").setLevel(logging.INFO)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.INFO)
-logging.getLogger("imessage").setLevel(logging.DEBUG)
+logging.getLogger("imessage").setLevel(logging.INFO)
 
 logging.captureWarnings(True)
 
-process = Popen(["git", "rev-parse", "HEAD"], stdout=PIPE)
+process = Popen(["git", "rev-parse", "HEAD"], stdout=PIPE) # type: ignore
 (commit_hash, err) = process.communicate()
 exit_code = process.wait()
 commit_hash = commit_hash.decode().strip()

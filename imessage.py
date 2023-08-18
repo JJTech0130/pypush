@@ -626,21 +626,19 @@ class iMessageUser:
 
         await self.connection.send_notification(topic, body, message_id)
 
-    async def _receive_raw(self, c: int, topic: str) -> dict | None:
+    async def _receive_raw(self, c: int, topic: str) -> dict:
         def check(payload: apns.APNSPayload):
             # Check if the "c" key matches
             body = payload.fields_with_id(3)[0].value
             if body is None:
                 return False
             body = plistlib.loads(body)
-            if not "c" in body or "c" != c:
+            if not "c" in body or body["c"] != c:
                 return False
             return True
         
         payload = await self.connection.expect_notification(topic, check)
 
-        if payload is None:
-            return None
         body = payload.fields_with_id(3)[0].value
         body = plistlib.loads(body)
         return body
@@ -713,8 +711,8 @@ class iMessageUser:
 
         while count < total and time.time() - start < 2:
             resp = await self._receive_raw(255, topic)
-            if resp is None:
-                continue
+            #if resp is None:
+            #    continue
             count += 1
 
             logger.debug(f"Received response : {resp}")

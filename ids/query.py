@@ -55,7 +55,6 @@ async def lookup(
         if body is None:
             return False
         body = plistlib.loads(body)
-        logging.warning(body.get('U'))
         return body.get('U') == msg_id
 
     payload = await conn.expect_notification(topic, check)
