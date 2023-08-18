@@ -215,7 +215,7 @@ class APNSConnection:
             ],
         )
 
-        if token != b"":
+        if token != b"" and token is not None:
             payload.fields.insert(0, APNSField(0x1, token))
 
         await self._send(payload)
@@ -225,7 +225,12 @@ class APNSConnection:
         if payload.fields_with_id(1)[0].value != b"\x00":
             raise Exception("Failed to connect")
 
-        new_token = payload.fields_with_id(3)[0].value
+        if len(payload.fields_with_id(3)) > 0:
+            new_token = payload.fields_with_id(3)[0].value
+        else:
+            if token is None:
+                raise Exception("No token received")
+            new_token = token
 
         logger.debug(
             f"Received connect response with token {b64encode(new_token).decode()}"
@@ -292,7 +297,7 @@ class APNSConnection:
             APNSPayload(
                 0x14,
                 [
-                    APNSField(1, state.to_bytes(4, "big")),
+                    APNSField(1, state.to_bytes(1, "big")),
                     APNSField(2, 0x7FFFFFFF.to_bytes(4, "big")),
                 ],
             )

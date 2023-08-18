@@ -17,27 +17,28 @@ class IDSIdentity:
     def __init__(self, signing_key: str | None = None, encryption_key: str | None = None, signing_public_key: str | None = None, encryption_public_key: str | None = None):
         if signing_key is not None:
             self.signing_key = signing_key
-            self.signing_public_key = serialize_key(parse_key(signing_key).public_key())
+            self.signing_public_key = serialize_key(parse_key(signing_key).public_key())# type: ignore
         elif signing_public_key is not None:
             self.signing_key = None
             self.signing_public_key = signing_public_key
         else:
             # Generate a new key
             self.signing_key = serialize_key(ec.generate_private_key(ec.SECP256R1()))
-            self.signing_public_key = serialize_key(parse_key(self.signing_key).public_key())
+            self.signing_public_key = serialize_key(parse_key(self.signing_key).public_key())# type: ignore
         
         if encryption_key is not None:
             self.encryption_key = encryption_key
-            self.encryption_public_key = serialize_key(parse_key(encryption_key).public_key())
+            self.encryption_public_key = serialize_key(parse_key(encryption_key).public_key())# type: ignore
         elif encryption_public_key is not None:
             self.encryption_key = None
             self.encryption_public_key = encryption_public_key
         else:
             self.encryption_key = serialize_key(rsa.generate_private_key(65537, 1280))
-            self.encryption_public_key = serialize_key(parse_key(self.encryption_key).public_key())
-        
-    def decode(input: bytes) -> 'IDSIdentity':
-        input = BytesIO(input)
+            self.encryption_public_key = serialize_key(parse_key(self.encryption_key).public_key())# type: ignore
+    
+    @staticmethod
+    def decode(inp: bytes) -> 'IDSIdentity':
+        input = BytesIO(inp)
 
         assert input.read(5) == b'\x30\x81\xF6\x81\x43' # DER header
         raw_ecdsa = input.read(67)
@@ -75,13 +76,13 @@ class IDSIdentity:
         raw_rsa.write(b'\x00\xAC')
         raw_rsa.write(b'\x30\x81\xA9')
         raw_rsa.write(b'\x02\x81\xA1')
-        raw_rsa.write(parse_key(self.encryption_public_key).public_numbers().n.to_bytes(161, "big"))
+        raw_rsa.write(parse_key(self.encryption_public_key).public_numbers().n.to_bytes(161, "big")) # type: ignore
         raw_rsa.write(b'\x02\x03\x01\x00\x01') # Hardcode the exponent
 
         output.write(b'\x30\x81\xF6\x81\x43')
         output.write(b'\x00\x41\x04')
-        output.write(parse_key(self.signing_public_key).public_numbers().x.to_bytes(32, "big"))
-        output.write(parse_key(self.signing_public_key).public_numbers().y.to_bytes(32, "big"))
+        output.write(parse_key(self.signing_public_key).public_numbers().x.to_bytes(32, "big"))# type: ignore
+        output.write(parse_key(self.signing_public_key).public_numbers().y.to_bytes(32, "big"))# type: ignore
 
         output.write(b'\x82\x81\xAE')
         output.write(raw_rsa.getvalue())

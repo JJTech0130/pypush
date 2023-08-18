@@ -18,8 +18,10 @@ from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
 import logging
 logger = logging.getLogger("ids")
 
+from typing import Any, Callable
 
-def _auth_token_request(username: str, password: str) -> any:
+
+def _auth_token_request(username: str, password: str) -> Any:
     # Turn the PET into an auth token
     data = {
         "username": username,
@@ -46,7 +48,7 @@ def _auth_token_request(username: str, password: str) -> any:
 # If factor_gen is not None, it will be called to get the 2FA code, otherwise it will be prompted
 # Returns (realm user id, auth token)
 def get_auth_token(
-    username: str, password: str, factor_gen: callable = None
+    username: str, password: str, factor_gen: Callable | None = None
 ) -> tuple[str, str]:
     from sys import platform
     
@@ -154,7 +156,7 @@ def get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
         "x-auth-user-id": user_id,
     }
     signing.add_auth_signature(
-        headers, None, BAG_KEY, auth_key, push_key, push_token
+        headers, b"", BAG_KEY, auth_key, push_key, push_token
     )
 
     r = requests.get(

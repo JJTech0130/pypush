@@ -23,11 +23,11 @@ logging.getLogger("py.warnings").setLevel(logging.ERROR)  # Ignore warnings from
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.INFO)
+logging.getLogger("apns").setLevel(logging.DEBUG)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.INFO)
-logging.getLogger("imessage").setLevel(logging.INFO)
+logging.getLogger("imessage").setLevel(logging.DEBUG)
 
 logging.captureWarnings(True)
 
@@ -65,13 +65,18 @@ async def main():
     except FileNotFoundError:
         CONFIG = {}
 
+    token = CONFIG.get("push", {}).get("token")
+    if token is not None:
+        token = b64decode(token)
+    else:
+        token = b""
+
     push_creds = apns.PushCredentials(
-        CONFIG.get("push", {}).get("key"), CONFIG.get("push", {}).get("cert"), CONFIG.get("push", {}).get("token")
-    )
+        CONFIG.get("push", {}).get("key", ""), CONFIG.get("push", {}).get("cert", ""), token)
 
     async with apns.APNSConnection.start(push_creds) as conn:
-        conn.set_state(1)
-        conn.filter(["com.apple.madrid"])
+        await conn.set_state(1)
+        await conn.filter(["com.apple.madrid"])
 
         user = ids.IDSUser(conn)
 
@@ -131,3 +136,10 @@ async def main():
             json.dump(CONFIG, f, indent=4)
 
         im = imessage.iMessageUser(conn, user)
+
+        # Send a message to myself
+        await im.send(imessage.iMessage.create(im, "Hello, world!", [user.current_handle]))
+
+if __name__ == "__main__":
+    import trio
+    trio.run(main)

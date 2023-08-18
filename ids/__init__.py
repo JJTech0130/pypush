@@ -3,12 +3,12 @@ from base64 import b64encode
 import apns
 
 from . import _helpers, identity, profile, query
-
+from typing import Callable, Any
 
 class IDSUser:
     # Sets self.user_id and self._auth_token
     def _authenticate_for_token(
-        self, username: str, password: str, factor_callback: callable = None
+        self, username: str, password: str, factor_callback: Callable | None = None
     ):
         self.user_id, self._auth_token = profile.get_auth_token(
             username, password, factor_callback
@@ -25,22 +25,22 @@ class IDSUser:
     ):
         self.push_connection = push_connection
         self._push_keypair = _helpers.KeyPair(
-            self.push_connection.private_key, self.push_connection.cert
+            self.push_connection.credentials.private_key, self.push_connection.credentials.cert
         )
 
         self.ec_key = self.rsa_key = None
 
     def __str__(self):
-        return f"IDSUser(user_id={self.user_id}, handles={self.handles}, push_token={b64encode(self.push_connection.token).decode()})"
+        return f"IDSUser(user_id={self.user_id}, handles={self.handles}, push_token={b64encode(self.push_connection.credentials.token).decode()})"
 
     # Authenticates with a username and password, to create a brand new authentication keypair
     def authenticate(
-        self, username: str, password: str, factor_callback: callable = None
+        self, username: str, password: str, factor_callback: Callable | None = None
     ):
         self._authenticate_for_token(username, password, factor_callback)
         self._authenticate_for_cert()
         self.handles = profile.get_handles(
-            b64encode(self.push_connection.token),
+            b64encode(self.push_connection.credentials.token),
             self.user_id,
             self._auth_keypair,
             self._push_keypair,
@@ -68,7 +68,7 @@ class IDSUser:
         
         
         cert = identity.register(
-            b64encode(self.push_connection.token),
+            b64encode(self.push_connection.credentials.token),
             self.handles,
             self.user_id,
             self._auth_keypair,
@@ -81,6 +81,6 @@ class IDSUser:
     def restore_identity(self, id_keypair: _helpers.KeyPair):
         self._id_keypair = id_keypair
 
-    def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> any:
-        return query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)
+    async def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> Any:
+        return await query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)
         
