@@ -30,6 +30,9 @@ def lookup(
         "x-id-self-uri": self_uri,
         "x-protocol-version": PROTOCOL_VERSION,
     }
+
+    if 'alloy' in topic:
+        headers["x-id-sub-service"] = topic # Hack, if it has alloy in the name it's probably a sub-service
     signing.add_id_signature(headers, body, BAG_KEY, id_keypair, push_token)
 
     msg_id = random.randbytes(16)

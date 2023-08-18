@@ -233,8 +233,13 @@ class APNSConnection:
 
         return new_token
 
+    old_topics = []
     async def filter(self, topics: list[str]):
         """Sends the APNs filter message"""
+        if topics == self.old_topics:
+            return
+        topics = list(set(topics + self.old_topics))
+        self.old_topics = topics
         logger.debug(f"Sending filter message with topics {topics}")
 
         payload = APNSPayload(9, [APNSField(1, self.credentials.token)])

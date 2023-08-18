@@ -1,9 +1,3 @@
-# LOW LEVEL imessage function, decryption etc
-# Don't handle APNS etc, accept it already setup
-
-## HAVE ANOTHER FILE TO SETUP EVERYTHING AUTOMATICALLY, etc
-# JSON parsing of keys, don't pass around strs??
-
 import base64
 import gzip
 import logging
@@ -53,15 +47,18 @@ class MMCSFile(AttachmentFile):
 
     def data(self) -> bytes:
         import requests
-        logger.info(requests.get(
-            url=self.url,
-            headers={
-                "User-Agent": f"IMTransferAgent/900 CFNetwork/596.2.3 Darwin/12.2.0 (x86_64) (Macmini5,1)",
-                # "MMCS-Url": self.url,
-                # "MMCS-Signature": str(base64.encodebytes(self.signature)),
-                # "MMCS-Owner": self.owner
-            },
-        ).headers)
+
+        logger.info(
+            requests.get(
+                url=self.url,
+                headers={
+                    "User-Agent": f"IMTransferAgent/900 CFNetwork/596.2.3 Darwin/12.2.0 (x86_64) (Macmini5,1)",
+                    # "MMCS-Url": self.url,
+                    # "MMCS-Signature": str(base64.encodebytes(self.signature)),
+                    # "MMCS-Owner": self.owner
+                },
+            ).headers
+        )
         return b""
 
 
@@ -80,148 +77,226 @@ class Attachment:
     versions: list[AttachmentFile]
 
     def __init__(self, message_raw_content: dict, xml_element: ElementTree.Element):
-        attrs = xml_element.attrib
+        attrib = xml_element.attrib
 
-        self.name = attrs["name"] if "name" in attrs else None
-        self.mime_type = attrs["mime-type"] if "mime-type" in attrs else None
+        self.name = attrib["name"] if "name" in attrib else None
+        self.mime_type = attrib["mime-type"] if "mime-type" in attrib else None
 
-        if "inline-attachment" in attrs:
+        if "inline-attachment" in attrib:
             # just grab the inline attachment !
-            self.versions = [InlineFile(message_raw_content[attrs["inline-attachment"]])]
+            self.versions = [
+                InlineFile(message_raw_content[attrib["inline-attachment"]])
+            ]
         else:
             # suffer
-            versions = []
-            for attribute in attrs:
-                if attribute.startswith("mmcs") or \
-                   attribute.startswith("decryption-key") or \
-                   attribute.startswith("file-size"):
-                    segments = attribute.split('-')
-                    if segments[-1].isnumeric():
-                        index = int(segments[-1])
-                        attribute_name = segments[:-1]
-                    else:
-                        index = 0
-                        attribute_name = attribute
 
-                    while index >= len(versions):
-                        versions.append(MMCSFile())
+            versions = [InlineFile(b"")]
 
-                    val = attrs[attribute_name]
-                    match attribute_name:
-                        case "mmcs-url":
-                            versions[index].url = val
-                        case "mmcs-owner":
-                            versions[index].owner = val
-                        case "mmcs-signature-hex":
-                            versions[index].signature = base64.b16decode(val)
-                        case "file-size":
-                            versions[index].size = int(val)
-                        case "decryption-key":
-                            versions[index].decryption_key = base64.b16decode(val)[1:]
+            print(attrib)
+            # for attribute in attrs:
+            #     if attribute.startswith("mmcs") or \
+            #        attribute.startswith("decryption-key") or \
+            #        attribute.startswith("file-size"):
+            #         segments = attribute.split('-')
+            #         if segments[-1].isnumeric():
+            #             index = int(segments[-1])
+            #             attribute_name = segments[:-1]
+            #         else:
+            #             index = 0
+            #             attribute_name = attribute
+
+            #         while index >= len(versions):
+            #             versions.append(MMCSFile())
+
+            #         val = attrs[attribute_name]
+            #         match attribute_name:
+            #             case "mmcs-url":
+            #                 versions[index].url = val
+            #             case "mmcs-owner":
+            #                 versions[index].owner = val
+            #             case "mmcs-signature-hex":
+            #                 versions[index].signature = base64.b16decode(val)
+            #             case "file-size":
+            #                 versions[index].size = int(val)
+            #             case "decryption-key":
+            #                 versions[index].decryption_key = base64.b16decode(val)[1:]
 
             self.versions = versions
 
     def __repr__(self):
         return f'<Attachment name="{self.name}" type="{self.mime_type}">'
 
+@dataclass
+class Message:
+    text: str
+    sender: str
+    participants: list[str]
+    id: uuid.UUID
+    _raw: dict | None = None
+    _compressed: bool = True
+    xml: str | None = None
+    
+    def from_raw(message: bytes, sender: str | None = None) -> "Message":
+        """Create a `Message` from raw message bytes"""
+
+        raise NotImplementedError()
+    
+    def __str__():
+        raise NotImplementedError()
 
 @dataclass
-class iMessage:
-    """Represents an iMessage"""
+class SMSReflectedMessage(Message):
+    def from_raw(message: bytes, sender: str | None = None) -> "SMSReflectedMessage":
+        """Create a `SMSReflectedMessage` from raw message bytes"""
 
-    text: str = ""
-    """Plain text of message, always required, may be an empty string"""
-    xml: str | None = None
-    """XML portion of message, may be None"""
-    participants: list[str] = field(default_factory=list)
-    """List of participants in the message, including the sender"""
-    sender: str | None = None
-    """Sender of the message"""
-    id: uuid.UUID | None = None
-    """ID of the message, will be randomly generated if not provided"""
-    group_id: uuid.UUID | None = None
-    """Group ID of the message, will be randomly generated if not provided"""
-    body: BalloonBody | None = None
-    """BalloonBody, may be None"""
-    effect: str | None = None
-    """iMessage effect sent with this message, may be None"""
-
-    _compressed: bool = True
-    """Internal property representing whether the message should be compressed"""
-
-    _raw: dict | None = None
-    """Internal property representing the original raw message, may be None"""
-
-    def attachments(self) -> list[Attachment]:
-        if self.xml is not None:
-            return [Attachment(self._raw, elem) for elem in ElementTree.fromstring(self.xml)[0] if elem.tag == "FILE"]
-        else:
-            return []
-
-    def sanity_check(self):
-        """Corrects any missing fields"""
-        if self.id is None:
-            self.id = uuid.uuid4()
-
-        if self.group_id is None:
-            self.group_id = uuid.uuid4()
-
-        if self.sender is None:
-            if len(self.participants) > 1:
-                self.sender = self.participants[-1]
-            else:
-                logger.warning(
-                    "Message has no sender, and only one participant, sanity check failed"
-                )
-                return False
-
-        if self.sender not in self.participants:
-            self.participants.append(self.sender)
-
-        if self.xml != None:
-            self._compressed = False  # XML is never compressed for some reason
-
-        return True
-
-    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
-        """Create an `iMessage` from raw message bytes"""
-        compressed = False
+        # Decompress the message
         try:
             message = gzip.decompress(message)
             compressed = True
         except:
-            pass
+            compressed = False
 
         message = plistlib.loads(message)
 
-        return iMessage(
-            text=message.get("t", ""),
-            xml=message.get("x"),
-            participants=message.get("p", []),
-            sender=sender if sender is not None else message.get("p", [])[-1] if "p" in message else None,
-            id=uuid.UUID(message.get("r")) if "r" in message else None,
-            group_id=uuid.UUID(message.get("gid")) if "gid" in message else None,
-            body=BalloonBody(message["bid"], message["b"]) if "bid" in message and "b" in message else None,
-            effect=message["iid"] if "iid" in message else None,
-            _compressed=compressed,
+        logger.info(f"Decoding SMSReflectedMessage: {message}")
+
+        return SMSReflectedMessage(
+            text=message["mD"]["plain-body"],
+            sender=sender,
+            participants=[re["id"] for re in message["re"]] + [sender],
+            id=uuid.UUID(message["mD"]["guid"]),
             _raw=message,
+            _compressed=compressed,
         )
 
     def to_raw(self) -> bytes:
+        #  {'re': [{'id': '+14155086773', 'uID': '4155086773', 'n': 'us'}], 'ic': 0, 'mD': {'handle': '+14155086773', 'guid': imessage.py:201
+        #            '35694E24-E265-4D5C-8CA7-9499E35D0402', 'replyToGUID': '4F9BC76B-B09C-2A60-B312-9029D529706B', 'plain-body': 'Test sms', 'service':                      
+        #            'SMS', 'sV': '1'}, 'fR': True, 'chat-style': 'im'}    
+        #pass
+        # Strip tel: from participants, making sure they are all phone numbers
+        #participants = [p.replace("tel:", "") for p in self.participants]
+
+        d = {
+            "re": [{"id": p} for p in self.participants],
+            "ic": 0,
+            "mD": {
+                "handle": self.participants[0] if len(self.participants) == 1 else None,
+                #"handle": self.sender,
+                "guid": str(self.id).upper(),
+                #"replyToGUID": "3B4B465F-F419-40FD-A8EF-94A110518E9F",
+                #"replyToGUID": str(self.id).upper(),
+                "xhtml": f"<html><body>{self.text}</body></html>",
+                "plain-body": self.text,
+                "service": "SMS",
+                "sV": "1",
+            },
+            #"fR": True,
+            "chat-style": "im" if len(self.participants) == 1 else "chat"
+        }
+
+        # Dump as plist
+        d = plistlib.dumps(d, fmt=plistlib.FMT_BINARY)
+
+        # Compress
+        if self._compressed:
+            d = gzip.compress(d, mtime=0)
+
+        return d
+
+    def __str__(self):
+        return f"[SMS {self.sender}] '{self.text}'"
+
+@dataclass
+class SMSIncomingMessage(Message):
+    def from_raw(message: bytes, sender: str | None = None) -> "SMSIncomingMessage":
+        """Create a `SMSIncomingMessage` from raw message bytes"""
+
+        # Decompress the message
+        try:
+            message = gzip.decompress(message)
+            compressed = True
+        except:
+            compressed = False
+
+        message = plistlib.loads(message)
+
+        logger.debug(f"Decoding SMSIncomingMessage: {message}")
+
+        return SMSIncomingMessage(
+            text=message["k"][0]["data"].decode(),
+            sender=message["h"], # Don't use sender parameter, that is the phone that forwarded the message
+            participants=[message["h"], message["co"]],
+            id=uuid.UUID(message["g"]),
+            _raw=message,
+            _compressed=compressed,
+        )
+
+    def __str__(self):
+        return f"[SMS {self.sender}] '{self.text}'"
+    
+@dataclass
+class SMSIncomingImage(Message):
+    def from_raw(message: bytes, sender: str | None = None) -> "SMSIncomingImage":
+        """Create a `SMSIncomingImage` from raw message bytes"""
+
+        # TODO: Implement this
+        return "SMSIncomingImage"    
+
+@dataclass
+class iMessage(Message):
+    effect: str | None = None
+
+    def create(user: "iMessageUser", text: str, participants: list[str]) -> "iMessage":
+        """Creates a basic outgoing `iMessage` from the given text and participants"""
+
+        sender = user.user.current_handle
+        participants += [sender]
+
+        return iMessage(
+            text=text,
+            sender=sender,
+            participants=participants,
+            id=uuid.uuid4(),
+        )
+    
+    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
+        """Create a `iMessage` from raw message bytes"""
+
+        # Decompress the message
+        try:
+            message = gzip.decompress(message)
+            compressed = True
+        except:
+            compressed = False
+
+        message = plistlib.loads(message)
+
+        logger.debug(f"Decoding iMessage: {message}")
+
+        return iMessage(
+            text=message["t"],
+            participants=message["p"],
+            sender=sender,
+            id=uuid.UUID(message["r"]) if "r" in message else None,
+            xml=message["x"] if "x" in message else None,
+            _raw=message,
+            _compressed=compressed,
+            effect=message["iid"] if "iid" in message else None,
+        )
+    
+    def to_raw(self) -> bytes:
         """Convert an `iMessage` to raw message bytes"""
-        if not self.sanity_check():
-            raise ValueError("Message failed sanity check")
 
         d = {
             "t": self.text,
             "x": self.xml,
             "p": self.participants,
             "r": str(self.id).upper(),
-            "gid": str(self.group_id).upper(),
             "pv": 0,
             "gv": "8",
             "v": "1",
-            "iid": self.effect
+            "iid": self.effect,
         }
 
         # Remove keys that are None
@@ -235,13 +310,25 @@ class iMessage:
             d = gzip.compress(d, mtime=0)
 
         return d
+    
+    def __str__(self):
+        return f"[iMessage {self.sender}] '{self.text}'"
 
-    def to_string(self) -> str:
-        message_str = f"[{self.sender}] '{self.text}'"
-        if self.effect is not None:
-            message_str += f" with effect [{self.effect}]"
-        return message_str
+MESSAGE_TYPES = {
+    100: ("com.apple.madrid", iMessage),
+    140: ("com.apple.private.alloy.sms", SMSIncomingMessage),
+    141: ("com.apple.private.alloy.sms", SMSIncomingImage),
+    143: ("com.apple.private.alloy.sms", SMSReflectedMessage),
+    144: ("com.apple.private.alloy.sms", SMSReflectedMessage),
+}
 
+def maybe_decompress(message: bytes) -> bytes:
+    """Decompresses a message if it is compressed, otherwise returns the original message"""
+    try:
+        message = gzip.decompress(message)
+    except:
+        pass
+    return message
 
 class iMessageUser:
     """Represents a logged in and connected iMessage user.
@@ -251,39 +338,11 @@ class iMessageUser:
         self.connection = connection
         self.user = user
 
-    def _get_raw_message(self):
-        """
-        Returns a raw APNs message corresponding to the next conforming notification in the queue
-        Returns None if no conforming notification is found
-        """
-
-        def check_response(x):
-            if x[0] != 0x0A:
-                return False
-            if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
-                return False
-            resp_body = apns._get_field(x[1], 3)
-            if resp_body is None:
-                # logger.debug("Rejecting madrid message with no body")
-                return False
-            resp_body = plistlib.loads(resp_body)
-            if "P" not in resp_body:
-                # logger.debug(f"Rejecting madrid message with no payload : {resp_body}")
-                return False
-            return True
-
-        payload = self.connection.incoming_queue.pop_find(check_response)
-        if payload is None:
-            return None
-        id = apns._get_field(payload[1], 4)
-
-        return payload
-
     def _parse_payload(payload: bytes) -> tuple[bytes, bytes]:
         payload = BytesIO(payload)
 
         tag = payload.read(1)
-        #print("TAG", tag)
+        # print("TAG", tag)
         body_length = int.from_bytes(payload.read(2), "big")
         body = payload.read(body_length)
 
@@ -398,13 +457,15 @@ class iMessageUser:
 
     def _verify_payload(self, payload: bytes, sender: str, sender_token: str) -> bool:
         # Get the public key for the sender
-        self._cache_keys([sender])
+        self._cache_keys([sender], "com.apple.madrid")
 
         if not sender_token in self.KEY_CACHE:
             logger.warning("Unable to find the public key of the sender, cannot verify")
             return False
 
-        identity_keys = ids.identity.IDSIdentity.decode(self.KEY_CACHE[sender_token][0])
+        identity_keys = ids.identity.IDSIdentity.decode(
+            self.KEY_CACHE[sender_token]["com.apple.madrid"][0]
+        )
         sender_ec_key = ids._helpers.parse_key(identity_keys.signing_public_key)
 
         payload = iMessageUser._parse_payload(payload)
@@ -420,44 +481,57 @@ class iMessageUser:
         except:
             return False
 
-    def receive(self) -> iMessage | None:
+    def receive(self) -> Message | None:
         """
         Will return the next iMessage in the queue, or None if there are no messages
         """
-        raw = self._get_raw_message()
-        if raw is None:
+        for type, (topic, cls) in MESSAGE_TYPES.items():
+            body = self._receive_raw(type, topic)
+            if body is not None:
+                t = cls
+                break
+        else:
             return None
-        body = apns._get_field(raw[1], 3)
-        body = plistlib.loads(body)
-        #print(f"Got body message {body}")
-        payload = body["P"]
+        
 
-        if not self._verify_payload(payload, body['sP'], body["t"]):
+        if not self._verify_payload(body["P"], body["sP"], body["t"]):
             raise Exception("Failed to verify payload")
-        
-        decrypted = self._decrypt_payload(payload)
-        
-        return iMessage.from_raw(decrypted, body['sP'])
+
+        logger.debug(f"Encrypted body : {body}")
+
+        decrypted = self._decrypt_payload(body["P"])
+
+        try:
+            return t.from_raw(decrypted, body["sP"])
+        except Exception as e:
+            logger.error(f"Failed to parse message : {e}")
+            return None
 
     KEY_CACHE_HANDLE: str = ""
-    KEY_CACHE: dict[bytes, tuple[bytes, bytes]] = {}
-    """Mapping of push token : (public key, session token)"""
+    KEY_CACHE: dict[bytes, dict[str, tuple[bytes, bytes]]] = {}
+    """Mapping of push token : topic : (public key, session token)"""
     USER_CACHE: dict[str, list[bytes]] = {}
     """Mapping of handle : [push tokens]"""
 
-    def _cache_keys(self, participants: list[str]):
+    def _cache_keys(self, participants: list[str], topic: str):
         # Clear the cache if the handle has changed
         if self.KEY_CACHE_HANDLE != self.user.current_handle:
             self.KEY_CACHE_HANDLE = self.user.current_handle
             self.KEY_CACHE = {}
             self.USER_CACHE = {}
-        
+
         # Check to see if we have cached the keys for all of the participants
-        if all([p in self.USER_CACHE for p in participants]):
-            return
+        #if all([p in self.USER_CACHE for p in participants]):
+        #    return
+        # TODO: This doesn't work since it doesn't check if they are cached for all topics
 
         # Look up the public keys for the participants, and cache a token : public key mapping
-        lookup = self.user.lookup(participants)
+        lookup = self.user.lookup(participants, topic=topic)
+
+        logger.debug(f"Lookup response : {lookup}")
+        for key, participant in lookup.items():
+            if len(participant["identities"]) == 0:
+                logger.warning(f"Participant {key} has no identities, this is probably not a real account")
 
         for key, participant in lookup.items():
             if not key in self.USER_CACHE:
@@ -477,88 +551,182 @@ class iMessageUser:
 
                 # print(identity)
 
-                self.KEY_CACHE[identity["push-token"]] = (
+                if not identity["push-token"] in self.KEY_CACHE:
+                    self.KEY_CACHE[identity["push-token"]] = {}
+
+                self.KEY_CACHE[identity["push-token"]][topic] = (
                     identity["client-data"]["public-message-identity-key"],
                     identity["session-token"],
                 )
 
-    def send(self, message: iMessage):
-        # Set the sender, if it isn't already
-        if message.sender is None:
-            message.sender = self.user.handles[0]  # TODO : Which handle to use?
+    def _send_raw(
+        self,
+        type: int,
+        participants: list[str],
+        topic: str,
+        payload: bytes | None = None,
+        id: uuid.UUID | None = None,
+        extra: dict = {},
+    ):
+        self._cache_keys(participants, topic)
 
-        message.sanity_check() # Sanity check MUST be called before caching keys, so that the sender is added to the list of participants
-        self._cache_keys(message.participants)
-
-        # Turn the message into a raw message
-        raw = message.to_raw()
-        import base64
-
-        bundled_payloads = []
-        for participant in message.participants:
+        dtl = []
+        for participant in participants:
             for push_token in self.USER_CACHE[participant]:
                 if push_token == self.connection.token:
-                    continue # Don't send to ourselves
+                    continue  # Don't send to ourselves
 
                 identity_keys = ids.identity.IDSIdentity.decode(
-                    self.KEY_CACHE[push_token][0]
-                )
-                payload = self._encrypt_sign_payload(identity_keys, raw)
-
-                bundled_payloads.append(
-                    {
-                        "tP": participant,
-                        "D": not participant
-                        == message.sender,  # TODO: Should this be false sometimes? For self messages?
-                        "sT": self.KEY_CACHE[push_token][1],
-                        "P": payload,
-                        "t": push_token,
-                    }
+                    self.KEY_CACHE[push_token][topic][0]
                 )
 
-        msg_id = random.randbytes(4)
+                p = {
+                    "tP": participant,
+                    "D": not participant == self.user.current_handle,
+                    "sT": self.KEY_CACHE[push_token][topic][1],
+                    "t": push_token,
+                }
+
+                if payload is not None:
+                    p["P"] = self._encrypt_sign_payload(identity_keys, payload)
+
+                logger.debug(f"Encoded payload : {p}")
+
+                dtl.append(p)
+
+        message_id = random.randbytes(4)
+
+        if id is None:
+            id = uuid.uuid4()
+
         body = {
+            "c": type,
             "fcn": 1,
-            "c": 100,
-            "E": "pair",
-            "ua": "[macOS,13.4.1,22F82,MacBookPro18,3]",
             "v": 8,
-            "i": int.from_bytes(msg_id, "big"),
-            "U": message.id.bytes,
-            "dtl": bundled_payloads,
-            "sP": message.sender,
+            "i": int.from_bytes(message_id, "big"),
+            "U": id.bytes,
+            "dtl": dtl,
+            "sP": self.user.current_handle,
         }
+
+        body.update(extra)
 
         body = plistlib.dumps(body, fmt=plistlib.FMT_BINARY)
 
-        self.connection.send_message("com.apple.madrid", body, msg_id)
+        self.connection.send_message(topic, body, message_id)
 
-        # This code can check to make sure we got a success response, but waiting for the response is annoying,
-        # so for now we just YOLO it and assume it worked
+    def _receive_raw(self, c: int | list[int], topic: str | list[str]) -> dict | None:
+        def check_response(x):
+            if x[0] != 0x0A:
+                return False
+            # Check if it matches any of the topics
+            if isinstance(topic, list):
+                for t in topic:
+                    if apns._get_field(x[1], 2) == sha1(t.encode()).digest():
+                        break
+                else:
+                    return False
+            else:
+                if apns._get_field(x[1], 2) != sha1(topic.encode()).digest():
+                    return False
+                
+            resp_body = apns._get_field(x[1], 3)
+            if resp_body is None:
+                return False
+            resp_body = plistlib.loads(resp_body)
 
-        # def check_response(x):
-        #     if x[0] != 0x0A:
-        #         return False
-        #     if apns._get_field(x[1], 2) != sha1("com.apple.madrid".encode()).digest():
-        #         return False
-        #     resp_body = apns._get_field(x[1], 3)
-        #     if resp_body is None:
-        #         return False
-        #     resp_body = plistlib.loads(resp_body)
-        #     if "c" not in resp_body or resp_body["c"] != 255:
-        #         return False
-        #     return True
+            #logger.info(f"See type {resp_body['c']}")
+
+            if isinstance(c, list):
+                if not resp_body["c"] in c:
+                    return False
+            elif resp_body["c"] != c:
+                return False
+            return True
+
+        payload = self.connection.incoming_queue.pop_find(check_response)
+        if payload is None:
+            return None
+        body = apns._get_field(payload[1], 3)
+        body = plistlib.loads(body)
+        return body
+
+    def activate_sms(self) -> bool:
+        """
+        Try to activate SMS forwarding
+        Returns True if we are able to perform SMS forwarding, False otherwise
+        Call repeatedly until it returns True
+        """
+
+        act_message = self._receive_raw(145, "com.apple.private.alloy.sms")
+        if act_message is None:
+            return False
         
+        logger.info(f"Received SMS activation message : {act_message}")
+        # Decrypt the payload
+        act_message = self._decrypt_payload(act_message["P"])
+        act_message = plistlib.loads(maybe_decompress(act_message))
 
-        # num_recv = 0
-        # while True:
-        #     if num_recv == len(bundled_payloads):
-        #         break
-        #     payload = self.connection.incoming_queue.wait_pop_find(check_response)
-        #     if payload is None:
-        #         continue
+        if act_message == {'wc': False, 'ar': True}:
+            logger.info("SMS forwarding activated, sending response")
+        else:
+            logger.info("SMS forwarding de-activated, sending response")
+        
+        self._send_raw(
+            147,
+            [self.user.current_handle],
+            "com.apple.private.alloy.sms",
+            extra={
+                "nr": 1
+            }
+        )
 
-        #     resp_body = apns._get_field(payload[1], 3)
-        #     resp_body = plistlib.loads(resp_body)
-        #     logger.error(resp_body)
-        #     num_recv += 1
+    def send(self, message: Message):
+        # Check what type of message we are sending
+        for t, (topic, cls) in MESSAGE_TYPES.items():
+            if isinstance(message, cls):
+                break
+        else:
+            raise Exception("Unknown message type")
+        
+        send_to = message.participants if isinstance(message, iMessage) else [self.user.current_handle]
+
+        self._cache_keys(send_to, topic)
+
+        self._send_raw(
+            t,
+            send_to,
+            topic,
+            message.to_raw(),
+            message.id,
+            {
+                "E": "pair", # TODO: Do we need the nr field for SMS?
+            }
+        ) 
+
+        # Check for delivery
+        count = 0
+        total = 0
+
+        import time
+        start = time.time()
+
+        for p in send_to:
+            for t in self.USER_CACHE[p]:
+                if t == self.connection.token:
+                    continue
+                total += 1
+
+        while count < total and time.time() - start < 2:
+            resp = self._receive_raw(255, topic)
+            if resp is None:
+                continue
+            count += 1
+
+            logger.debug(f"Received response : {resp}")
+
+            if resp["s"] != 0:
+                logger.warning(f"Message delivery to {base64.b64encode(resp['t']).decode()} failed : {resp['s']}")
+
+        if count < total:
+            logger.error(f"Unable to deliver message to all devices (got {count} of {total})")

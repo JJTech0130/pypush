@@ -93,16 +93,24 @@ def register(
 ):
     logger.debug(f"Registering IDS identity for {handles}")
     uris = [{"uri": handle} for handle in handles]
-
+    import uuid
     body = {
+        "device-name": "pypush",
         "hardware-version": "MacBookPro18,3",
         "language": "en-US",
         "os-version": "macOS,13.2.1,22D68",
         "software-version": "22D68",
+        "private-device-data": {
+            "u": uuid.uuid4().hex.upper(),
+        },
         "services": [
             {
-                "capabilities": [{"flags": 17, "name": "Messenger", "version": 1}],
+                "capabilities": [{"flags": 1, "name": "Messenger", "version": 1}],
                 "service": "com.apple.madrid",
+                "sub-services": ["com.apple.private.alloy.sms",
+                                 "com.apple.private.alloy.gelato",
+                                 "com.apple.private.alloy.biz",
+                                 "com.apple.private.alloy.gamecenter.imessage"],
                 "users": [
                     {
                         "client-data": {
