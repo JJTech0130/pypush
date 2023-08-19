@@ -163,3 +163,7 @@ cython_debug/
 .idea/
 
 attachments/
+
+proxy/hosts.proxy
+proxy/lldb_commands.txt
+proxy/imessage_proxy.pac

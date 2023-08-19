@@ -24,7 +24,7 @@ def parse_key(key: str):
     else:
         return serialization.load_pem_private_key(key.encode(), None)
 
-def serialize_key(key):
+def serialize_key(key) -> str:
     if isinstance(key, ec.EllipticCurvePrivateKey) or isinstance(key, rsa.RSAPrivateKey):
         return key.private_bytes(
             encoding=serialization.Encoding.PEM,

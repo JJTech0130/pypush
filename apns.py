@@ -21,7 +21,10 @@ import bags
 logger = logging.getLogger("apns")
 
 # Pick a random courier server from 01 to APNSCourierHostcount
-COURIER_HOST = f"{random.randint(1, bags.apns_init_bag()['APNSCourierHostcount'])}-{bags.apns_init_bag()['APNSCourierHostname']}"
+try:
+    COURIER_HOST = f"{random.randint(1, bags.apns_init_bag()['APNSCourierHostcount'])}-{bags.apns_init_bag()['APNSCourierHostname']}"
+except:
+    COURIER_HOST = "01-courier.push.apple.com"
 COURIER_PORT = 5223
 ALPN = [b"apns-security-v3"]
 

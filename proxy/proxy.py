@@ -1,17 +1,21 @@
+import os
 import sys
-sys.path.append("../")
-sys.path.append("../../")
 
-import apns
-import trio
-import ssl
+# setting path so we can import the needed packages
+sys.path.append(os.path.join(sys.path[0], "../"))
+sys.path.append(os.path.join(sys.path[0], "../../"))
 
-import logging
-from rich.logging import RichHandler
-from hashlib import sha1
-import plistlib
 import gzip
+import logging
+import plistlib
+import ssl
+from hashlib import sha1
 
+import trio
+from rich.logging import RichHandler
+
+import printer
+import apns
 
 logging.basicConfig(
     level=logging.NOTSET,
@@ -26,7 +30,8 @@ async def main():
     context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
     context.set_alpn_protocols(["apns-security-v3"])
     # Set the certificate and private key
-    context.load_cert_chain("push_certificate_chain.pem", "push_key.pem")
+    parent_dir: str = os.path.dirname(os.path.realpath(__file__))
+    context.load_cert_chain(os.path.join(parent_dir, "push_certificate_chain.pem"), os.path.join(parent_dir, "push_key.pem"))
     
     await trio.serve_ssl_over_tcp(handle_proxy, 5223, context)
 
@@ -43,13 +48,22 @@ class APNSProxy:
         self.client = client
 
     async def start(self):
+        logging.info("Starting proxy...")
         async with trio.open_nursery() as nursery:
-            apns_server = apns.APNSConnection(nursery)
-            await apns_server._connect_socket()
-            self.server = apns_server.sock
+            while True:
+                try:
+                    apns_server = apns.APNSConnection(nursery)
+                    await apns_server._connect_socket()
+                    self.server = apns_server.sock
 
-            nursery.start_soon(self.proxy, True)
-            nursery.start_soon(self.proxy, False)
+                    nursery.start_soon(self.proxy, True)
+                    nursery.start_soon(self.proxy, False)
+
+                    break # Will only happen if there is no exception
+                except Exception:
+                    logging.error("Unable to start proxy, trying again...")
+                    await trio.sleep(1)
+
     
 
     async def proxy(self, to_server: bool):
@@ -66,7 +80,6 @@ class APNSProxy:
             await payload.write_to_stream(to_stream)
 
     def log(self, payload: apns.APNSPayload, to_server: bool):
-        import printer
         printer.print_payload(payload, to_server)
         # if to_server:
         #     logging.info(f"-> {payload}")
