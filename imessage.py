@@ -261,7 +261,8 @@ class iMessage(Message):
         """Creates a basic outgoing `iMessage` from the given text and participants"""
 
         sender = user.user.current_handle
-        participants += [sender]
+        if sender not in participants:
+            participants += [sender]
 
         return iMessage(
             text=text,
@@ -492,18 +493,12 @@ class iMessageUser:
         except:
             return False
 
-    async def receive(self) -> Message | None:
+    async def receive(self) -> Message:
         """
         Will return the next iMessage in the queue, or None if there are no messages
         """
-        for type, (topic, cls) in MESSAGE_TYPES.items():
-            body = await self._receive_raw(type, topic)
-            if body is not None:
-                t = cls
-                break
-        else:
-            return None
-        
+        body = await self._receive_raw([t for t, _ in MESSAGE_TYPES.items()], [t[0] for _, t in MESSAGE_TYPES.items()])
+        t = MESSAGE_TYPES[body["c"]][1]   
 
         if not await self._verify_payload(body["P"], body["sP"], body["t"]):
             raise Exception("Failed to verify payload")
@@ -516,7 +511,7 @@ class iMessageUser:
             return t.from_raw(decrypted, body["sP"])
         except Exception as e:
             logger.error(f"Failed to parse message : {e}")
-            return None
+            return Message(text="Failed to parse message", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
 
     KEY_CACHE_HANDLE: str = ""
     KEY_CACHE: dict[bytes, dict[str, tuple[bytes, bytes]]] = {}
@@ -545,8 +540,7 @@ class iMessageUser:
                 logger.warning(f"Participant {key} has no identities, this is probably not a real account")
 
         for key, participant in lookup.items():
-            if not key in self.USER_CACHE:
-                self.USER_CACHE[key] = []
+            self.USER_CACHE[key] = [] # Clear so that we don't keep appending multiple times
 
             for identity in participant["identities"]:
                 if not "client-data" in identity:
@@ -626,18 +620,22 @@ class iMessageUser:
 
         await self.connection.send_notification(topic, body, message_id)
 
-    async def _receive_raw(self, c: int, topic: str) -> dict:
+    async def _receive_raw(self, c: int | list[int], topics: str | list[str]) -> dict:
         def check(payload: apns.APNSPayload):
             # Check if the "c" key matches
             body = payload.fields_with_id(3)[0].value
             if body is None:
                 return False
             body = plistlib.loads(body)
-            if not "c" in body or body["c"] != c:
+            if not "c" in body:
+                return False
+            if isinstance(c, int) and body["c"] != c:
+                return False
+            elif isinstance(c, list) and body["c"] not in c:
                 return False
             return True
         
-        payload = await self.connection.expect_notification(topic, check)
+        payload = await self.connection.expect_notification(topics, check)
 
         body = payload.fields_with_id(3)[0].value
         body = plistlib.loads(body)

@@ -21,7 +21,7 @@ logging.basicConfig(
 )
 
 async def main():
-    apns.COURIER_HOST = "windows.courier.push.apple.com"
+    apns.COURIER_HOST = "windows.courier.push.apple.com" # Use windows courier so that /etc/hosts override doesn't affect it
 
     context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
     context.set_alpn_protocols(["apns-security-v3"])
@@ -72,8 +72,8 @@ class APNSProxy:
             logging.info(f"<- {payload}")
         
     def tamper(self, payload: apns.APNSPayload, to_server) -> apns.APNSPayload:
-        if not to_server:
-            payload = self.tamper_lookup_keys(payload)
+        #if not to_server:
+        #    payload = self.tamper_lookup_keys(payload)
 
         return payload
 

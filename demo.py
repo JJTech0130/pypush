@@ -13,6 +13,8 @@ import apns
 import ids
 import imessage
 
+import trio
+
 logging.basicConfig(
     level=logging.NOTSET, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
 )
@@ -58,13 +60,6 @@ def safe_b64decode(s):
         return None
 
 async def main():
-    # Try and load config.json
-    try:
-        with open("config.json", "r") as f:
-            CONFIG = json.load(f)
-    except FileNotFoundError:
-        CONFIG = {}
-
     token = CONFIG.get("push", {}).get("token")
     if token is not None:
         token = b64decode(token)
@@ -138,9 +133,21 @@ async def main():
         im = imessage.iMessageUser(conn, user)
 
         # Send a message to myself
-        await im.send(imessage.iMessage.create(im, "Hello, world!", [user.current_handle]))
-        print(await im.receive())
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(input_task, im)
+            nursery.start_soon(output_task, im)
+
+async def input_task(im: imessage.iMessageUser):
+    while True:
+        cmd = await trio.to_thread.run_sync(input, "> ", cancellable=True)
+        if cmd != "":
+            await im.send(imessage.iMessage.create(im, cmd, [im.user.current_handle]))
+
+async def output_task(im: imessage.iMessageUser):
+    while True:
+        msg = await im.receive()
+        print(str(msg))
+
 
 if __name__ == "__main__":
-    import trio
     trio.run(main)

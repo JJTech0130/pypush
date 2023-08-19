@@ -109,6 +109,8 @@ class APNSConnection:
             await self._queue_park.wait()  # Wait for a new payload to be added to the queue
             logger.debug(f"Woken by event, checking for {id}")
             # Check if the new payload matches the id
+            if len(self._incoming_queue) == 0:
+                continue # all payloads have been removed by someone else
             if self._incoming_queue[-1].id != id:
                 continue
             if filter is not None:
@@ -294,11 +296,16 @@ class APNSConnection:
 
         # TODO: Check ACK code
 
-    async def expect_notification(self, topic: str, filter: Callable | None = None):
+    async def expect_notification(self, topics: str | list[str], filter: Callable | None = None):
         """Waits for a notification to be received, and acks it"""
 
+        if isinstance(topics, list):
+            topic_hashes = [sha1(topic.encode()).digest() for topic in topics]
+        else:
+            topic_hashes = [sha1(topics.encode()).digest()]
+
         def f(payload: APNSPayload):
-            if payload.fields_with_id(2)[0].value != sha1(topic.encode()).digest():
+            if payload.fields_with_id(2)[0].value not in topic_hashes:
                 return False
             if filter is not None:
                 return filter(payload)
