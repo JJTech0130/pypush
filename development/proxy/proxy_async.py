@@ -8,6 +8,10 @@ import ssl
 
 import logging
 from rich.logging import RichHandler
+from hashlib import sha1
+import plistlib
+import gzip
+
 
 logging.basicConfig(
     level=logging.NOTSET,
@@ -27,31 +31,76 @@ async def main():
     await trio.serve_ssl_over_tcp(handle_proxy, 5223, context)
 
 async def handle_proxy(stream: trio.SocketStream):
-    # Create an APNS connection
-    # Create 2 tasks, one to read from the client and write to the server, and one to read from the server and write to the client
     try:
+        p = APNSProxy(stream)
+        await p.start()
+    except Exception as e:
+        logging.error("APNSProxy instance encountered exception: " + str(e))
+        #raise e
+
+class APNSProxy:
+    def __init__(self, client: trio.SocketStream):
+        self.client = client
+
+    async def start(self):
         async with trio.open_nursery() as nursery:
             apns_server = apns.APNSConnection(nursery)
             await apns_server._connect_socket()
-            server = apns_server.sock
+            self.server = apns_server.sock
 
-            nursery.start_soon(read_from_client, stream, server)
-            nursery.start_soon(read_from_server, stream, server)
-    except Exception as e:
-        logging.error(e)
+            nursery.start_soon(self.proxy, True)
+            nursery.start_soon(self.proxy, False)
+    
 
-async def read_from_client(client: trio.SocketStream, server: trio.SocketStream):
-    while True:
-        payload = await apns.APNSPayload.read_from_stream(client)
-        logging.debug(payload)
-        await payload.write_to_stream(server)
+    async def proxy(self, to_server: bool):
+        if to_server:
+            from_stream = self.client
+            to_stream = self.server
+        else:
+            from_stream = self.server
+            to_stream = self.client
+        while True:
+            payload = await apns.APNSPayload.read_from_stream(from_stream)
+            payload = self.tamper(payload, to_server)
+            self.log(payload, to_server)
+            await payload.write_to_stream(to_stream)
 
+    def log(self, payload: apns.APNSPayload, to_server: bool):
+        if to_server:
+            logging.info(f"-> {payload}")
+        else:
+            logging.info(f"<- {payload}")
+        
+    def tamper(self, payload: apns.APNSPayload, to_server) -> apns.APNSPayload:
+        if not to_server:
+            payload = self.tamper_lookup_keys(payload)
 
-async def read_from_server(client: trio.SocketStream, server: trio.SocketStream):
-    while True:
-        payload = await apns.APNSPayload.read_from_stream(server)
-        logging.debug(payload)
-        await payload.write_to_stream(client)
+        return payload
+
+    def tamper_lookup_keys(self, payload: apns.APNSPayload) -> apns.APNSPayload:
+        if payload.id == 0xA: # Notification
+            if payload.fields_with_id(2)[0].value == sha1(b"com.apple.madrid").digest(): # Topic
+                if payload.fields_with_id(3)[0].value is not None: # Body
+                    body = payload.fields_with_id(3)[0].value
+                    body = plistlib.loads(body)
+                    if body['c'] == 97: # Lookup response
+                        resp = gzip.decompress(body["b"]) # HTTP body
+                        resp = plistlib.loads(resp)
+
+                        # Replace public keys
+                        for r in resp["results"].keys():
+                            for i in range(len(resp["results"][r]["identities"])):
+                                if "client-data" in resp["results"][r]["identities"][i]:
+                                    resp["results"][r]["identities"][i]["client-data"]["public-message-identity-key"] = b"REDACTED"
+                        
+                        resp = gzip.compress(plistlib.dumps(resp, fmt=plistlib.FMT_BINARY), mtime=0)
+                        body["b"] = resp
+                    body = plistlib.dumps(body, fmt=plistlib.FMT_BINARY)
+                    for f in range(len(payload.fields)):
+                        if payload.fields[f].id == 3:
+                            payload.fields[f].value = body
+                            break
+        return payload
 
 if __name__ == "__main__":
     trio.run(main)
