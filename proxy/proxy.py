@@ -66,10 +66,12 @@ class APNSProxy:
             await payload.write_to_stream(to_stream)
 
     def log(self, payload: apns.APNSPayload, to_server: bool):
-        if to_server:
-            logging.info(f"-> {payload}")
-        else:
-            logging.info(f"<- {payload}")
+        import printer
+        printer.print_payload(payload, to_server)
+        # if to_server:
+        #     logging.info(f"-> {payload}")
+        # else:
+        #     logging.info(f"<- {payload}")
         
     def tamper(self, payload: apns.APNSPayload, to_server) -> apns.APNSPayload:
         #if not to_server:
