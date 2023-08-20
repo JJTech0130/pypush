@@ -95,8 +95,7 @@ class APNSProxy:
     def tamper_lookup_keys(self, payload: apns.APNSPayload) -> apns.APNSPayload:
         if payload.id == 0xA: # Notification
             if payload.fields_with_id(2)[0].value == sha1(b"com.apple.madrid").digest(): # Topic
-                if payload.fields_with_id(3)[0].value is not None: # Body
-                    body = payload.fields_with_id(3)[0].value
+                if body := payload.fields_with_id(3)[0].value is not None:
                     body = plistlib.loads(body)
                     if body['c'] == 97: # Lookup response
                         resp = gzip.decompress(body["b"]) # HTTP body
