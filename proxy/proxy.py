@@ -103,9 +103,9 @@ class APNSProxy:
 
                         # Replace public keys
                         for r in resp["results"].keys():
-                            for i in range(len(resp["results"][r]["identities"])):
-                                if "client-data" in resp["results"][r]["identities"][i]:
-                                    resp["results"][r]["identities"][i]["client-data"]["public-message-identity-key"] = b"REDACTED"
+                            for identity in resp["results"][r]["identities"]:
+                                if "client-data" in identity:
+                                    identity["client-data"]["public-message-identity-key"] = b"REDACTED"
                         
                         resp = gzip.compress(plistlib.dumps(resp, fmt=plistlib.FMT_BINARY), mtime=0)
                         body["b"] = resp
