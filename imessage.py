@@ -129,12 +129,19 @@ class Attachment:
 @dataclass
 class Message:
     text: str
+    """Plain text of message, always required, may be an empty string"""
     sender: str
+    """Sender of the message"""
     participants: list[str]
+    """List of participants in the message, including the sender"""
     id: uuid.UUID
+    """ID of the message, will be randomly generated if not provided"""
     _raw: dict | None = None
+    """Internal property representing the original raw message, may be None"""
     _compressed: bool = True
+    """Internal property representing whether the message should be compressed"""
     xml: str | None = None
+    """XML portion of message, may be None"""
     
     @staticmethod
     def from_raw(message: bytes, sender: str | None = None) -> "Message":
