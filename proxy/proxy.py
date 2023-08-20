@@ -110,9 +110,9 @@ class APNSProxy:
                         resp = gzip.compress(plistlib.dumps(resp, fmt=plistlib.FMT_BINARY), mtime=0)
                         body["b"] = resp
                     body = plistlib.dumps(body, fmt=plistlib.FMT_BINARY)
-                    for f in range(len(payload.fields)):
-                        if payload.fields[f].id == 3:
-                            payload.fields[f].value = body
+                    for field in payload.fields:
+                        if field.id == 3:
+                            field.value = body
                             break
         return payload
 
