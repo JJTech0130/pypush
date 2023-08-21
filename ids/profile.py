@@ -86,14 +86,15 @@ def get_auth_token(
     logger.debug(f"Got auth token for IDS: {auth_token}")
     return realm_user_id, auth_token
 
+from hashlib import sha1
 
-def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
+def _generate_csr(private_key: rsa.RSAPrivateKey, user_id: str) -> str:
     csr = (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
             x509.Name(
                 [
-                    x509.NameAttribute(NameOID.COMMON_NAME, random.randbytes(20).hex()),
+                    x509.NameAttribute(NameOID.COMMON_NAME, sha1(user_id.encode()).hexdigest()),
                 ]
             )
         )
@@ -108,24 +109,21 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
     )
 
 
-# Gets an IDS auth cert for the given user id and auth token
 # Returns [private key PEM, certificate PEM]
-def get_auth_cert(user_id, token) -> KeyPair:
-    BAG_KEY = "id-authenticate-ds-id"
-
+def _authenticate_with_data(auth_data, endpoint_key, user_id) -> KeyPair:
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
     )
     body = {
-        "authentication-data": {"auth-token": token},
-        "csr": b64decode(_generate_csr(private_key)),
+        "authentication-data": auth_data,
+        "csr": b64decode(_generate_csr(private_key, user_id)),
         "realm-user-id": user_id,
     }
 
     body = plistlib.dumps(body)
 
     r = requests.post(
-        bags.ids_bag()[BAG_KEY],
+        bags.ids_bag()[endpoint_key],
         #"https://profile.ess.apple.com/WebObjects/VCProfileService.woa/wa/authenticateDS",
         data=body,
         headers={"x-protocol-version": "1630"},
@@ -145,6 +143,16 @@ def get_auth_cert(user_id, token) -> KeyPair:
         .decode("utf-8")
         .strip(),
         cert.public_bytes(serialization.Encoding.PEM).decode("utf-8").strip(),
+    )
+
+def get_auth_cert(user_id: str, auth_token: str) -> KeyPair:
+    return _authenticate_with_data({"auth-token": auth_token}, "id-authenticate-ds-id", user_id)
+
+def get_phone_cert(phone_number: str, push_token: bytes, phone_signatures: list[bytes]) -> KeyPair:
+    return _authenticate_with_data({"push-token": push_token,
+            "sigs": phone_signatures},
+        "id-authenticate-phone-number",
+        "P:" + phone_number,
     )
 
 
