@@ -808,7 +808,7 @@ class Parser():
             if cmd == 'SEGMENT' or cmd == 'SEGMENT_64':
                 #self.segments.append((offset, size, cmd, cmd_size))
                 #self.__macho['lcs'].append(
-                    
+
                 parsed = self.parse_segment(offset, size, cmd, cmd_size)
                 self.__macho['lcs'].append(parsed)
                 self.segments.append(parsed)

@@ -60,7 +60,7 @@ def get_auth_token(
             result = _auth_token_request(username, password)
             if result["status"] != 0:
                 raise Exception(f"Error: {result}")
-    
+
     auth_token = result["auth-token"]
     realm_user_id = result["profile-id"]
     # else:
@@ -146,7 +146,7 @@ def get_auth_cert(user_id, token) -> KeyPair:
     )
 
 
-def get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair):
+def get_handles(push_token, user_id: str, auth_key: KeyPair, push_key: KeyPair) -> list[str]:
     BAG_KEY = "id-get-handles"
 
     headers = {

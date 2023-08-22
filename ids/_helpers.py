@@ -36,4 +36,3 @@ def serialize_key(key) -> str:
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo,
         ).decode("utf-8").strip()
-    

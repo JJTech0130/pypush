@@ -46,7 +46,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
 def generate_push_cert() -> tuple[str, str]:
     """
     Generates an APNs push certificate by talking to Albert.
-    
+
     Returns [private key PEM, certificate PEM]
     """
     private_key = rsa.generate_private_key(
@@ -67,7 +67,7 @@ def generate_push_cert() -> tuple[str, str]:
     }
 
     logger.debug(f"Generated activation info (with UUID: {activation_info['UniqueDeviceID']})")
-    
+
     activation_info = plistlib.dumps(activation_info)
 
     # Load the private key

@@ -88,9 +88,19 @@ class APNSConnection:
 
     async def _send(self, payload: APNSPayload):
         """Sends a payload to the APNs server"""
-        await payload.write_to_stream(self.sock)
+        while True:
+            try:
+                await payload.write_to_stream(self.sock)
+                return
+            except trio.BusyResourceError:
+                print("Can't send payload, stream is busy; trying again in 0.2")
+                await trio.sleep(0.2)
+                continue
+            except Exception as e:
+                print(f"Can't send payload: {e}")
+                return
 
-    async def _receive(self, id: int, filter: Callable | None = None):
+    async def _receive(self, id: int, filter: Callable[[APNSPayload], bool] | None = None):
         """
         Waits for a payload with the given id to be added to the queue, then returns it.
         If filter is not None, it will be called with the payload as an argument, and if it returns False,
@@ -175,7 +185,7 @@ class APNSConnection:
 
         context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
         context.set_alpn_protocols(["apns-security-v3"])
-        
+
         # Turn off certificate verification, for the proxy
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
@@ -237,7 +247,7 @@ class APNSConnection:
             ],
         )
 
-        if token != b"" and token is not None:
+        if token:
             payload.fields.insert(0, APNSField(0x1, token))
 
         await self._send(payload)
@@ -315,7 +325,7 @@ class APNSConnection:
             return True
 
         r = await self._receive(0xA, f)
-        #await self._send_ack(r.fields_with_id(4)[0].value)
+        # await self._send_ack(r.fields_with_id(4)[0].value)
         return r
 
     async def set_state(self, state: int):
@@ -342,7 +352,7 @@ class APNSConnection:
                 APNSField(8, b"\x00"),
             ],
         )
-        await payload.write_to_stream(self.sock)
+        await self._send(payload)
 
 
 @dataclass
@@ -375,13 +385,11 @@ class APNSPayload:
     @staticmethod
     async def read_from_stream(stream: trio.abc.Stream) -> APNSPayload:
         """Reads a payload from the given stream"""
-        id = await stream.receive_some(1)
-        if id is None or id == b"":
+        if not (id_bytes := await stream.receive_some(1)):
             raise Exception("Unable to read payload id from stream")
-        id = int.from_bytes(id, "big")
+        id: int = int.from_bytes(id_bytes, "big")
 
-        length = await stream.receive_some(4)
-        if length is None:
+        if (length := await stream.receive_some(4)) is None:
             raise Exception("Unable to read payload length from stream")
         length = int.from_bytes(length, "big")
 

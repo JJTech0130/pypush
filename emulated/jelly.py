@@ -27,7 +27,7 @@ class VirtualInstructions:
         value = int.from_bytes(self.uc.mem_read(self.uc.reg_read(unicorn.x86_const.UC_X86_REG_ESP), 8), byteorder='little')
         self.uc.reg_write(unicorn.x86_const.UC_X86_REG_ESP, self.uc.reg_read(unicorn.x86_const.UC_X86_REG_ESP) + 8)
         return value
-    
+
     def _set_args(self, args: list[int]):
         for i in range(len(args)):
             if i < 6:
@@ -35,7 +35,6 @@ class VirtualInstructions:
             else:
                 self.push(args[i])
 
-    
     def call(self, address: int, args: list[int] = []):
         logger.debug(f"Calling {hex(address)} with args {args}")
         self.push(STOP_ADDRESS)
@@ -43,7 +42,6 @@ class VirtualInstructions:
         self.uc.emu_start(address, STOP_ADDRESS)
         return self.uc.reg_read(unicorn.x86_const.UC_X86_REG_RAX)
 
-        
 class Jelly:
     # Constants
     UC_ARCH = unicorn.UC_ARCH_X86
@@ -69,7 +67,7 @@ class Jelly:
     instr: VirtualInstructions = None
 
     uc: unicorn.Uc = None
-    
+
     # Private variables
     _binary: bytes = b""
 
@@ -92,10 +90,10 @@ class Jelly:
     def _setup_unicorn(self):
         self.uc = unicorn.Uc(self.UC_ARCH, self.UC_MODE)
 
-    def _setup_stack(self):   
+    def _setup_stack(self):
         self.uc.mem_map(self.STACK_BASE, self.STACK_SIZE)
         self.uc.mem_write(self.STACK_BASE, b"\x00" * self.STACK_SIZE)
-        
+
         self.uc.reg_write(unicorn.x86_const.UC_X86_REG_ESP, self.STACK_BASE + self.STACK_SIZE)
         self.uc.reg_write(unicorn.x86_const.UC_X86_REG_EBP, self.STACK_BASE + self.STACK_SIZE)
 
@@ -156,12 +154,12 @@ class Jelly:
             if addr == address:
                 logger.debug(f"{name}: ")
                 self._hooks[name](self)
-    
+
     def _setup_hooks(self):
         # Wrap all hooks
         for name, func in self._hooks.items():
             self._hooks[name] = self.wrap_hook(func)
-        
+
         self.uc.mem_map(self.HOOK_BASE, self.HOOK_SIZE)
         # Write 'ret' instruction to all hook addresses
         self.uc.mem_write(self.HOOK_BASE, b"\xc3" * self.HOOK_SIZE)
@@ -184,7 +182,7 @@ class Jelly:
         # Parse the binary so we can process binds
         p = macholibre.Parser(self._binary)
         p.parse()
-        
+
         for seg in p.segments:
             for section in seg['sects']:
                 if section['type'] == 'LAZY_SYMBOL_POINTERS' or section['type'] == 'NON_LAZY_SYMBOL_POINTERS':
@@ -202,11 +200,11 @@ class Jelly:
                 pass
         else:
             raise NotImplementedError(f"Unknown bind type {type}")
-        
+
     def _parse_lazy_binds(self, mu: unicorn.Uc, indirect_offset, section, dysimtab, strtab, symtab):
         logger.debug(f"Doing binds for {section['name']}")
-        for i in range(0, int(section['size']/8)):     
-            # Parse into proper list?   
+        for i in range(0, int(section['size']/8)):
+            # Parse into proper list?
             dysym = dysimtab[(indirect_offset + i)*4:(indirect_offset + i)*4+4]
             dysym = int.from_bytes(dysym, 'little')
             index = dysym & 0x3fffffff
@@ -218,7 +216,7 @@ class Jelly:
             name = c_string(strtab, strx) # Remove _ at beginning
             #print(f"Lazy bind for {hex(section['offset'] + (i * 8))} : {name}")
             self._do_bind(mu, 1, section['offset'] + (i * 8), name)
-    
+
     def _parse_binds(self, mu: unicorn.Uc, binds: bytes, segments):
         blen = len(binds)
         binds: BytesIO = BytesIO(binds)
@@ -241,7 +239,7 @@ class Jelly:
                 logger.debug("BIND_OPCODE_DONE")
                 break
             elif opcode == BIND_OPCODE_SET_DYLIB_ORDINAL_IMM:
-                ordinal = immediate   
+                ordinal = immediate
             elif opcode == BIND_OPCODE_SET_DYLIB_ORDINAL_ULEB:
                 #ordinal = uLEB128(&p);
                 ordinal = decodeULEB128(binds)
@@ -345,7 +343,7 @@ def decodeULEB128(bytes: BytesIO) -> int:
 def c_string(bytes, start: int = 0) -> str:
     out = ''
     i = start
-    
+
     while True:
         if i > len(bytes) or bytes[i] == 0:
             break

@@ -143,18 +143,18 @@ class Message:
     """Internal property representing whether the message should be compressed"""
     xml: str | None = None
     """XML portion of message, may be None"""
-    
+
     @staticmethod
     def from_raw(message: bytes, sender: str | None = None) -> "Message":
         """Create a `Message` from raw message bytes"""
 
         raise NotImplementedError()
-    
+
     def to_raw(self) -> bytes:
         """Convert a `Message` to raw message bytes"""
 
         raise NotImplementedError()
-    
+
     def __str__(self):
         raise NotImplementedError()
 
@@ -186,8 +186,8 @@ class SMSReflectedMessage(Message):
 
     def to_raw(self) -> bytes:
         #  {'re': [{'id': '+14155086773', 'uID': '4155086773', 'n': 'us'}], 'ic': 0, 'mD': {'handle': '+14155086773', 'guid': imessage.py:201
-        #            '35694E24-E265-4D5C-8CA7-9499E35D0402', 'replyToGUID': '4F9BC76B-B09C-2A60-B312-9029D529706B', 'plain-body': 'Test sms', 'service':                      
-        #            'SMS', 'sV': '1'}, 'fR': True, 'chat-style': 'im'}    
+        #            '35694E24-E265-4D5C-8CA7-9499E35D0402', 'replyToGUID': '4F9BC76B-B09C-2A60-B312-9029D529706B', 'plain-body': 'Test sms', 'service':
+        #            'SMS', 'sV': '1'}, 'fR': True, 'chat-style': 'im'}
         #pass
         # Strip tel: from participants, making sure they are all phone numbers
         #participants = [p.replace("tel:", "") for p in self.participants]
@@ -250,7 +250,7 @@ class SMSIncomingMessage(Message):
 
     def __str__(self):
         return f"[SMS {self.sender}] '{self.text}'"
-    
+
 @dataclass
 class SMSIncomingImage(Message):
     @staticmethod
@@ -262,10 +262,17 @@ class SMSIncomingImage(Message):
 
 @dataclass
 class iMessage(Message):
+    """
+    An iMessage
+
+    Description of payload keys:
+    t: The sender token. Normally just a big thing of data/bytes, doesn't need to be decoded in any way
+    U: the id of the message (uuid) as bytes
+    """
     effect: str | None = None
 
     @staticmethod
-    def create(user: "iMessageUser", text: str, participants: list[str]) -> "iMessage":
+    def create(user: "iMessageUser", text: str, participants: list[str], effect: str | None) -> "iMessage":
         """Creates a basic outgoing `iMessage` from the given text and participants"""
 
         sender = user.user.current_handle
@@ -277,8 +284,9 @@ class iMessage(Message):
             sender=sender,
             participants=participants,
             id=uuid.uuid4(),
+            effect=effect
         )
-    
+
     @staticmethod
     def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
         """Create a `iMessage` from raw message bytes"""
@@ -304,7 +312,7 @@ class iMessage(Message):
             _compressed=compressed,
             effect=message["iid"] if "iid" in message else None, # type: ignore
         )
-    
+
     def to_raw(self) -> bytes:
         """Convert an `iMessage` to raw message bytes"""
 
@@ -330,7 +338,7 @@ class iMessage(Message):
             d = gzip.compress(d, mtime=0)
 
         return d
-    
+
     def __str__(self):
         return f"[iMessage {self.sender}] '{self.text}'"
 
@@ -506,7 +514,7 @@ class iMessageUser:
         Will return the next iMessage in the queue, or None if there are no messages
         """
         body: dict[str, Any] = await self._receive_raw(list(MESSAGE_TYPES.keys()), [t[0] for t in MESSAGE_TYPES.values()])
-        t: type[Message] = MESSAGE_TYPES[body["c"]][1]   
+        t: type[Message] = MESSAGE_TYPES[body["c"]][1]
 
         if not await self._verify_payload(body["P"], body["sP"], body["t"]):
             raise Exception("Failed to verify payload")
@@ -642,7 +650,7 @@ class iMessageUser:
             elif isinstance(c, list) and body["c"] not in c:
                 return False
             return True
-        
+
         payload = await self.connection.expect_notification(topics, check)
 
         body_bytes: bytes = payload.fields_with_id(3)[0].value
@@ -657,7 +665,7 @@ class iMessageUser:
         """
 
         act_message: dict[str, Any] = await self._receive_raw(145, "com.apple.private.alloy.sms")
-        
+
         logger.info(f"Received SMS activation message : {act_message}")
         # Decrypt the payload
         act_message_bytes: bytes = self._decrypt_payload(act_message["P"])
@@ -667,7 +675,7 @@ class iMessageUser:
             logger.info("SMS forwarding activated, sending response")
         else:
             logger.info("SMS forwarding de-activated, sending response")
-        
+
         await self._send_raw(
             147,
             [self.user.current_handle],
@@ -684,7 +692,7 @@ class iMessageUser:
                 break
         else:
             raise Exception("Unknown message type")
-        
+
         send_to = message.participants if isinstance(message, iMessage) else [self.user.current_handle]
 
         await self._cache_keys(send_to, topic)
@@ -698,7 +706,7 @@ class iMessageUser:
             {
                 "E": "pair", # TODO: Do we need the nr field for SMS?
             }
-        ) 
+        )
 
         # Check for delivery
         count = 0

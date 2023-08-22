@@ -41,7 +41,7 @@ python3 "${proxy_dir}/hosts.py" >> "$hosts_proxy"
 
 echo -e "\e[32m[?]\e[0;1m ${hosts_proxy}\e[0m must be copied over to /etc/hosts. Would you like us to do that for you? [y/n]"
 read -rn1 answer
-if [[ "${answer,,}" == "y" ]] 
+if [[ "${answer,,}" == "y" ]]
 then
 	inf "Backing up /etc/hosts to /etc/hosts.bak and copying ${hosts_proxy} to /etc/hosts"
 	sudo cp /etc/hosts /etc/hosts.bak

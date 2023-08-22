@@ -33,7 +33,7 @@ async def main():
     # Set the certificate and private key
     parent_dir: str = os.path.dirname(os.path.realpath(__file__))
     context.load_cert_chain(os.path.join(parent_dir, "push_certificate_chain.pem"), os.path.join(parent_dir, "push_key.pem"))
-    
+
     await trio.serve_ssl_over_tcp(handle_proxy, 5223, context)
 
 async def handle_proxy(stream: trio.SocketStream):
@@ -67,7 +67,7 @@ class APNSProxy:
                     logging.error("Unable to start proxy, trying again...")
                     await trio.sleep(1)
 
-    
+
 
     async def proxy(self, to_server: bool):
         if to_server:
@@ -89,7 +89,7 @@ class APNSProxy:
         #     logging.info(f"-> {payload}")
         # else:
         #     logging.info(f"<- {payload}")
-        
+
     def tamper(self, payload: apns.APNSPayload, to_server) -> apns.APNSPayload:
         #if not to_server:
         #    payload = self.tamper_lookup_keys(payload)
@@ -110,7 +110,7 @@ class APNSProxy:
                             for identity in result["identities"]:
                                 if "client-data" in identity:
                                     identity["client-data"]["public-message-identity-key"] = b"REDACTED"
-                        
+
                         resp = gzip.compress(plistlib.dumps(resp, fmt=plistlib.FMT_BINARY), mtime=0)
                         body["b"] = resp
                     body = plistlib.dumps(body, fmt=plistlib.FMT_BINARY)

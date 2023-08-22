@@ -54,12 +54,10 @@ class IDSUser:
 
 
     # Uses an existing authentication keypair
-    def restore_authentication(
-        self, auth_keypair: _helpers.KeyPair, user_id: str, handles: dict
-    ):
+    def restore_authentication(self, auth_keypair: _helpers.KeyPair, user_id: str, handles: list[str]):
         self._auth_keypair = auth_keypair
         self.user_id = user_id
-        self.handles = handles 
+        self.handles = handles
         self.current_handle = self.handles[0]
 
     # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
@@ -126,4 +124,4 @@ class IDSUser:
 
     async def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> Any:
         return await query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)
-        
+

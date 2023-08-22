@@ -33,7 +33,7 @@ class IDSIdentity:
             # Generate a new key
             self.signing_key = serialize_key(ec.generate_private_key(ec.SECP256R1()))
             self.signing_public_key = serialize_key(parse_key(self.signing_key).public_key())# type: ignore
-        
+
         if encryption_key is not None:
             self.encryption_key = encryption_key
             self.encryption_public_key = serialize_key(parse_key(encryption_key).public_key())# type: ignore
@@ -43,7 +43,7 @@ class IDSIdentity:
         else:
             self.encryption_key = serialize_key(rsa.generate_private_key(65537, 1280))
             self.encryption_public_key = serialize_key(parse_key(self.encryption_key).public_key())# type: ignore
-    
+
     @classmethod
     def decode(cls, inp: bytes) -> Self:
         input = BytesIO(inp)
@@ -96,7 +96,7 @@ class IDSIdentity:
         output.write(raw_rsa.getvalue())
 
         return output.getvalue()
-        
+
 def register(
     push_token, handles, user_id, auth_key: KeyPair, push_key: KeyPair, identity: IDSIdentity, validation_data
 ):

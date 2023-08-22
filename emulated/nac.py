@@ -67,7 +67,7 @@ def nac_init(j: Jelly, cert: bytes):
         n = ret & 0xffffffff
         n = (n ^ 0x80000000) - 0x80000000
         raise Exception(f"Error calling nac_init: {n}")
-    
+
     # Get the outputs
     validation_ctx_addr = j.uc.mem_read(out_validation_ctx_addr, 8)
     request_bytes_addr = j.uc.mem_read(out_request_bytes_addr, 8)
@@ -79,7 +79,7 @@ def nac_init(j: Jelly, cert: bytes):
     logger.debug(f"Request @ {hex(request_bytes_addr)} : {hex(request_len)}")
 
     request = j.uc.mem_read(request_bytes_addr, request_len)
-    
+
     validation_ctx_addr = int.from_bytes(validation_ctx_addr, 'little')
     return validation_ctx_addr, request
 
@@ -100,11 +100,11 @@ def nac_key_establishment(j: Jelly, validation_ctx: int, response: bytes):
         n = ret & 0xffffffff
         n = (n ^ 0x80000000) - 0x80000000
         raise Exception(f"Error calling nac_submit: {n}")
-    
+
 def nac_sign(j: Jelly, validation_ctx: int):
     #void *validation_ctx, void *unk_bytes, int unk_len,
     #            void **validation_data, int *validation_data_len
-    
+
     out_validation_data_addr = j.malloc(8)
     out_validation_data_len_addr = j.malloc(8)
 
@@ -123,7 +123,7 @@ def nac_sign(j: Jelly, validation_ctx: int):
         n = ret & 0xffffffff
         n = (n ^ 0x80000000) - 0x80000000
         raise Exception(f"Error calling nac_generate: {n}")
-    
+
     validation_data_addr = j.uc.mem_read(out_validation_data_addr, 8)
     validation_data_len = j.uc.mem_read(out_validation_data_len_addr, 8)
 
@@ -197,7 +197,7 @@ def IORegistryEntryCreateCFProperty(j: Jelly, entry: int, key: int, allocator: i
     else:
         logger.debug(f"IOKit Entry: {key_str} -> None")
         return 0
-        
+
 def CFGetTypeID(j: Jelly, obj: int):
     obj = CF_OBJECTS[obj - 1]
     if isinstance(obj, bytes):
@@ -206,14 +206,14 @@ def CFGetTypeID(j: Jelly, obj: int):
         return 2
     else:
         raise Exception("Unknown CF object type")
-                                                                                                                      
+
 def CFDataGetLength(j: Jelly, obj: int):
     obj = CF_OBJECTS[obj - 1]
     if isinstance(obj, bytes):
         return len(obj)
     else:
         raise Exception("Unknown CF object type")
-    
+
 def CFDataGetBytes(j: Jelly, obj: int, range_start: int, range_end: int, buf: int):
     obj = CF_OBJECTS[obj - 1]
     if isinstance(obj, bytes):
@@ -223,7 +223,7 @@ def CFDataGetBytes(j: Jelly, obj: int, range_start: int, range_end: int, buf: in
         return len(data)
     else:
         raise Exception("Unknown CF object type")
-    
+
 def CFDictionaryCreateMutable(j: Jelly) -> int:
     CF_OBJECTS.append({})
     return len(CF_OBJECTS)
@@ -257,7 +257,7 @@ def CFDictionaryGetValue(j: Jelly, d: int, key: int) -> int:
             return 0
     else:
         raise Exception("Unknown CF object type")
-    
+
 def CFDictionarySetValue(j: Jelly, d: int, key: int, val: int):
     d = CF_OBJECTS[d - 1]
     key = maybe_object_maybe_string(j, key)
@@ -270,7 +270,7 @@ def CFDictionarySetValue(j: Jelly, d: int, key: int, val: int):
 def DADiskCopyDescription(j: Jelly) -> int:
     description = CFDictionaryCreateMutable(j)
     CFDictionarySetValue(j, description, "DADiskDescriptionVolumeUUIDKey", FAKE_DATA["root_disk_uuid"])
-    return description    
+    return description
 
 def CFStringCreate(j: Jelly, string: str) -> int:
     CF_OBJECTS.append(string)
@@ -292,7 +292,7 @@ def CFStringGetCString(j: Jelly, string: int, buf: int, buf_len: int, encoding: 
         return len(data)
     else:
         raise Exception("Unknown CF object type")
-    
+
 def IOServiceMatching(j: Jelly, name: int) -> int:
     # Read the raw c string pointed to by name
     name = _parse_cstr_ptr(j, name)
@@ -305,7 +305,7 @@ def IOServiceMatching(j: Jelly, name: int) -> int:
     CFDictionarySetValue(j, d, "IOProviderClass", name)
     # Return the dictionary
     return d
-    
+
 def IOServiceGetMatchingService(j: Jelly) -> int:
     return 92
 
@@ -324,7 +324,7 @@ def IOIteratorNext(j: Jelly, iterator: int) -> int:
         return 94
     else:
         return 0
-    
+
 def bzero(j: Jelly, ptr: int, len: int):
     j.uc.mem_write(ptr, bytes([0]) * len)
     return 0

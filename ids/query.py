@@ -48,7 +48,7 @@ async def lookup(
     }
 
     await conn.send_notification(topic, plistlib.dumps(req, fmt=plistlib.FMT_BINARY))
-    
+
     def check(payload: apns.APNSPayload):
         body = payload.fields_with_id(3)[0].value
         if body is None:
