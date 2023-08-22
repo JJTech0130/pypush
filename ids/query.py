@@ -5,7 +5,6 @@ from base64 import b64encode
 
 import apns
 import bags
-import logging
 
 from ._helpers import KeyPair, PROTOCOL_VERSION
 from . import signing

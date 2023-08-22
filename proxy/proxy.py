@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 
 # setting path so we can import the needed packages
 sys.path.append(os.path.join(sys.path[0], "../"))
@@ -39,8 +40,10 @@ async def handle_proxy(stream: trio.SocketStream):
     try:
         p = APNSProxy(stream)
         await p.start()
-    except Exception as e:
-        logging.error("APNSProxy instance encountered exception: " + str(e))
+    except Exception:
+        logging.error(f"APNSProxy instance encountered exception:")
+        traceback.print_exc()
+
         #raise e
 
 class APNSProxy:
@@ -54,7 +57,7 @@ class APNSProxy:
                 try:
                     apns_server = apns.APNSConnection(nursery)
                     await apns_server._connect_socket()
-                    self.server = apns_server.sock
+                    self.connection = apns_server
 
                     nursery.start_soon(self.proxy, True)
                     nursery.start_soon(self.proxy, False)
@@ -69,10 +72,11 @@ class APNSProxy:
     async def proxy(self, to_server: bool):
         if to_server:
             from_stream = self.client
-            to_stream = self.server
+            to_stream = self.connection.sock
         else:
-            from_stream = self.server
+            from_stream = self.connection.sock
             to_stream = self.client
+
         while True:
             payload = await apns.APNSPayload.read_from_stream(from_stream)
             payload = self.tamper(payload, to_server)
@@ -95,15 +99,15 @@ class APNSProxy:
     def tamper_lookup_keys(self, payload: apns.APNSPayload) -> apns.APNSPayload:
         if payload.id == 0xA: # Notification
             if payload.fields_with_id(2)[0].value == sha1(b"com.apple.madrid").digest(): # Topic
-                if body := payload.fields_with_id(3)[0].value is not None:
+                if (body := payload.fields_with_id(3)[0].value) is not None:
                     body = plistlib.loads(body)
                     if body['c'] == 97: # Lookup response
                         resp = gzip.decompress(body["b"]) # HTTP body
                         resp = plistlib.loads(resp)
 
                         # Replace public keys
-                        for r in resp["results"].keys():
-                            for identity in resp["results"][r]["identities"]:
+                        for result in resp["results"].values():
+                            for identity in result["identities"]:
                                 if "client-data" in identity:
                                     identity["client-data"]["public-message-identity-key"] = b"REDACTED"
                         

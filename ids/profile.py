@@ -7,13 +7,13 @@ import requests
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 import bags
 
 from . import signing
-from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
+from ._helpers import PROTOCOL_VERSION, KeyPair
 
 import logging
 logger = logging.getLogger("ids")
@@ -50,8 +50,6 @@ def _auth_token_request(username: str, password: str) -> Any:
 def get_auth_token(
     username: str, password: str, factor_gen: Callable | None = None
 ) -> tuple[str, str]:
-    from sys import platform
-    
     result = _auth_token_request(username, password)
     if result["status"] != 0:
         if result["status"] == 5000:

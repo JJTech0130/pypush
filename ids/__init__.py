@@ -1,4 +1,6 @@
 from base64 import b64encode
+from getpass import getpass
+import logging
 
 import apns
 
@@ -27,6 +29,9 @@ class IDSUser:
         self._push_keypair = _helpers.KeyPair(
             self.push_connection.credentials.private_key, self.push_connection.credentials.cert
         )
+        # set the encryption_identity to a default randomized value so that
+        # it's still valid if we can't pull it from the config
+        self.encryption_identity: identity.IDSIdentity = identity.IDSIdentity()
 
         self.ec_key = self.rsa_key = None
 
@@ -63,10 +68,6 @@ class IDSUser:
         self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
         if they are not already set
         """
-        if self.encryption_identity is None:
-            self.encryption_identity = identity.IDSIdentity()
-        
-        
         cert = identity.register(
             b64encode(self.push_connection.credentials.token),
             self.handles,
@@ -80,6 +81,48 @@ class IDSUser:
 
     def restore_identity(self, id_keypair: _helpers.KeyPair):
         self._id_keypair = id_keypair
+
+    def auth_and_set_encryption_from_config(self, config: dict[str, dict[str, Any]]):
+
+        auth = config.get("auth", {})
+        if (
+			((key := auth.get("key")) is not None) and
+			((cert := auth.get("cert")) is not None) and
+			((user_id := auth.get("user_id")) is not None) and
+			((handles := auth.get("handles")) is not None)
+		):
+            auth_keypair = _helpers.KeyPair(key, cert)
+            self.restore_authentication(auth_keypair, user_id, handles)
+        else:
+            username = input("Username: ")
+            password = getpass("Password: ")
+
+            self.authenticate(username, password)
+
+        encryption: dict[str, str] = config.get("encryption", {})
+        id: dict[str, str] = config.get("id", {})
+
+        if (
+            (rsa_key := encryption.get("rsa_key")) and
+            (signing_key := encryption.get("ec_key")) and
+            (cert := id.get("cert")) and
+            (key := id.get("key"))
+        ):
+            self.encryption_identity = identity.IDSIdentity(
+                encryption_key=rsa_key,
+                signing_key=signing_key,
+            )
+
+            id_keypair = _helpers.KeyPair(key, cert)
+            self.restore_identity(id_keypair)
+        else:
+            logging.info("Registering new identity...")
+            import emulated.nac
+
+            vd = emulated.nac.generate_validation_data()
+            vd = b64encode(vd).decode()
+
+            self.register(vd)
 
     async def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> Any:
         return await query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)

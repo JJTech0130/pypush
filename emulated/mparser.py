@@ -23,12 +23,12 @@ from datetime import datetime
 from json import dump
 from math import exp, log
 from os import SEEK_END
-from re import split
 from struct import unpack
 from uuid import UUID
+from typing import Any
 
-#from asn1crypto.cms import ContentInfo
-#from asn1crypto.x509 import DirectoryString
+from asn1crypto.cms import ContentInfo
+from asn1crypto.x509 import DirectoryString
 from plistlib import loads
 
 #import mdictionary as mdictionary
@@ -52,7 +52,7 @@ class Parser():
         self.__is_64_bit = True         # default place-holder
         self.__is_little_endian = True  # ^^
         self.__macho = {}
-        self.__output = {
+        self.__output: dict[str, Any] = {
             'name': 'IMDAppleServices'
         }
 
@@ -931,7 +931,7 @@ class Parser():
 
             n_value = self.get_ll() if self.__is_64_bit else self.get_int()
 
-            symbol = {
+            symbol: dict[str, int | str] = {
                 'n_strx': n_strx,
                 'n_sect': n_sect,
                 'n_desc': n_desc,

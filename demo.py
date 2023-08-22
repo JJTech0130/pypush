@@ -1,10 +1,6 @@
 import json
 import logging
-import os
-import threading
-import time
 from base64 import b64decode, b64encode
-from getpass import getpass
 from subprocess import PIPE, Popen
 
 from rich.logging import RichHandler
@@ -74,37 +70,7 @@ async def main():
         await conn.filter(["com.apple.madrid"])
 
         user = ids.IDSUser(conn)
-
-        if CONFIG.get("auth", {}).get("cert") is not None:
-            auth_keypair = ids._helpers.KeyPair(CONFIG["auth"]["key"], CONFIG["auth"]["cert"])
-            user_id = CONFIG["auth"]["user_id"]
-            handles = CONFIG["auth"]["handles"]
-            user.restore_authentication(auth_keypair, user_id, handles)
-        else:
-            username = input("Username: ")
-            password = getpass("Password: ")
-
-            user.authenticate(username, password)
-
-        user.encryption_identity = ids.identity.IDSIdentity(
-            encryption_key=CONFIG.get("encryption", {}).get("rsa_key"),
-            signing_key=CONFIG.get("encryption", {}).get("ec_key"),
-        )
-
-        if (
-            CONFIG.get("id", {}).get("cert") is not None
-            and user.encryption_identity is not None
-        ):
-            id_keypair = ids._helpers.KeyPair(CONFIG["id"]["key"], CONFIG["id"]["cert"])
-            user.restore_identity(id_keypair)
-        else:
-            logging.info("Registering new identity...")
-            import emulated.nac
-
-            vd = emulated.nac.generate_validation_data()
-            vd = b64encode(vd).decode()
-
-            user.register(vd)
+        user.auth_and_set_encryption_from_config(CONFIG)
 
         # Write config.json
         CONFIG["encryption"] = {

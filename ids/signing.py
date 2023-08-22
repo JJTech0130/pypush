@@ -5,8 +5,7 @@ from datetime import datetime
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives.asymmetric import padding
 
 from ._helpers import KeyPair, dearmour
 
@@ -24,8 +23,6 @@ Generates a nonce in this format:
    000001876d008cc5                 # unix time
                    r1r2r3r4r5r6r7r8 # random bytes
 """
-
-
 def generate_nonce() -> bytes:
     return (
         b"\x01"
@@ -33,17 +30,13 @@ def generate_nonce() -> bytes:
         + random.randbytes(8)
     )
 
-
-import typing
-
-
 # Creates a payload from individual parts for signing
 def _create_payload(
     bag_key: str,
     query_string: str,
-    push_token: typing.Union[str, bytes],
+    push_token: str | bytes,
     payload: bytes,
-    nonce: typing.Union[bytes, None] = None,
+    nonce: bytes | None = None,
 ) -> tuple[bytes, bytes]:
     # Generate the nonce
     if nonce is None:

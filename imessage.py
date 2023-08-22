@@ -4,9 +4,10 @@ import logging
 import plistlib
 import random
 import uuid
-from dataclasses import dataclass, field
-from hashlib import sha1, sha256
+from dataclasses import dataclass
+from hashlib import sha256
 from io import BytesIO
+from typing import Any
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding
@@ -504,15 +505,15 @@ class iMessageUser:
         """
         Will return the next iMessage in the queue, or None if there are no messages
         """
-        body = await self._receive_raw([t for t, _ in MESSAGE_TYPES.items()], [t[0] for _, t in MESSAGE_TYPES.items()])
-        t = MESSAGE_TYPES[body["c"]][1]   
+        body: dict[str, Any] = await self._receive_raw(list(MESSAGE_TYPES.keys()), [t[0] for t in MESSAGE_TYPES.values()])
+        t: type[Message] = MESSAGE_TYPES[body["c"]][1]   
 
         if not await self._verify_payload(body["P"], body["sP"], body["t"]):
             raise Exception("Failed to verify payload")
 
         logger.debug(f"Encrypted body : {body}")
 
-        decrypted = self._decrypt_payload(body["P"])
+        decrypted: bytes = self._decrypt_payload(body["P"])
 
         try:
             return t.from_raw(decrypted, body["sP"])
@@ -627,7 +628,7 @@ class iMessageUser:
 
         await self.connection.send_notification(topic, body, message_id)
 
-    async def _receive_raw(self, c: int | list[int], topics: str | list[str]) -> dict:
+    async def _receive_raw(self, c: int | list[int], topics: str | list[str]) -> dict[str, Any]:
         def check(payload: apns.APNSPayload):
             # Check if the "c" key matches
             body = payload.fields_with_id(3)[0].value
@@ -644,8 +645,8 @@ class iMessageUser:
         
         payload = await self.connection.expect_notification(topics, check)
 
-        body = payload.fields_with_id(3)[0].value
-        body = plistlib.loads(body)
+        body_bytes: bytes = payload.fields_with_id(3)[0].value
+        body: dict[str, Any] = plistlib.loads(body_bytes)
         return body
 
     async def activate_sms(self):
@@ -655,14 +656,12 @@ class iMessageUser:
         Call repeatedly until it returns True
         """
 
-        act_message = await self._receive_raw(145, "com.apple.private.alloy.sms")
-        if act_message is None:
-            return False
+        act_message: dict[str, Any] = await self._receive_raw(145, "com.apple.private.alloy.sms")
         
         logger.info(f"Received SMS activation message : {act_message}")
         # Decrypt the payload
-        act_message = self._decrypt_payload(act_message["P"])
-        act_message = plistlib.loads(maybe_decompress(act_message))
+        act_message_bytes: bytes = self._decrypt_payload(act_message["P"])
+        act_message = plistlib.loads(maybe_decompress(act_message_bytes))
 
         if act_message == {'wc': False, 'ar': True}:
             logger.info("SMS forwarding activated, sending response")
@@ -715,7 +714,7 @@ class iMessageUser:
                 total += 1
 
         while count < total and time.time() - start < 2:
-            resp = await self._receive_raw(255, topic)
+            resp: dict[str, Any] = await self._receive_raw(255, topic)
             #if resp is None:
             #    continue
             count += 1

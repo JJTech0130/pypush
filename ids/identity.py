@@ -3,18 +3,26 @@ from base64 import b64decode
 
 import requests
 
-from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair, parse_key, serialize_key
+from ._helpers import PROTOCOL_VERSION, KeyPair, parse_key, serialize_key
 from .signing import add_auth_signature, armour_cert
 
 from io import BytesIO
 
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
+from typing import Self
+
 import logging
 logger = logging.getLogger("ids")
 
 class IDSIdentity:
-    def __init__(self, signing_key: str | None = None, encryption_key: str | None = None, signing_public_key: str | None = None, encryption_public_key: str | None = None):
+    def __init__(
+		self,
+		signing_key: str | None = None,
+		encryption_key: str | None = None,
+		signing_public_key: str | None = None,
+		encryption_public_key: str | None = None
+	):
         if signing_key is not None:
             self.signing_key = signing_key
             self.signing_public_key = serialize_key(parse_key(signing_key).public_key())# type: ignore
@@ -36,8 +44,8 @@ class IDSIdentity:
             self.encryption_key = serialize_key(rsa.generate_private_key(65537, 1280))
             self.encryption_public_key = serialize_key(parse_key(self.encryption_key).public_key())# type: ignore
     
-    @staticmethod
-    def decode(inp: bytes) -> 'IDSIdentity':
+    @classmethod
+    def decode(cls, inp: bytes) -> Self:
         input = BytesIO(inp)
 
         assert input.read(5) == b'\x30\x81\xF6\x81\x43' # DER header
