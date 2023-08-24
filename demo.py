@@ -46,7 +46,7 @@ except FileNotFoundError:
     CONFIG = {}
 
 # Re-register if the commit hash has changed
-if CONFIG.get("commit_hash") != commit_hash:
+if CONFIG.get("commit_hash") != commit_hash or True:
     logging.warning("pypush commit is different, forcing re-registration...")
     CONFIG["commit_hash"] = commit_hash
     if "id" in CONFIG:
@@ -86,10 +86,34 @@ async def main():
 
             user.authenticate(username, password)
 
+        import sms_registration
+        phone_sig = safe_b64decode(CONFIG.get("phone", {}).get("sig"))
+        phone_number = CONFIG.get("phone", {}).get("number")
+
+        if phone_sig is None or phone_number is None:
+            print("Registering phone number...")
+            phone_number, phone_sig = sms_registration.register(user.push_connection.credentials.token)
+            CONFIG["phone"] = {
+                "number": phone_number,
+                "sig": b64encode(phone_sig).decode(),
+            }
+        if CONFIG.get("phone", {}).get("auth_key") is not None:
+            phone_auth_keypair = ids._helpers.KeyPair(CONFIG["phone"]["auth_key"], CONFIG["phone"]["auth_cert"])
+        else:
+            phone_auth_keypair = ids.profile.get_phone_cert(phone_number, user.push_connection.credentials.token, [phone_sig])
+            CONFIG["phone"]["auth_key"] = phone_auth_keypair.key
+            CONFIG["phone"]["auth_cert"] = phone_auth_keypair.cert
+
+
         user.encryption_identity = ids.identity.IDSIdentity(
             encryption_key=CONFIG.get("encryption", {}).get("rsa_key"),
             signing_key=CONFIG.get("encryption", {}).get("ec_key"),
         )
+
+        #user._auth_keypair = phone_auth_keypair
+        #user.handles = [f"tel:{phone_number}"]
+        #user.user_id = f"P:{phone_number}"
+
 
         if (
             CONFIG.get("id", {}).get("cert") is not None
@@ -104,7 +128,10 @@ async def main():
             vd = emulated.nac.generate_validation_data()
             vd = b64encode(vd).decode()
 
-            user.register(vd)
+            user.register(vd, [("P:" + phone_number, phone_auth_keypair)], ["tel:" + phone_number, "tel:1"])
+            #user.register(vd)
+
+        print("Handles: ", user.handles)
 
         # Write config.json
         CONFIG["encryption"] = {

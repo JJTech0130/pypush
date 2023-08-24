@@ -90,7 +90,7 @@ class IDSIdentity:
         return output.getvalue()
         
 def register(
-    push_token, handles, user_id, auth_key: KeyPair, push_key: KeyPair, identity: IDSIdentity, validation_data
+    push_token, handles, user_id, auth_keys: list[tuple[str, KeyPair]], push_key: KeyPair, identity: IDSIdentity, validation_data
 ):
     logger.debug(f"Registering IDS identity for {handles}")
     uris = [{"uri": handle} for handle in handles]
@@ -141,20 +141,31 @@ def register(
                         },
                         "uris": uris,
                         "user-id": user_id,
-                    }
+                        
+                    },
+                    # {
+                    #     "uris": uris,
+                    #     "user-id": auth_keys[1][0]
+                    # }
                 ],
             }
         ],
         "validation-data": b64decode(validation_data),
     }
 
+    logger.debug(body)
+
     body = plistlib.dumps(body)
 
     headers = {
         "x-protocol-version": PROTOCOL_VERSION,
-        "x-auth-user-id-0": user_id,
+        #"x-auth-user-id-0": user_id,
     }
-    add_auth_signature(headers, body, "id-register", auth_key, push_key, push_token, 0)
+    for i, (user_id, keypair) in enumerate(auth_keys):
+        headers[f"x-auth-user-id-{i}"] = user_id
+        add_auth_signature(headers, body, "id-register", keypair, push_key, push_token, i)
+
+    print(headers)
 
     r = requests.post(
         "https://identity.ess.apple.com/WebObjects/TDIdentityService.woa/wa/register",

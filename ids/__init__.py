@@ -50,7 +50,7 @@ class IDSUser:
 
     # Uses an existing authentication keypair
     def restore_authentication(
-        self, auth_keypair: _helpers.KeyPair, user_id: str, handles: dict
+        self, auth_keypair: _helpers.KeyPair, user_id: str, handles: list
     ):
         self._auth_keypair = auth_keypair
         self.user_id = user_id
@@ -58,7 +58,7 @@ class IDSUser:
         self.current_handle = self.handles[0]
 
     # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
-    def register(self, validation_data: str):
+    def register(self, validation_data: str, additional_keys: list[tuple[str, _helpers.KeyPair]] = [], additional_handles: list[str] = []):
         """
         self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
         if they are not already set
@@ -66,17 +66,33 @@ class IDSUser:
         if self.encryption_identity is None:
             self.encryption_identity = identity.IDSIdentity()
         
-        
+        auth_keys = [(self.user_id, self._auth_keypair)]
+        auth_keys.extend(additional_keys)
+
+        handles_request = self.handles
+
+        handles_request.extend(additional_handles)
+
+
         cert = identity.register(
             b64encode(self.push_connection.credentials.token),
             self.handles,
             self.user_id,
-            self._auth_keypair,
+            auth_keys,
             self._push_keypair,
             self.encryption_identity,
             validation_data,
         )
         self._id_keypair = _helpers.KeyPair(self._auth_keypair.key, cert)
+
+        # Refresh handles
+        self.handles = profile.get_handles(
+            b64encode(self.push_connection.credentials.token),
+            self.user_id,
+            self._auth_keypair,
+            self._push_keypair,
+        )
+
 
     def restore_identity(self, id_keypair: _helpers.KeyPair):
         self._id_keypair = id_keypair
