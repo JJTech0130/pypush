@@ -66,8 +66,9 @@ class IDSUser:
         if self.encryption_identity is None:
             self.encryption_identity = identity.IDSIdentity()
         
-        auth_keys = [(self.user_id, self._auth_keypair)]
-        auth_keys.extend(additional_keys)
+        auth_keys = additional_keys
+        auth_keys.extend([(self.user_id, self._auth_keypair)])
+        #auth_keys.extend(additional_keys)
 
         handles_request = self.handles
 

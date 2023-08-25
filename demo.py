@@ -46,7 +46,8 @@ except FileNotFoundError:
     CONFIG = {}
 
 # Re-register if the commit hash has changed
-if CONFIG.get("commit_hash") != commit_hash or True:
+FORCE_REREGISTER = True
+if CONFIG.get("commit_hash") != commit_hash or FORCE_REREGISTER:
     logging.warning("pypush commit is different, forcing re-registration...")
     CONFIG["commit_hash"] = commit_hash
     if "id" in CONFIG:
@@ -97,7 +98,7 @@ async def main():
                 "number": phone_number,
                 "sig": b64encode(phone_sig).decode(),
             }
-        if CONFIG.get("phone", {}).get("auth_key") is not None:
+        if CONFIG.get("phone", {}).get("auth_key") is not None and CONFIG.get("phone", {}).get("auth_cert") is not None:
             phone_auth_keypair = ids._helpers.KeyPair(CONFIG["phone"]["auth_key"], CONFIG["phone"]["auth_cert"])
         else:
             phone_auth_keypair = ids.profile.get_phone_cert(phone_number, user.push_connection.credentials.token, [phone_sig])
@@ -111,8 +112,9 @@ async def main():
         )
 
         #user._auth_keypair = phone_auth_keypair
-        #user.handles = [f"tel:{phone_number}"]
-        #user.user_id = f"P:{phone_number}"
+        user.handles = [f"tel:{phone_number}"]
+        print(user.user_id)
+       # user.user_id = f"P:{phone_number}"
 
 
         if (
@@ -128,7 +130,7 @@ async def main():
             vd = emulated.nac.generate_validation_data()
             vd = b64encode(vd).decode()
 
-            user.register(vd, [("P:" + phone_number, phone_auth_keypair)], ["tel:" + phone_number, "tel:1"])
+            user.register(vd, [("P:" + phone_number, phone_auth_keypair)])
             #user.register(vd)
 
         print("Handles: ", user.handles)
@@ -168,7 +170,7 @@ async def input_task(im: imessage.iMessageUser):
     while True:
         cmd = await trio.to_thread.run_sync(input, "> ", cancellable=True)
         if cmd != "":
-            await im.send(imessage.iMessage.create(im, cmd, [im.user.current_handle]))
+            await im.send(imessage.iMessage.create(im, cmd, ["tel:+16106632676"]))
 
 async def output_task(im: imessage.iMessageUser):
     while True:
