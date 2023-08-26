@@ -88,21 +88,26 @@ class IDSIdentity:
         output.write(raw_rsa.getvalue())
 
         return output.getvalue()
-        
+    
+
+
+import apns
+from . import _helpers
+import uuid
+from base64 import b64encode
 def register(
-    push_token, handles, user_id, auth_keys: list[tuple[str, KeyPair]], push_key: KeyPair, identity: IDSIdentity, validation_data
+    push_connection: apns.APNSConnection, signing_users: list[tuple[str, _helpers.KeyPair]], user_payloads: list[dict], validation_data, device_id: uuid.UUID
 ):
-    logger.debug(f"Registering IDS identity for {handles}")
-    uris = [{"uri": handle} for handle in handles]
-    import uuid
     body = {
+        # TODO: Abstract this out
         "device-name": "pypush",
         "hardware-version": "MacBookPro18,3",
         "language": "en-US",
         "os-version": "macOS,13.2.1,22D68",
         "software-version": "22D68",
+
         "private-device-data": {
-            "u": uuid.uuid4().hex.upper(),
+            "u": str(device_id),
         },
         "services": [
             {
@@ -112,93 +117,25 @@ def register(
                                  "com.apple.private.alloy.gelato",
                                  "com.apple.private.alloy.biz",
                                  "com.apple.private.alloy.gamecenter.imessage"],
-                "users": [
-                    {
-                        "client-data": {
-                            'is-c2k-equipment': True,
-						    'optionally-receive-typing-indicators': True,
-						    'public-message-identity-key': identity.encode(),
-						    'public-message-identity-version':2,
-                            'show-peer-errors': True,
-                            'supports-ack-v1': True,
-                            'supports-activity-sharing-v1': True,
-                            'supports-audio-messaging-v2': True,
-                            "supports-autoloopvideo-v1": True,
-                            'supports-be-v1': True,
-                            'supports-ca-v1': True,
-                            'supports-fsm-v1': True,
-                            'supports-fsm-v2': True,
-                            'supports-fsm-v3': True,
-                            'supports-ii-v1': True,
-                            'supports-impact-v1': True,
-                            'supports-inline-attachments': True,
-                            'supports-keep-receipts': True,
-                            "supports-location-sharing": True,
-                            'supports-media-v2': True,
-                            'supports-photos-extension-v1': True,
-                            'supports-st-v1': True,
-                            'supports-update-attachments-v1': True,
-                        },
-                        "tag": "SIM",
-                        "uris": uris,
-                        "user-id": auth_keys[0][0],
-                        
-                    },
-                    {
-                        "client-data": {
-                            'is-c2k-equipment': True,
-						    'optionally-receive-typing-indicators': True,
-						    'public-message-identity-key': identity.encode(),
-						    'public-message-identity-version':2,
-                            'show-peer-errors': True,
-                            'supports-ack-v1': True,
-                            'supports-activity-sharing-v1': True,
-                            'supports-audio-messaging-v2': True,
-                            "supports-autoloopvideo-v1": True,
-                            'supports-be-v1': True,
-                            'supports-ca-v1': True,
-                            'supports-fsm-v1': True,
-                            'supports-fsm-v2': True,
-                            'supports-fsm-v3': True,
-                            'supports-ii-v1': True,
-                            'supports-impact-v1': True,
-                            'supports-inline-attachments': True,
-                            'supports-keep-receipts': True,
-                            "supports-location-sharing": True,
-                            'supports-media-v2': True,
-                            'supports-photos-extension-v1': True,
-                            'supports-st-v1': True,
-                            'supports-update-attachments-v1': True,
-                        },
-                        "uris": [{
-                            "uri": "tel:+16106632676"
-                        }],
-                        "user-id": user_id,
-                        
-                    },
-                    # {
-                    #     "uris": uris,
-                    #     "user-id": auth_keys[1][0]
-                    # }
-                ],
+                "users": user_payloads,
             }
         ],
         "validation-data": b64decode(validation_data),
     }
-
-    logger.debug(body)
+    
+    logger.debug(f"Sending IDS registration request: {body}")
 
     body = plistlib.dumps(body)
 
+    # Construct headers
     headers = {
         "x-protocol-version": PROTOCOL_VERSION,
-        #"x-auth-user-id-0": user_id,
     }
-    for i, (user_id, keypair) in enumerate(auth_keys):
+    for i, (user_id, keypair) in enumerate(signing_users):
         headers[f"x-auth-user-id-{i}"] = user_id
-        add_auth_signature(headers, body, "id-register", keypair, push_key, push_token, i)
+        add_auth_signature(headers, body, "id-register", keypair, _helpers.get_key_pair(push_connection.credentials), b64encode(push_connection.credentials.token).decode(), i)
 
-    print(headers)
+    logger.debug(f"Headers: {headers}")
 
     r = requests.post(
         "https://identity.ess.apple.com/WebObjects/TDIdentityService.woa/wa/register",
@@ -207,8 +144,9 @@ def register(
         verify=False,
     )
     r = plistlib.loads(r.content)
-    #print(f'Response code: {r["status"]}')
-    logger.debug(f"Recieved response to IDS registration: {r}")
+
+    logger.debug(f"Received response to IDS registration: {r}")
+
     if "status" in r and r["status"] == 6004:
         raise Exception("Validation data expired!")
     # TODO: Do validation of nested statuses
@@ -218,7 +156,14 @@ def register(
         raise Exception(f"No services in response: {r}")
     if not "users" in r["services"][0]:
         raise Exception(f"No users in response: {r}")
-    if not "cert" in r["services"][0]["users"][0]:
-        raise Exception(f"No cert in response: {r}")
+    
+    output = {}
+    for user in r["services"][0]["users"]:
+        if not "cert" in user:
+            raise Exception(f"No cert in response: {r}")
+        for uri in user["uris"]:
+            if uri["status"] != 0:
+                raise Exception(f"Failed to register URI {uri['uri']}: {r}")
+        output[user["user-id"]] = armour_cert(user["cert"])
 
-    return armour_cert(r["services"][0]["users"][0]["cert"])
+    return output

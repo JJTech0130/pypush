@@ -5,99 +5,142 @@ import apns
 from . import _helpers, identity, profile, query
 from typing import Callable, Any
 
+    
+import dataclasses
+import apns
+from . import profile, _helpers
+from base64 import b64encode
+from typing import Callable
+
+@dataclasses.dataclass
 class IDSUser:
-    # Sets self.user_id and self._auth_token
-    def _authenticate_for_token(
-        self, username: str, password: str, factor_callback: Callable | None = None
-    ):
-        self.user_id, self._auth_token = profile.get_auth_token(
-            username, password, factor_callback
-        )
+    push_connection: apns.APNSConnection
 
-    # Sets self._auth_keypair using self.user_id and self._auth_token
-    def _authenticate_for_cert(self):
-        self._auth_keypair = profile.get_auth_cert(self.user_id, self._auth_token)
+    user_id: str
 
-    # Factor callback will be called if a 2FA code is necessary
-    def __init__(
-        self,
-        push_connection: apns.APNSConnection,
-    ):
-        self.push_connection = push_connection
-        self._push_keypair = _helpers.KeyPair(
-            self.push_connection.credentials.private_key, self.push_connection.credentials.cert
-        )
+    auth_keypair: _helpers.KeyPair
+    """
+    Long-lived authentication keypair
+    """
 
-        self.ec_key = self.rsa_key = None
+    encryption_identity: identity.IDSIdentity | None = None
 
-    def __str__(self):
-        return f"IDSUser(user_id={self.user_id}, handles={self.handles}, push_token={b64encode(self.push_connection.credentials.token).decode()})"
+    id_cert: bytes | None = None
+    """
+    Short-lived identity certificate,
+    same private key as auth_keypair
+    """
 
-    # Authenticates with a username and password, to create a brand new authentication keypair
-    def authenticate(
-        self, username: str, password: str, factor_callback: Callable | None = None
-    ):
-        self._authenticate_for_token(username, password, factor_callback)
-        self._authenticate_for_cert()
-        self.handles = profile.get_handles(
-            b64encode(self.push_connection.credentials.token),
-            self.user_id,
-            self._auth_keypair,
-            self._push_keypair,
-        )
-        self.current_handle = self.handles[0]
+    handles: list[str] = dataclasses.field(default_factory=list)
+    """
+    List of usable handles. Not equivalent to the current result of possible_handles, as the user
+    may have added or removed handles since registration, which we can't use.
+    """
 
-
-    # Uses an existing authentication keypair
-    def restore_authentication(
-        self, auth_keypair: _helpers.KeyPair, user_id: str, handles: list
-    ):
-        self._auth_keypair = auth_keypair
-        self.user_id = user_id
-        self.handles = handles 
-        self.current_handle = self.handles[0]
-
-    # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
-    def register(self, validation_data: str, additional_keys: list[tuple[str, _helpers.KeyPair]] = [], additional_handles: list[str] = []):
+    def possible_handles(self) -> list[str]:
         """
-        self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
-        if they are not already set
+        Returns a list of possible handles for this user.
         """
-        if self.encryption_identity is None:
-            self.encryption_identity = identity.IDSIdentity()
-        
-        auth_keys = additional_keys
-        auth_keys.extend([(self.user_id, self._auth_keypair)])
-        #auth_keys.extend(additional_keys)
-
-        handles_request = self.handles
-
-        handles_request.extend(additional_handles)
-
-
-        cert = identity.register(
-            b64encode(self.push_connection.credentials.token),
-            self.handles,
-            self.user_id,
-            auth_keys,
-            self._push_keypair,
-            self.encryption_identity,
-            validation_data,
-        )
-        self._id_keypair = _helpers.KeyPair(self._auth_keypair.key, cert)
-
-        # Refresh handles
-        self.handles = profile.get_handles(
+        return profile.get_handles(
             b64encode(self.push_connection.credentials.token),
             self.user_id,
-            self._auth_keypair,
-            self._push_keypair,
+            self.auth_keypair,
+            _helpers.KeyPair(self.push_connection.credentials.private_key, self.push_connection.credentials.cert),
         )
+    
+    async def lookup(self, handle: str, uris: list[str], topic: str = "com.apple.madrid") -> Any:
+        if handle not in self.handles:
+            raise Exception("Handle not registered to user")
+        return await query.lookup(self.push_connection, handle, _helpers.KeyPair(self.auth_keypair.key, self.id_cert), uris, topic)
 
 
-    def restore_identity(self, id_keypair: _helpers.KeyPair):
-        self._id_keypair = id_keypair
+@dataclasses.dataclass
+class IDSAppleUser(IDSUser):
+    """
+    An IDSUser that is authenticated with an Apple ID
+    """
 
-    async def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> Any:
-        return await query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)
-        
+    @staticmethod
+    def authenticate(push_connection: apns.APNSConnection, username: str, password: str, factor_callback: Callable | None = None) -> IDSUser:
+        user_id, auth_token = profile.get_auth_token(username, password, factor_callback)
+        auth_keypair = profile.get_auth_cert(user_id, auth_token)
+
+        return IDSAppleUser(push_connection, user_id, auth_keypair)
+    
+@dataclasses.dataclass
+class IDSPhoneUser(IDSUser):
+    """
+    An IDSUser that is authenticated with a phone number
+    """
+
+    @staticmethod
+    def authenticate(push_connection: apns.APNSConnection, phone_number: str, phone_sig: bytes) -> IDSUser:
+        auth_keypair = profile.get_phone_cert(phone_number, push_connection.credentials.token, [phone_sig])
+
+        return IDSPhoneUser(push_connection, "P:" + phone_number, auth_keypair)
+    
+DEFAULT_CLIENT_DATA = {
+    'is-c2k-equipment': True,
+    'optionally-receive-typing-indicators': True,
+    'public-message-identity-version':2,
+    'show-peer-errors': True,
+    'supports-ack-v1': True,
+    'supports-activity-sharing-v1': True,
+    'supports-audio-messaging-v2': True,
+    "supports-autoloopvideo-v1": True,
+    'supports-be-v1': True,
+    'supports-ca-v1': True,
+    'supports-fsm-v1': True,
+    'supports-fsm-v2': True,
+    'supports-fsm-v3': True,
+    'supports-ii-v1': True,
+    'supports-impact-v1': True,
+    'supports-inline-attachments': True,
+    'supports-keep-receipts': True,
+    "supports-location-sharing": True,
+    'supports-media-v2': True,
+    'supports-photos-extension-v1': True,
+    'supports-st-v1': True,
+    'supports-update-attachments-v1': True,
+}
+
+import uuid
+
+def register(push_connection: apns.APNSConnection, users: list[IDSUser], validation_data: str):
+    signing_users = [(user.user_id, user.auth_keypair) for user in users]
+
+    # Create new encryption identity for each user
+    for user in users:
+         if user.encryption_identity is None:
+            user.encryption_identity = identity.IDSIdentity()
+
+    # Construct user payloads
+    user_payloads = []
+    for user in users:
+        user.handles = user.possible_handles()
+        if user.encryption_identity is not None:
+            special_data = DEFAULT_CLIENT_DATA.copy()
+            special_data["public-message-identity-key"] = user.encryption_identity.encode()
+        else:
+            special_data = DEFAULT_CLIENT_DATA
+        user_payloads.append({
+            "client-data": special_data,
+            "tag": "SIM" if isinstance(user, IDSPhoneUser) else None,
+            "uris": [{"uri": handle} for handle in user.handles],
+            "user-id": user.user_id,
+        })
+
+    _helpers.recursive_del_none(user_payloads)
+
+    certs = identity.register(
+        push_connection,
+        signing_users,
+        user_payloads,
+        validation_data,
+        uuid.uuid4()
+    )
+
+    for user in users:
+        user.id_cert = certs[user.user_id]
+
+    return users

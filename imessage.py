@@ -267,7 +267,7 @@ class iMessage(Message):
     def create(user: "iMessageUser", text: str, participants: list[str]) -> "iMessage":
         """Creates a basic outgoing `iMessage` from the given text and participants"""
 
-        sender = user.user.current_handle
+        sender = user.current_handle
         if sender not in participants:
             participants += [sender]
 
@@ -356,6 +356,7 @@ class iMessageUser:
     def __init__(self, connection: apns.APNSConnection, user: ids.IDSUser):
         self.connection = connection
         self.user = user
+        self.current_handle = user.handles[0]
 
     @staticmethod
     def _parse_payload(p: bytes) -> tuple[bytes, bytes]:
@@ -421,7 +422,7 @@ class iMessageUser:
             random_seed,
             message
             + b"\x02"
-            + iMessageUser._hash_identity(self.user.encryption_identity.encode())
+            + iMessageUser._hash_identity(self.user.encryption_identity.encode()) # type: ignore
             + iMessageUser._hash_identity(key.encode()),
             sha256,
         ).digest()
@@ -528,8 +529,8 @@ class iMessageUser:
 
     async def _cache_keys(self, participants: list[str], topic: str):
         # Clear the cache if the handle has changed
-        if self.KEY_CACHE_HANDLE != self.user.current_handle:
-            self.KEY_CACHE_HANDLE = self.user.current_handle
+        if self.KEY_CACHE_HANDLE != self.current_handle:
+            self.KEY_CACHE_HANDLE = self.current_handle
             self.KEY_CACHE = {}
             self.USER_CACHE = {}
 
@@ -539,7 +540,7 @@ class iMessageUser:
         # TODO: This doesn't work since it doesn't check if they are cached for all topics
 
         # Look up the public keys for the participants, and cache a token : public key mapping
-        lookup = await self.user.lookup(participants, topic=topic)
+        lookup = await self.user.lookup(self.current_handle, participants, topic=topic)
 
         logger.debug(f"Lookup response : {lookup}")
         for key, participant in lookup.items():
@@ -594,7 +595,7 @@ class iMessageUser:
 
                 p = {
                     "tP": participant,
-                    "D": not participant == self.user.current_handle,
+                    "D": not participant == self.current_handle,
                     "sT": self.KEY_CACHE[push_token][topic][1],
                     "t": push_token,
                 }
@@ -618,7 +619,7 @@ class iMessageUser:
             "i": int.from_bytes(message_id, "big"),
             "U": id.bytes,
             "dtl": dtl,
-            "sP": self.user.current_handle,
+            "sP": self.current_handle,
         }
 
         body.update(extra)
@@ -671,7 +672,7 @@ class iMessageUser:
         
         await self._send_raw(
             147,
-            [self.user.current_handle],
+            [self.current_handle],
             "com.apple.private.alloy.sms",
             extra={
                 "nr": 1
@@ -686,7 +687,7 @@ class iMessageUser:
         else:
             raise Exception("Unknown message type")
         
-        send_to = message.participants if isinstance(message, iMessage) else [self.user.current_handle]
+        send_to = message.participants if isinstance(message, iMessage) else [self.current_handle]
 
         await self._cache_keys(send_to, topic)
 
