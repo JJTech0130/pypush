@@ -101,10 +101,10 @@ def register(
     body = {
         # TODO: Abstract this out
         "device-name": "pypush",
-        "hardware-version": "MacBookPro18,3",
+        "hardware-version": "iPhone13,2",
         "language": "en-US",
-        "os-version": "macOS,13.2.1,22D68",
-        "software-version": "22D68",
+        "os-version": "iPhone13,3_16.6,20G75",
+        "software-version": "20G75",
 
         "private-device-data": {
             "u": str(device_id),
