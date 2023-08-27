@@ -14,6 +14,7 @@ import ids
 import imessage
 
 import trio
+import argparse
 
 logging.basicConfig(
     level=logging.NOTSET, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
@@ -64,7 +65,7 @@ def safe_config():
     with open("config.json", "w") as f:
         json.dump(CONFIG, f, indent=4)
 
-async def main():
+async def main(args: argparse.Namespace):
     # Load any existing push credentials
     token = CONFIG.get("push", {}).get("token")
     token = b64decode(token) if token is not None else b""
@@ -145,6 +146,14 @@ async def main():
                     "handles": user.handles,
                 })
             safe_config()
+
+        if args.reregister:
+            print("Re-registering...")
+            import emulated.nac
+            vd = emulated.nac.generate_validation_data()
+            vd = b64encode(vd).decode()
+            users = ids.register(conn, users, vd)
+
 
         # You CANNOT turn around and re-register like this:
         # It will BREAK the tie between phone number and Apple ID
@@ -275,4 +284,7 @@ async def output_task(im: imessage.iMessageUser):
 
 
 if __name__ == "__main__":
-    trio.run(main)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reregister", action="store_true", help="Force re-registration")
+    args = parser.parse_args()
+    trio.run(main, args)

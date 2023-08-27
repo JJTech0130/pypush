@@ -117,7 +117,8 @@ def register(push_connection: apns.APNSConnection, users: list[IDSUser], validat
     # Construct user payloads
     user_payloads = []
     for user in users:
-        user.handles = user.possible_handles()
+        if user.handles == []:
+            user.handles = user.possible_handles()
         if user.encryption_identity is not None:
             special_data = DEFAULT_CLIENT_DATA.copy()
             special_data["public-message-identity-key"] = user.encryption_identity.encode()
@@ -125,7 +126,7 @@ def register(push_connection: apns.APNSConnection, users: list[IDSUser], validat
             special_data = DEFAULT_CLIENT_DATA
         user_payloads.append({
             "client-data": special_data,
-            "tag": "SIM" if isinstance(user, IDSPhoneUser) else None,
+            "tag": "SIM" if user.user_id.startswith("P:") else None,
             "uris": [{"uri": handle} for handle in user.handles],
             "user-id": user.user_id,
         })
