@@ -5,7 +5,6 @@ import threading
 import time
 from base64 import b64decode, b64encode
 from getpass import getpass
-from subprocess import PIPE, Popen
 
 from rich.logging import RichHandler
 
@@ -34,26 +33,12 @@ logging.getLogger("imessage").setLevel(logging.INFO)
 
 logging.captureWarnings(True)
 
-process = Popen(["git", "rev-parse", "HEAD"], stdout=PIPE) # type: ignore
-(commit_hash, err) = process.communicate()
-exit_code = process.wait()
-commit_hash = commit_hash.decode().strip()
-
 # Try and load config.json
 try:
     with open("config.json", "r") as f:
         CONFIG = json.load(f)
 except FileNotFoundError:
     CONFIG = {}
-
-# Re-register if the commit hash has changed
-FORCE_REREGISTER = True
-if CONFIG.get("commit_hash") != commit_hash or FORCE_REREGISTER:
-    logging.warning("pypush commit is different, forcing re-registration...")
-    CONFIG["commit_hash"] = commit_hash
-    if "id" in CONFIG:
-        del CONFIG["id"]
-
 
 def safe_b64decode(s):
     try:
