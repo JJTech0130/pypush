@@ -106,7 +106,7 @@ DEFAULT_CLIENT_DATA = {
 
 import uuid
 
-def register(push_connection: apns.APNSConnection, users: list[IDSUser], validation_data: str):
+def register(push_connection: apns.APNSConnection, users: list[IDSUser], validation_data: str, publish_client_data: bool = True):
     signing_users = [(user.user_id, user.auth_keypair) for user in users]
 
     # Create new encryption identity for each user
@@ -125,7 +125,7 @@ def register(push_connection: apns.APNSConnection, users: list[IDSUser], validat
         else:
             special_data = DEFAULT_CLIENT_DATA
         user_payloads.append({
-            "client-data": special_data,
+            "client-data": special_data if publish_client_data else None,
             "tag": "SIM" if user.user_id.startswith("P:") else None,
             "uris": [{"uri": handle} for handle in user.handles],
             "user-id": user.user_id,

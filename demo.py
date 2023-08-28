@@ -57,6 +57,13 @@ async def main(args: argparse.Namespace):
 
     push_creds = apns.PushCredentials(
         CONFIG.get("push", {}).get("key", ""), CONFIG.get("push", {}).get("cert", ""), token)
+    
+    def register(conn, users):
+        import emulated.nac
+        vd = emulated.nac.generate_validation_data()
+        vd = b64encode(vd).decode()
+        users = ids.register(conn, users, vd, args.client_data)
+        return users
 
     async with apns.APNSConnection.start(push_creds) as conn:
         # Save the push credentials to the config
@@ -112,12 +119,7 @@ async def main(args: argparse.Namespace):
 
                 users.append(ids.IDSAppleUser.authenticate(conn, username, password))
 
-            import emulated.nac
-
-            vd = emulated.nac.generate_validation_data()
-            vd = b64encode(vd).decode()
-
-            users = ids.register(conn, users, vd)
+            users = register(conn, users)
 
             CONFIG["users"] = []
             for user in users:
@@ -134,10 +136,7 @@ async def main(args: argparse.Namespace):
 
         if args.reregister:
             print("Re-registering...")
-            import emulated.nac
-            vd = emulated.nac.generate_validation_data()
-            vd = b64encode(vd).decode()
-            users = ids.register(conn, users, vd)
+            users = register(conn, users)
 
 
         # You CANNOT turn around and re-register like this:
@@ -271,5 +270,6 @@ async def output_task(im: imessage.iMessageUser):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--reregister", action="store_true", help="Force re-registration")
+    parser.add_argument("--client-data", action="store_true", help="Publish client data (only necessary for actually sending/receiving messages)")
     args = parser.parse_args()
     trio.run(main, args)
