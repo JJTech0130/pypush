@@ -138,18 +138,12 @@ async def main(args: argparse.Namespace):
             print("Re-registering...")
             users = register(conn, users)
 
+        print(f"Done?")
 
-        # You CANNOT turn around and re-register like this:
-        # It will BREAK the tie between phone number and Apple ID
-
-        # import emulated.nac
-
-        # vd = emulated.nac.generate_validation_data()
-        # vd = b64encode(vd).decode()
-
-        # users = ids.register(conn, [users[1]], vd)
-
-        print(f"Done? {users}")
+        if args.alive:
+            logging.getLogger("apns").setLevel(logging.DEBUG)
+            while True:
+                await trio.sleep(20)
 
         
 
@@ -270,6 +264,7 @@ async def output_task(im: imessage.iMessageUser):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--reregister", action="store_true", help="Force re-registration")
+    parser.add_argument("--alive", action="store_true", help="Keep the connection alive")
     parser.add_argument("--client-data", action="store_true", help="Publish client data (only necessary for actually sending/receiving messages)")
     args = parser.parse_args()
     trio.run(main, args)
