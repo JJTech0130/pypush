@@ -282,7 +282,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    if not args.pdu.startswith("REG-RESP"):
+    if args.pdu is not None and not args.pdu.startswith("REG-RESP"):
         print("Invalid REG-RESP PDU")
         exit(1)
 
