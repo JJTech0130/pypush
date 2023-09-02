@@ -98,12 +98,20 @@ async def main(args: argparse.Namespace):
         else:
             print("Would you like to register a phone number? (y/n)")
             if input("> ").lower() == "y":
+                import sms_registration
+                if args.gateway is not None:
+                    sms_registration.GATEWAY = args.gateway
+                if args.phone is not None:
+                    sms_registration.PHONE_IP = args.phone
+
                 if "phone" in CONFIG:
                     phone_sig = b64decode(CONFIG["phone"].get("sig"))
                     phone_number = CONFIG["phone"].get("number")
+                elif args.pdu is not None:
+                    sms_registration.parse_pdu(args.pdu, None)
                 else:
                     import sms_registration
-                    phone_number, phone_sig = sms_registration.register(conn.credentials.token)
+                    phone_number, phone_sig = sms_registration.register(conn.credentials.token, args.trigger_pdu)
                     CONFIG["phone"] = {
                         "number": phone_number,
                         "sig": b64encode(phone_sig).decode(),
@@ -266,5 +274,11 @@ if __name__ == "__main__":
     parser.add_argument("--reregister", action="store_true", help="Force re-registration")
     parser.add_argument("--alive", action="store_true", help="Keep the connection alive")
     parser.add_argument("--client-data", action="store_true", help="Publish client data (only necessary for actually sending/receiving messages)")
+    parser.add_argument("--trigger-pdu", action="store_true", help="Trigger a REG-REQ")
+    # String arg to override pdu
+    parser.add_argument("--pdu", type=str, help="Override the PDU REG-RESP")
+    parser.add_argument("--phone", type=str, help="Override the phone IP")
+    parser.add_argument("--gateway", type=str, help="Override the gateway phone number")
+
     args = parser.parse_args()
     trio.run(main, args)
