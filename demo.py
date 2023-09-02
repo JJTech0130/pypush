@@ -281,4 +281,9 @@ if __name__ == "__main__":
     parser.add_argument("--gateway", type=str, help="Override the gateway phone number")
 
     args = parser.parse_args()
+    
+    if not args.pdu.startswith("REG-RESP"):
+        print("Invalid REG-RESP PDU")
+        exit(1)
+
     trio.run(main, args)

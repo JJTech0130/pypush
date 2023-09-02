@@ -21,7 +21,7 @@ def register(push_token: bytes, no_parse = False, gateway = GATEWAY) -> tuple[st
     if no_parse:
         print("Now do the next part and rerun with --pdu")
         exit()
-    parse_pdu(r, req_id)
+    parse_pdu(r.text, req_id)
     
     # if r.text.split("?")[0] != "REG-RESP":
     #     raise Exception(f"Failed to register: {r.text}")
@@ -37,10 +37,10 @@ def register(push_token: bytes, no_parse = False, gateway = GATEWAY) -> tuple[st
     # return resp_params["n"], signature
 
 def parse_pdu(r: str, req_id: int | None = None):
-    if r.text.split("?")[0] != "REG-RESP":
-        raise Exception(f"Failed to register: {r.text}")
+    if r.split("?")[0] != "REG-RESP":
+        raise Exception(f"Failed to register: {r}")
     #assert r.text.split("?")[0] == "REG-RESP"
-    resp_params = r.text.split("?")[1]
+    resp_params = r.split("?")[1]
     resp_params = resp_params.split(";")
     resp_params = {param.split("=")[0]: param.split("=")[1] for param in resp_params}
     assert resp_params["v"] == "3"
