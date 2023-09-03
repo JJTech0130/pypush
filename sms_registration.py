@@ -23,7 +23,7 @@ def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, 
     if no_parse:
         print("Now do the next part and rerun with --pdu")
         exit()
-    parse_pdu(r.text, req_id)
+    return parse_pdu(r.text, req_id)
     
     # if r.text.split("?")[0] != "REG-RESP":
     #     raise Exception(f"Failed to register: {r.text}")
