@@ -90,11 +90,7 @@ def add_auth_signature(
     push_token: str,
     auth_number=None,
 ):
-    push_sig, push_nonce = _sign_payload(push_key.key, bag_key, "", push_token, body)
-    headers["x-push-sig"] = push_sig
-    headers["x-push-nonce"] = b64encode(push_nonce)
-    headers["x-push-cert"] = dearmour(push_key.cert)
-    headers["x-push-token"] = push_token
+    add_push_signature(headers, body, bag_key, push_key, push_token)
 
     auth_sig, auth_nonce = _sign_payload(auth_key.key, bag_key, "", push_token, body)
     auth_postfix = "-" + str(auth_number) if auth_number is not None else ""
@@ -102,6 +98,18 @@ def add_auth_signature(
     headers["x-auth-nonce" + auth_postfix] = b64encode(auth_nonce)
     headers["x-auth-cert" + auth_postfix] = dearmour(auth_key.cert)
 
+def add_push_signature(
+    headers: dict,
+    body: bytes,
+    bag_key: str,
+    push_key: KeyPair,
+    push_token: str
+):
+    push_sig, push_nonce = _sign_payload(push_key.key, bag_key, "", push_token, body)
+    headers["x-push-sig"] = push_sig
+    headers["x-push-nonce"] = b64encode(push_nonce)
+    headers["x-push-cert"] = dearmour(push_key.cert)
+    headers["x-push-token"] = push_token
 
 def add_id_signature(
     headers: dict,

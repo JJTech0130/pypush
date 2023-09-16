@@ -6,6 +6,7 @@ from subprocess import PIPE, Popen
 from rich.logging import RichHandler
 
 import apns
+import ids.facetime
 import ids
 import imessage
 
@@ -80,6 +81,7 @@ async def main():
         CONFIG["id"] = {
             "key": user._id_keypair.key,
             "cert": user._id_keypair.cert,
+            "ft_cert": user._facetime_cert,
         }
         CONFIG["auth"] = {
             "key": user._auth_keypair.key,
@@ -95,6 +97,8 @@ async def main():
 
         with open("config.json", "w") as f:
             json.dump(CONFIG, f, indent=4)
+
+        await ids.facetime.provision_alias(user)
 
         im = imessage.iMessageUser(conn, user)
 

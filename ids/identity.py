@@ -151,7 +151,28 @@ def register(
                         "user-id": user_id,
                     }
                 ],
-            }
+            },
+            {
+                "capabilities": [{"flags": 1, "name": "Invitation", "version": 1}],
+                "service": "com.apple.private.alloy.facetime.multi",
+                "sub-services": [],
+                "users": [
+                    {
+                        "client-data": {
+                            "public-message-identity-key": identity.encode(),
+                            "public-message-identity-version": 2,
+                            "supports-avless": True,
+                            "supports-co": True,
+                            "supports-gft-calls": True,
+                            "supports-gft-errors": True,
+                            "supports-modern-gft": True,
+                            "supports-self-one-to-one-invites": True,
+                        },
+                        "uris": uris,
+                        "user-id": user_id,
+                    }
+                ],
+            },
         ],
         "validation-data": b64decode(validation_data),
     }
@@ -184,5 +205,10 @@ def register(
         raise Exception(f"No users in response: {r}")
     if not "cert" in r["services"][0]["users"][0]:
         raise Exception(f"No cert in response: {r}")
+    
+    return {
+        "com.apple.madrid": armour_cert(r["services"][0]["users"][0]["cert"]),
+        "com.apple.private.alloy.facetime.multi": armour_cert(r["services"][1]["users"][0]["cert"])
+    }
 
-    return armour_cert(r["services"][0]["users"][0]["cert"])
+    #return armour_cert(r["services"][0]["users"][0]["cert"])
