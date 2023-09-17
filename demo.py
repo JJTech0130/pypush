@@ -108,7 +108,7 @@ async def main(args: argparse.Namespace):
                     phone_sig = b64decode(CONFIG["phone"].get("sig"))
                     phone_number = CONFIG["phone"].get("number")
                 elif args.pdu is not None:
-                    sms_registration.parse_pdu(args.pdu, None)
+                    phone_number, phone_sig = sms_registration.parse_pdu(args.pdu, None)
                 else:
                     import sms_registration
                     phone_number, phone_sig = sms_registration.register(conn.credentials.token, args.trigger_pdu)
