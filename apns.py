@@ -374,6 +374,18 @@ class APNSField:
             self.id.to_bytes(1, "big") + len(self.value).to_bytes(2, "big") + self.value
         )
 
+async def receive_exact(stream: trio.abc.Stream, length: int) -> bytes:
+    """Receives exactly length bytes from the given stream"""
+    buffer = b""
+    while len(buffer) < length:
+        b = await stream.receive_some(length - len(buffer))
+        if b == b"":
+            raise Exception("Unable to read payload from stream (EOF)")
+        elif b is None:
+            logger.warning("Got None from receive_some, why?")
+        else:
+            buffer += b
+    return buffer
 
 @dataclass
 class APNSPayload:
@@ -385,24 +397,16 @@ class APNSPayload:
     @staticmethod
     async def read_from_stream(stream: trio.abc.Stream) -> APNSPayload:
         """Reads a payload from the given stream"""
-        if not (id_bytes := await stream.receive_some(1)):
-            raise Exception("Unable to read payload id from stream")
-        id: int = int.from_bytes(id_bytes, "big")
+        id = await receive_exact(stream, 1)
+        id = int.from_bytes(id, "big")
 
-        if (length := await stream.receive_some(4)) is None:
-            raise Exception("Unable to read payload length from stream")
+        length = await receive_exact(stream, 4)
         length = int.from_bytes(length, "big")
 
         if length == 0:
             return APNSPayload(id, [])
         
-        # Make sure we receive length bytes
-        buffer = b""
-        while len(buffer) < length:
-            b = await stream.receive_some(length - len(buffer))
-            if b == b"":
-                raise Exception("Unable to read payload from stream (EOF)")
-            buffer += b 
+        buffer = await receive_exact(stream, length)
 
         fields = []
 
