@@ -22,7 +22,7 @@ logging.getLogger("py.warnings").setLevel(logging.ERROR)  # Ignore warnings from
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.INFO)
+logging.getLogger("apns").setLevel(logging.DEBUG)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.INFO)
@@ -68,7 +68,7 @@ async def main():
 
     async with apns.APNSConnection.start(push_creds) as conn:
         await conn.set_state(1)
-        await conn.filter(["com.apple.madrid"])
+        await conn.filter(["com.apple.madrid"]+ids.facetime.TEST_TOPICS)
 
         user = ids.IDSUser(conn)
         user.auth_and_set_encryption_from_config(CONFIG)
@@ -185,9 +185,34 @@ async def input_task(im: imessage.iMessageUser):
             print("No chat selected")
 
 async def output_task(im: imessage.iMessageUser):
+    import plistlib
     while True:
-        msg = await im.receive()
-        print(str(msg))
+        def check(payload: apns.APNSPayload):
+            # Check if the "c" key matches
+            #ody = payload.fields_with_id(3)[0].value
+            #if body is None:
+            #3    return False
+            #body = plistlib.loads(body)
+            #if not "c" in body:
+            #    return False
+            #if isinstance(c, int) and body["c"] != c:
+            #    return False
+            #elif isinstance(c, list) and body["c"] not in c:
+            #    return False
+            return True
+
+        payload = await im.connection.expect_notification(ids.facetime.TEST_TOPICS, check)
+
+        body_bytes: bytes = payload.fields_with_id(3)[0].value
+        body: dict[str, Any] = plistlib.loads(body_bytes)
+
+        print(body)
+
+        print(im._decrypt_payload(body["P"]))
+        #return body
+
+        #msg = await im.receive()
+        #print(str(msg))
 
 
 if __name__ == "__main__":

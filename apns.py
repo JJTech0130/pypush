@@ -395,10 +395,15 @@ class APNSPayload:
 
         if length == 0:
             return APNSPayload(id, [])
+        
+        # Make sure we receive length bytes
+        buffer = b""
+        while len(buffer) < length:
+            b = await stream.receive_some(length - len(buffer))
+            if b == b"":
+                raise Exception("Unable to read payload from stream (EOF)")
+            buffer += b 
 
-        buffer = await stream.receive_some(length)
-        if buffer is None:
-            raise Exception("Unable to read payload from stream")
         fields = []
 
         while len(buffer) > 0:

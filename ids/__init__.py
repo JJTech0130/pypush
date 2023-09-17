@@ -126,5 +126,7 @@ class IDSUser:
 
             self.register(vd)
 
-    async def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> Any:
-        return await query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)
+    async def lookup(self, uris: list[str], topic: str = "com.apple.madrid", keypair = None) -> Any:
+        if keypair is None:
+            keypair = self._id_keypair
+        return await query.lookup(self.push_connection, self.current_handle, keypair, uris, topic)
