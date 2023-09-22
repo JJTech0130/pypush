@@ -17,6 +17,9 @@ def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, 
     if gateway is None:
         mccmnc = requests.get(f"http://{PHONE_IP}:{API_PORT}/info").text
         gateway = gateway_fetch.getGatewayMCCMNC(mccmnc)
+    if gateway is None:
+        print("Automatic gateway detection failed, switching to default...")
+        gateway = GATEWAY
     token = push_token.hex().upper()
     req_id = random.randint(0, 2**32)
     sms = f"REG-REQ?v=3;t={token};r={req_id};"
