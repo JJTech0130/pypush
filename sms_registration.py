@@ -15,8 +15,12 @@ GATEWAY = "22223333"
 def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, bytes]:
     """Forwards a registration request to the phone and returns the phone number, signature for the provided push token"""
     if gateway is None:
+        print("Requesting device MCC+MNC for gateway detection...")
         mccmnc = requests.get(f"http://{PHONE_IP}:{API_PORT}/info").text
+        print("MCC+MNC received! " + mccmnc)
+        print("Determining gateway...")
         gateway = gateway_fetch.getGatewayMCCMNC(mccmnc)
+        print("Gateway found!  " + gateway)
     if gateway is None:
         print("Automatic gateway detection failed, switching to default...")
         gateway = GATEWAY
