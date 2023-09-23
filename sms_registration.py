@@ -2,6 +2,7 @@ import requests
 import random
 import apns
 import trio
+import gateway_fetch
 from base64 import b64decode, b64encode
 
 import urllib3
@@ -14,6 +15,14 @@ GATEWAY = "22223333"
 def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, bytes]:
     """Forwards a registration request to the phone and returns the phone number, signature for the provided push token"""
     if gateway is None:
+        print("Requesting device MCC+MNC for gateway detection...")
+        mccmnc = requests.get(f"http://{PHONE_IP}:{API_PORT}/info").text
+        print("MCC+MNC received! " + mccmnc)
+        print("Determining gateway...")
+        gateway = gateway_fetch.getGatewayMCCMNC(mccmnc)
+        print("Gateway found!  " + gateway)
+    if gateway is None:
+        print("Automatic gateway detection failed, switching to default...")
         gateway = GATEWAY
     token = push_token.hex().upper()
     req_id = random.randint(0, 2**32)
