@@ -42,7 +42,7 @@ except FileNotFoundError:
     CONFIG = {}
 
 # Re-register if the commit hash has changed
-if CONFIG.get("commit_hash") != commit_hash:
+if CONFIG.get("commit_hash") != commit_hash or True:
     logging.warning("pypush commit is different, forcing re-registration...")
     CONFIG["commit_hash"] = commit_hash
     if "id" in CONFIG:

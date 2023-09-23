@@ -156,7 +156,8 @@ class Message:
         raise NotImplementedError()
 
     def __str__(self):
-        raise NotImplementedError()
+        #raise NotImplementedError()
+        return self.text
 
 @dataclass
 class SMSReflectedMessage(Message):
@@ -467,8 +468,10 @@ class iMessageUser:
         payload = iMessageUser._parse_payload(p)
 
         body = BytesIO(payload[0])
+        #print(self.user.ngm.pre_key)
         rsa_body = ids._helpers.parse_key(
             self.user.encryption_identity.encryption_key # type: ignore
+            #self.user.ngm.pre_key
         ).decrypt( # type: ignore
             body.read(160),
             padding.OAEP(
@@ -516,12 +519,32 @@ class iMessageUser:
         body: dict[str, Any] = await self._receive_raw(list(MESSAGE_TYPES.keys()), [t[0] for t in MESSAGE_TYPES.values()])
         t: type[Message] = MESSAGE_TYPES[body["c"]][1]
 
+        if not 'E' in body:
+            logger.error(f"Received message with no encryption type")
+            logger.error(f"Message : {body}")
+            return Message(text="Received message with no encryption type", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
+        if body['E'] != 'pair':
+            logger.error(f"Received message with unknown encryption type {body['E']}")
+            return Message(text="Received message with unknown encryption type", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
+        if not 'P' in body:
+            logger.error(f"Received message with no payload")
+            logger.error(f"Message : {body}")
+            return Message(text="Received message with no payload", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
+
         if not await self._verify_payload(body["P"], body["sP"], body["t"]):
-            raise Exception("Failed to verify payload")
+            #raise Exception("Failed to verify payload")
+            logger.error(f"Failed to verify payload")
+            logger.error(f"Message : {body}")
+            return Message(text="Failed to verify payload", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
 
         logger.debug(f"Encrypted body : {body}")
 
-        decrypted: bytes = self._decrypt_payload(body["P"])
+        try:
+            decrypted: bytes = self._decrypt_payload(body["P"])
+        except Exception as e:
+            logger.error(f"Failed to decrypt message : {e}")
+            logger.error(f"Message : {body}")
+            return Message(text="Failed to decrypt message", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
 
         try:
             return t.from_raw(decrypted, body["sP"])

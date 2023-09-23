@@ -16,17 +16,12 @@ class NGMIdentity:
         self.device_key = device_key
         self.pre_key = pre_key
 
-    @staticmethod
-    def serialize_timestamp(timestamp: float):
-        import struct
-        return struct.pack("<d", timestamp)
-        import time
-        time.time()
-
-
     def sign_prekey(self):
         timestamp = time.time()
         to_sign = b"NGMPrekeySignature" + _helpers.compact_key(_helpers.parse_key(self.pre_key)) + struct.pack("<d", timestamp)
+        # Extend to the next multiple of 8
+        to_sign += b"\x00" * (8 - (len(to_sign) % 8))
+        print(to_sign)
         signed = _helpers.parse_key(self.device_key).sign(to_sign, ec.ECDSA(hashes.SHA256()))
 
         prekey_signed = ids_pb2.PublicDevicePrekey()

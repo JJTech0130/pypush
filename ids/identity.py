@@ -154,7 +154,7 @@ def register(
                         # },
                         "client-data": {
                                 "supports-ack-v1": True,
-                                "public-message-identity-key": identity.encode(),
+                                #"public-message-identity-key": identity.encode(),
                                 "supports-update-attachments-v1": True,
                                 "supports-keep-receipts": True,
                                 "supports-people-request-messages-v2": True,
@@ -195,6 +195,7 @@ def register(
                                 "supports-dq-nr": True,
                                 "public-message-identity-ngm-version": 12.0,
                                 "supports-audio-messaging-v2": True,
+                                #"ngm-public-identity": ngm.generate_loggable_data()
                         },
                         "kt-loggable-data": ngm.generate_loggable_data(),
                         "kt-mismatch-account-flag": True,

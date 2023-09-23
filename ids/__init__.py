@@ -59,6 +59,7 @@ class IDSUser:
         self.user_id = user_id
         self.handles = handles
         self.current_handle = self.handles[0]
+        self.ngm = encryption.NGMIdentity(self.extra.get("device_key"), self.extra.get("prekey"))
 
     # This is a separate call so that the user can make sure the first part succeeds before asking for validation data
     def register(self, validation_data: str):
@@ -66,7 +67,6 @@ class IDSUser:
         self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
         if they are not already set
         """
-        
         
         self.ngm = encryption.NGMIdentity(self.extra.get("device_key"), self.extra.get("prekey"))
         self.extra["device_key"] = self.ngm.device_key
@@ -90,8 +90,7 @@ class IDSUser:
         self._id_keypair = id_keypair
 
     def auth_and_set_encryption_from_config(self, config: dict[str, dict[str, Any]]):
-        if "extra" in config:
-            self.extra = config["extra"]
+        self.extra = config.get("extra", {})
 
         auth = config.get("auth", {})
         if (
