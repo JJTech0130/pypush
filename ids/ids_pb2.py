@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rids/ids.proto\"_\n\x1bKeyTransparencyLoggableData\x12\x19\n\x11ngmPublicIdentity\x18\x01 \x01(\x0c\x12\x12\n\nngmVersion\x18\x02 \x01(\r\x12\x11\n\tktVersion\x18\x03 \x01(\r\"&\n\x11NgmPublicIdentity\x12\x11\n\tpublicKey\x18\x01 \x01(\x0c\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rids/ids.proto\"_\n\x1bKeyTransparencyLoggableData\x12\x19\n\x11ngmPublicIdentity\x18\x01 \x01(\x0c\x12\x12\n\nngmVersion\x18\x02 \x01(\r\x12\x11\n\tktVersion\x18\x03 \x01(\r\"&\n\x11NgmPublicIdentity\x12\x11\n\tpublicKey\x18\x01 \x01(\x0c\"P\n\x12PublicDevicePrekey\x12\x0e\n\x06prekey\x18\x01 \x02(\x0c\x12\x17\n\x0fprekeySignature\x18\x02 \x02(\x0c\x12\x11\n\ttimestamp\x18\x03 \x02(\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -25,4 +25,6 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_KEYTRANSPARENCYLOGGABLEDATA']._serialized_end=112
   _globals['_NGMPUBLICIDENTITY']._serialized_start=114
   _globals['_NGMPUBLICIDENTITY']._serialized_end=152
+  _globals['_PUBLICDEVICEPREKEY']._serialized_start=154
+  _globals['_PUBLICDEVICEPREKEY']._serialized_end=234
 # @@protoc_insertion_point(module_scope)

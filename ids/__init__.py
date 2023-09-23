@@ -4,7 +4,7 @@ import logging
 
 import apns
 
-from . import _helpers, identity, profile, query
+from . import _helpers, identity, profile, query, encryption
 from typing import Callable, Any
 
 class IDSUser:
@@ -66,6 +66,12 @@ class IDSUser:
         self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
         if they are not already set
         """
+        
+        
+        self.ngm = encryption.NGMIdentity(self.extra.get("device_key"), self.extra.get("prekey"))
+        self.extra["device_key"] = self.ngm.device_key
+        self.extra["prekey"] = self.ngm.pre_key
+
         cert = identity.register(
             b64encode(self.push_connection.credentials.token),
             self.handles,
@@ -74,13 +80,18 @@ class IDSUser:
             self._push_keypair,
             self.encryption_identity,
             validation_data,
+            self.ngm
         )
         self._id_keypair = _helpers.KeyPair(self._auth_keypair.key, cert)
+
+        #self.extra = extra
 
     def restore_identity(self, id_keypair: _helpers.KeyPair):
         self._id_keypair = id_keypair
 
     def auth_and_set_encryption_from_config(self, config: dict[str, dict[str, Any]]):
+        if "extra" in config:
+            self.extra = config["extra"]
 
         auth = config.get("auth", {})
         if (

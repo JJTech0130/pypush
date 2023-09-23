@@ -92,6 +92,7 @@ async def main():
             "key": user.push_connection.credentials.private_key,
             "cert": user.push_connection.credentials.cert,
         }
+        CONFIG["extra"] = user.extra
 
         with open("config.json", "w") as f:
             json.dump(CONFIG, f, indent=4)

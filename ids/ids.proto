@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax = "proto2";
 
 // message InnerMessage {
 //   required bytes message = 1;
@@ -8,11 +8,17 @@ syntax = "proto3";
 // }
 
 message KeyTransparencyLoggableData {
-  bytes ngmPublicIdentity = 1;
-  uint32 ngmVersion = 2;
-  uint32 ktVersion = 3;
+  optional bytes ngmPublicIdentity = 1;
+  optional uint32 ngmVersion = 2;
+  optional uint32 ktVersion = 3;
 }
 
 message NgmPublicIdentity {
-  bytes publicKey = 1;
+  optional bytes publicKey = 1;
+}
+
+message PublicDevicePrekey {
+  required bytes prekey = 1;
+  required bytes prekeySignature = 2;
+  required double timestamp = 3;
 }

@@ -78,6 +78,28 @@ def create_compact_key():
 
     return pub, serialize_key(key)
 
+def compact_key(key: ec.EllipticCurvePrivateKey):
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+    return key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint)[1:]
+
+
+def create_compactable_key():
+    # Generate a P256 keypair
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+    # Generate keys until we get one that is even
+    key = None
+
+    while True:
+        key = ec.generate_private_key(ec.SECP256R1())
+        pub = key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint)
+        if pub[0] == 0x02:
+            break
+    
+    return serialize_key(key)
+
 def create_encoded_compact_key() -> tuple[str, str]:
     pub, key = create_compact_key()
     # URL-safe base64 encode
