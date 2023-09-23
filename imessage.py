@@ -549,6 +549,7 @@ class iMessageUser:
 
         # Look up the public keys for the participants, and cache a token : public key mapping
         lookup = await self.user.lookup(participants, topic=topic)
+        print(lookup)
 
         logger.debug(f"Lookup response : {lookup}")
         for key, participant in lookup.items():

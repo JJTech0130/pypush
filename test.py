@@ -1,0 +1,8 @@
+import ids
+from ids import encryption
+
+test = "0a220a200d6cbecaf7e8b2896b181eb92c64f8e20abf8de145d6f354cbd99964d16d6beb100c180522450801124104e3e7592e7a570f9d95c2c5d99e4305a0952ea94457a9fba9aa1a86380eeee68f2512a30d01e1bb974d9a19169444cd76ebef656d3fb3ef7a4d237e61920f4fab"
+test = bytes.fromhex(test)
+encryption.parse_loggable_data(test)
+
+print(encryption.create_loggable_data())

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+// message InnerMessage {
+//   required bytes message = 1;
+//   uint32 counter = 2;
+//   bytes ktGossipData = 3;
+//   bytes debugInfo = 99;
+// }
+
+message KeyTransparencyLoggableData {
+  bytes ngmPublicIdentity = 1;
+  uint32 ngmVersion = 2;
+  uint32 ktVersion = 3;
+}
+
+message NgmPublicIdentity {
+  bytes publicKey = 1;
+}
