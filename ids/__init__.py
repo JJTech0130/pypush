@@ -67,12 +67,12 @@ class IDSUser:
         self.ec_key, self.rsa_key will be set to a randomly gnenerated EC and RSA keypair
         if they are not already set
         """
-        
+
         self.ngm = encryption.NGMIdentity(self.extra.get("device_key"), self.extra.get("prekey"))
         self.extra["device_key"] = self.ngm.device_key
         self.extra["prekey"] = self.ngm.pre_key
 
-        cert = identity.register(
+        certs = identity.register(
             b64encode(self.push_connection.credentials.token),
             self.handles,
             self.user_id,
@@ -82,7 +82,8 @@ class IDSUser:
             validation_data,
             self.ngm
         )
-        self._id_keypair = _helpers.KeyPair(self._auth_keypair.key, cert)
+        self._id_keypair = _helpers.KeyPair(self._auth_keypair.key, certs["com.apple.madrid"])
+        self._facetime_cert = certs["com.apple.private.alloy.facetime.multi"]
 
         #self.extra = extra
 
@@ -114,7 +115,8 @@ class IDSUser:
             (rsa_key := encryption.get("rsa_key")) and
             (signing_key := encryption.get("ec_key")) and
             (cert := id.get("cert")) and
-            (key := id.get("key"))
+            (key := id.get("key")) and
+            (ft_cert := id.get("ft_cert"))
         ):
             self.encryption_identity = identity.IDSIdentity(
                 encryption_key=rsa_key,
@@ -123,6 +125,8 @@ class IDSUser:
 
             id_keypair = _helpers.KeyPair(key, cert)
             self.restore_identity(id_keypair)
+
+            self._facetime_cert = ft_cert
         else:
             logging.info("Registering new identity...")
             import emulated.nac
@@ -132,6 +136,7 @@ class IDSUser:
 
             self.register(vd)
 
-    async def lookup(self, uris: list[str], topic: str = "com.apple.madrid") -> Any:
-        return await query.lookup(self.push_connection, self.current_handle, self._id_keypair, uris, topic)
-
+    async def lookup(self, uris: list[str], topic: str = "com.apple.madrid", keypair = None) -> Any:
+        if keypair is None:
+            keypair = self._id_keypair
+        return await query.lookup(self.push_connection, self.current_handle, keypair, uris, topic)

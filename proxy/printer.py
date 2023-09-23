@@ -214,6 +214,13 @@ def pretty_print_payload(
 
         print(f" {bcolors.WARNING}Topic{bcolors.ENDC}: {topic}", end="")
 
+        if topic is not None and  "facetime" in topic:
+            payload: dict[str, Any] = plistlib.loads(_get_field(payload[1], 3))
+            for (key, value) in payload.items():
+                print(f" {bcolors.OKBLUE}{key}{bcolors.ENDC}: {value}") # type: ignore
+
+
+
         if topic == "com.apple.madrid" or topic == "com.apple.private.alloy.sms":
             print(f" {bcolors.FAIL}Madrid{bcolors.ENDC}", end="")
             orig_payload = payload
