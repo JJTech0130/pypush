@@ -163,7 +163,7 @@ def register(
                         # },
                         "client-data": {
                                 "supports-ack-v1": True,
-                                #"public-message-identity-key": identity.encode(),
+                                "public-message-identity-key": identity.encode(),
                                 "supports-update-attachments-v1": True,
                                 "supports-keep-receipts": True,
                                 "supports-people-request-messages-v2": True,
