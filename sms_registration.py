@@ -20,7 +20,7 @@ def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, 
         print("MCC+MNC received! " + mccmnc)
         print("Determining gateway...")
         gateway = gateway_fetch.getGatewayMCCMNC(mccmnc)
-        print("Gateway found!  " + gateway)
+        print("Gateway found!  " + str(gateway))
     if gateway is None:
         print("Automatic gateway detection failed, switching to default...")
         gateway = GATEWAY
