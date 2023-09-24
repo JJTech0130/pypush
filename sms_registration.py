@@ -29,8 +29,9 @@ def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, 
     token = push_token.hex().upper()
     req_id = random.randint(0, 2**32)
     sms = f"REG-REQ?v=3;t={token};r={req_id};"
-    r = requests.get(f"http://{PHONE_IP}:{API_PORT}/register", params={"sms": sms, "gateway": gateway})
-
+    print("Sending message and waiting for response...")
+    r = requests.get(f"http://{PHONE_IP}:{API_PORT}/register", params={"sms": sms, "gateway": gateway}, timeout=16)
+    print("Received response from device!")
     if no_parse:
         print("Now do the next part and rerun with --pdu")
         exit()
