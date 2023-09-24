@@ -23,8 +23,9 @@ def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, 
     if gateway is not None:
         print("Gateway found!  " + str(gateway))
     else:
-        print("Automatic gateway detection failed, switching to default...")
-        gateway = GATEWAY
+        print("No gateway was provided, and automatic gateway detection failed. Please run again with the --gateway flag.")
+        # gateway = GATEWAY
+        raise
     token = push_token.hex().upper()
     req_id = random.randint(0, 2**32)
     sms = f"REG-REQ?v=3;t={token};r={req_id};"
