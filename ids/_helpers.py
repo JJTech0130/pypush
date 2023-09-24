@@ -81,7 +81,9 @@ def create_compact_key():
 def compact_key(key: ec.EllipticCurvePrivateKey):
     from cryptography.hazmat.primitives.asymmetric import ec
     from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-    return key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint)[1:]
+    k = key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint)
+    assert k[0] == 0x02
+    return k[1:]
 
 
 def create_compactable_key():

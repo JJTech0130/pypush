@@ -4,6 +4,8 @@ import struct,time
 
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+
 import logging
 logger = logging.getLogger("ids")
 
@@ -18,11 +20,23 @@ class NGMIdentity:
 
     def sign_prekey(self):
         timestamp = time.time()
+        # Set decimal to 0
+        timestamp = float(int(timestamp))
         to_sign = b"NGMPrekeySignature" + _helpers.compact_key(_helpers.parse_key(self.pre_key)) + struct.pack("<d", timestamp)
         # Extend to the next multiple of 8
-        to_sign += b"\x00" * (8 - (len(to_sign) % 8))
-        print(to_sign)
+        #to_sign += b"\x00" * (8 - (len(to_sign) % 8))
+        #print(to_sign)
         signed = _helpers.parse_key(self.device_key).sign(to_sign, ec.ECDSA(hashes.SHA256()))
+        a,b = decode_dss_signature(signed)
+        signed = a.to_bytes(32, "big") + b.to_bytes(32, "big")
+    
+   # print("SIGNED: " + a.to_bytes(32, "big").hex() + b.to_bytes(32, "big").hex())
+        # print(signed)
+
+        # print("device")
+        # print(_helpers.compact_key(_helpers.parse_key(self.device_key)))
+        # print("pre")
+        # print(_helpers.compact_key(_helpers.parse_key(self.pre_key)))
 
         prekey_signed = ids_pb2.PublicDevicePrekey()
         prekey_signed.prekeySignature = signed
