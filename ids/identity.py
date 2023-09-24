@@ -204,10 +204,10 @@ def register(
                                 "supports-dq-nr": True,
                                 "public-message-identity-ngm-version": 12.0,
                                 "supports-audio-messaging-v2": True,
-                                #"ngm-public-identity": ngm.generate_loggable_data()
+                                "ngm-public-identity": ngm.generate_loggable_data()
                         },
-                        "kt-loggable-data": ngm.generate_loggable_data(),
-                        "kt-mismatch-account-flag": True,
+                        #"kt-loggable-data": ngm.generate_loggable_data(),
+                        #"kt-mismatch-account-flag": False,
                         "uris": uris,
                         "user-id": user_id,
                     }
@@ -240,9 +240,11 @@ def register(
                     "supports-self-one-to-one-invites": True,
                     "supports-modern-gft": True,
                     "public-message-identity-ngm-version": 12.0,
+                    "ngm-public-identity": ngm.generate_loggable_data()
+
                     #"device-key-signature": b"0a\x04\x14\x1d\xb02~\xefk&\xf8\r;R\xa4\x95c~\x8a\x90H\x85\xb0\x02\x01\x01\x04F0D\x02 @\xce\xa7P6\x89\x92Wf\x87\xc9\xc5M-\xb1\xe5Q\x9f\x7fKi\x1bp\xd5\x12\x1c,:\xdb\xed\x08\x12\x02 l\xfd\\\xe2\xd3:,\xc1\xd8\x08|\xbe\x05M\x12\xee@\xc2=eR8:\xa7h3u|\x83ia\x19",
                 },
-                    "kt-loggable-data": ngm.generate_loggable_data(),
+                   # "kt-loggable-data": ngm.generate_loggable_data(),
 
                         "uris": uris,
                         "user-id": user_id,
