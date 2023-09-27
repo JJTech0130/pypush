@@ -15,15 +15,15 @@ In order for Apple to verify your number, a specialized message has to be sent f
 3. Connect your phone to the same WiFi network as your host PC, and open the app.
 
 ### Pypush
-Make sure you have git and Python installed.
+Make sure you have Git and Python installed.
 
 1. `git clone -b sms-registration https://github.com/beeper/pypush`
 2. `cd pypush` && `python3 -m pip install -r requirements.txt`
 
 # Number Registration
 
-3. `python3 demo.py --phone [ip]`. Replace `ip` with your phone's local IP.
-4. If the previous ran successfully, you can now run `python3 demo.py --reregister`
+1. `python3 demo.py --phone [ip]`. Replace `ip` with your phone's local IP.
+2. If the previous ran successfully, you can now run `python3 demo.py --reregister`
 
 ***Please note:*** This last script is the script you will be running continuously. We recommend every 30 minutes. There should also be a file called `reregister.py`, if you run this it should reregister you every 30 minutes.
 
