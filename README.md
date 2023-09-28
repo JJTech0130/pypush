@@ -25,7 +25,7 @@ Make sure you have git and Python installed.
 # Number Registration
 
 1. `python3 demo.py --phone [ip]`. Replace `ip` with your phone's local IP. *(Usually this starts with `192.168.x.x`, however it can also start with `172` or `10`.)*
-2. If the previous ran successfully, you can now run `python3 demo.py --reregister`
+2. If the previous command ran successfully, you can now run `python3 demo.py --reregister`
 
 ***Please note:*** This last script is the script you will be running continuously. We recommend every 30 minutes.
 
