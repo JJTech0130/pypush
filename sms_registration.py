@@ -16,7 +16,7 @@ def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, 
     """Forwards a registration request to the phone and returns the phone number, signature for the provided push token"""
     if gateway is None:
         print("Requesting device MCC+MNC for gateway detection...")
-        mccmnc = requests.get(f"http://{PHONE_IP}:{API_PORT}/info").text
+        mccmnc = requests.get(f"http://{PHONE_IP}:{API_PORT}/info", timeout=30).text
         print("MCC+MNC received! " + mccmnc)
         print("Determining gateway...")
         gateway = gateway_fetch.getGatewayMCCMNC(mccmnc)
@@ -30,7 +30,7 @@ def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, 
     req_id = random.randint(0, 2**32)
     sms = f"REG-REQ?v=3;t={token};r={req_id};"
     print("Sending message and waiting for response...")
-    r = requests.get(f"http://{PHONE_IP}:{API_PORT}/register", params={"sms": sms, "gateway": gateway}, timeout=16)
+    r = requests.get(f"http://{PHONE_IP}:{API_PORT}/register", params={"sms": sms, "gateway": gateway}, timeout=30)
     print("Received response from device!")
     if no_parse:
         print("Now do the next part and rerun with --pdu")
