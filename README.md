@@ -1,6 +1,8 @@
-# Overview
-This is the Pypush sms-registration branch. This branch allows you to register your phone number to your Apple account as an iMessage alias.
+# pypush
+`pypush` is a POC demo of my recent iMessage reverse-engineering.
+It can currently register as a new device on an Apple ID, set up encryption keys, and ***send and receive iMessages***!
 
+<<<<<<< HEAD
 sms-registration is not fully developed yet, and still contains bugs! If you encounter any sort of bug, please join [our Discord](https://discord.gg/BtSbcExKJ9), however please note we cannot get to everyone, so try to figure out any errors yourself before asking.
 
 ***Please note:*** You will have to use a client to send messages from your phone. We recommend [Beeper](https://www.beeper.com/), which is the best solution to keep all your chat apps inside one place, including iMessage! You can also use [BlueBubbles](https://www.beeper.com/) (which requires you to have a server Mac running 24/7) or [Sunbird](https://www.sunbirdapp.com/) (which is closed source and requires you to be a beta tester). Beeper is completely free and easy to use, and comes packed with multiple features that reivals native apps. Beeper is currently in the process of removing the waitlist, so you will have to use an invite link shared to you in order to skip the waitlist until this change is made.
@@ -15,15 +17,39 @@ In order for Apple to verify your number, a specialized message has to be sent f
 2. Install the APK. The message link containing the APK is located [here](https://discord.com/channels/1130633272595066880/1145177252015915080/1153070972090470481), and the GitHub repository is [here](https://github.com/JJTech0130/PNRGatewayClientV2).
 3. Grant SMS permissions. This will be in the app info page, and on the newer version, there should be a button in the app that does this for you.
 4. Connect your phone to the same WiFi network as your host PC, and open the app.
+=======
+`pypush` is completely platform-independent, and does not require a Mac or other Apple device to use!
 
-### Pypush
-Make sure you have git and Python installed.
+## Installation
+It's pretty self explanatory:
+1. `git clone https://github.com/JJTech0130/pypush`
+2. `pip3 install -r requirements.txt`
+3. `python3 ./demo.py`
 
+## Troubleshooting
+If you have any issues, please join [the Discord](https://discord.gg/BVvNukmfTC) and ask for help.
+
+## Operation
+`pypush` will generate a `config.json` in the repository when you run demo.py. DO NOT SHARE THIS FILE.
+It contains all the encryption keys necessary to log into you Apple ID and send iMessages as you.
+>>>>>>> parent of 902c52c (Update README.md)
+
+Once it loads, it should prompt you with `>>`. Type `help` and press enter for a list of supported commands.
+
+<<<<<<< HEAD
 1. `git clone -b sms-registration https://github.com/beeper/pypush`
 2. `cd pypush` ,  `python3 -m pip install -r requirements.txt`
+=======
+## Special Notes
+### Unicorn dependency
+`pypush` currently uses the Unicorn CPU emulator and a custom MachO loader to load a framework from an old version of macOS,
+in order to call some obfuscated functions.
+>>>>>>> parent of 902c52c (Update README.md)
 
-# Number Registration
+This is only necessary during initial registration, so theoretically you can register on one device, and then copy the `config.json`
+to another device that doesn't support the Unicorn emulator. Or you could switch out the emulator for another x86 emulator if you really wanted to.
 
+<<<<<<< HEAD
 1. `python3 demo.py --phone [ip]`. Replace `ip` with your phone's local IP. *(Usually this starts with `192.168.x.x`, however it can also start with `172` or `10`.)*
 2. If the previous ran successfully, you can now run `python3 demo.py --reregister`
 
@@ -68,3 +94,14 @@ Delete `config.json` and retry.
 - [Carrier gateway list](https://discord.com/channels/1130633272595066880/1130990221920575618/1154069380699791470)
 - [Beeper install](https://www.beeper.com/download)
 - [Beeper signup](https://airtable.com/appSlLTU0QBt8EBZ2/shrYWTCBhNCUKU9iv)
+=======
+### Public key caching
+iMessage will cache public keys. If you get decryption errors in pypush or can only send and not receive messages from another device,
+try logging out and back into iMessage on that device, forcing it to refresh it's key cache. Alternatively, you can wait and the cache should
+expire eventually.
+
+## Licensing
+This project is licensed under the terms of the [SSPL](https://www.mongodb.com/licensing/server-side-public-license). Portions of this project are based on [macholibre by Aaron Stephens](https://github.com/aaronst/macholibre/blob/master/LICENSE) under the Apache 2.0 license.
+
+If you would like to use all or portions of this project in a commercial produce (without releasing source code), we are open to contacts about possible dual-licensing terms.
+>>>>>>> parent of 902c52c (Update README.md)
