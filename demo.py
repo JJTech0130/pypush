@@ -153,6 +153,15 @@ async def main(args: argparse.Namespace):
             while True:
                 await trio.sleep(20)
 
+        im = imessage.iMessageUser(conn, users[0])
+        await im.send(imessage.iMessage.create(im, "Hello world!", ["tel:+16106632676", "mailto:testu3@icloud.com"]))
+
+        while True:
+            print(await im.receive())
+
+
+        
+
         
 
 

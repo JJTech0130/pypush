@@ -100,30 +100,54 @@ def register(
 ):
     body = {
         # TODO: Abstract this out
-        "device-name": "pypush",
-        "hardware-version": "iPhone13,2",
+        "device-name": "iPhone",
+        "hardware-version": "iPhone9,4",
         "language": "en-US",
-        "os-version": "iPhone13,3_16.6,20G75",
-        "software-version": "20G75",
+        "os-version": "iPhone OS,15.7.5,19H332",
+        "software-version": "19H332",
 
-        "private-device-data": {
-            "u": str(device_id),
-        },
+        # "private-device-data": {
+        #     "ap": "1",
+        #     "c": "#c8caca",
+        #     "d": "717284928.014101",
+        #     "dt": 2,
+        #     "ec": "#dcdede",
+        #     "gt": "0",
+        #     "h": "1",
+        #     "ktf": "0",
+        #     "m": "1",
+        #     "p": "1",
+        #     "pb": "19H332",
+        #     "pn": "iPhone OS",
+        #     "pv": "15.7.5",
+        #     "s": "1",
+        #     "t": "1",
+        #     "u": "68DCE294-AE02-4740-8AD8-9689A1470505",
+        #     "v": "1",
+        # },
         "services": [
             {
                 "capabilities": [{"flags": 1, "name": "Messenger", "version": 1}],
                 "service": "com.apple.madrid",
                 "sub-services": ["com.apple.private.alloy.sms",
-                                 "com.apple.private.alloy.gelato",
                                  "com.apple.private.alloy.biz",
                                  "com.apple.private.alloy.gamecenter.imessage"],
                 "users": user_payloads,
             }
         ],
         "validation-data": b64decode(validation_data),
+#         "validation-data": b64decode("""
+# Au1sqv8fuZVdB2nCX4pVx3/s6FLDr5+bIzK+NUsMkjEhAAAA4AYAAAAAAAAAgA1uoKC3
+#       E4nBdWTD+QVCDx7Xu2Ih6ds2l02C5N1c2M2kCUHV1kMquP0ZtFe+UflhXdUJgapdkiN2
+#       Hn/L8GRMvfwIKZcPUUZXRFcjtE5UkwnWoTQ6pO37eDGV0ioggZJG1lv/zCEJDodB6qRB
+#       nqzdprSzIgQJKurqMkBqb8oCszd/AAAAAAAAAE8BbRfGn/FGhbN4rpbN/HDJu5yXCvcA
+#       AAA2CABPOkmSAuxjuaJK7fou9SkxZRCv+WrtU73TrSBnDLgZ60wRnlDQ7pHtRpFOQe99
+#       Us6D/TwC
+#                                      """.replace("\n", "").replace(" ", "")),
+
     }
     
-    logger.debug(f"Sending IDS registration request: {body}")
+    logger.warning(f"Sending IDS registration request: {body}")
 
     body = plistlib.dumps(body)
 
