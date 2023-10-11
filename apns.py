@@ -115,9 +115,9 @@ class APNSConnection:
             if payload.id == id:
                 if filter is not None:
                     if filter(payload):
-                        return payload
+                        return self._incoming_queue.pop()
                 else:
-                    return payload
+                    return self._incoming_queue.pop()
         while True:
             await self._queue_park.wait()  # Wait for a new payload to be added to the queue
             logger.debug(f"Woken by event, checking for {id}")
