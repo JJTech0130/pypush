@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+// Based on https://gist.github.com/horrorho/9c0ff20055b854f4298750cfad635fe2
+// and https://github.com/horrorho/InflatableDonkey/blob/master/src/main/resources/cloud_kit.proto
 message RequestOperation {
     message Header {
       enum ContainerEnvironment {
