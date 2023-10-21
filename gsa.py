@@ -26,6 +26,9 @@ ANISETTE = False # Use local generation with AOSKit (macOS only)
 # ANISETTE = 'https://sideloadly.io/anisette/irGb3Quww8zrhgqnzmrx'
 # ANISETTE = "http://jkcoxson.com:2052/"
 
+#USER_AGENT = "com.apple.iCloudHelper/282 CFNetwork/1408.0.4 Darwin/22.5.0"
+USER_AGENT = "akd/1.0 CFNetwork/978.0.7 Darwin/18.7.0"
+
 # Created here so that it is consistent
 USER_ID = uuid.uuid4()
 DEVICE_ID = uuid.uuid4()
@@ -175,7 +178,7 @@ def authenticated_request(parameters) -> dict:
     headers = {
         "Content-Type": "text/x-xml-plist",
         "Accept": "*/*",
-        "User-Agent": "akd/1.0 CFNetwork/978.0.7 Darwin/18.7.0",
+        "User-Agent": USER_AGENT,
         "X-MMe-Client-Info": build_client(emulated_app="Xcode"),
     }
 
