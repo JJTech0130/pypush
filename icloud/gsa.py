@@ -17,6 +17,9 @@ import srp._pysrp as srp
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
+import logging
+logger = logging.getLogger("gsa")
+
 
 # Server to use for anisette generation
 ANISETTE = False # Use local generation with AOSKit (macOS only)
@@ -126,7 +129,7 @@ def _generate_meta_headers(serial: str = "0", user_id: uuid = uuid.uuid4(), devi
     }
 
 def _generate_local_anisette() -> dict:
-    print("Using local anisette generation")
+    logger.debug("Using local anisette generation")
     """Generates anisette data using AOSKit locally"""
 
     import objc
@@ -146,7 +149,7 @@ def _generate_local_anisette() -> dict:
     }
 
 def _generate_remote_anisette(url: str) -> dict:
-    print("Using remote anisette generation: " + url)
+    logger.debug("Using remote anisette generation: " + url)
     h = json.loads(requests.get(url, timeout=5).text)
     return {
         "X-Apple-I-MD": h["X-Apple-I-MD"],
@@ -276,7 +279,7 @@ def trusted_second_factor(dsid, idms_token):
     if check_error(r):
         return
 
-    print("2FA successful")
+    logger.info("2FA successful")
 
 
 def sms_second_factor(dsid, idms_token):
@@ -356,7 +359,7 @@ def authenticate(username, password):
         return
 
     if r["sp"] != "s2k":
-        print(f"This implementation only supports s2k. Server returned {r['sp']}")
+        logger.error(f"This implementation only supports s2k. Server returned {r['sp']}")
         return
 
     # Change the password out from under the SRP library, as we couldn't calculate it without the salt.
@@ -366,7 +369,7 @@ def authenticate(username, password):
 
     # Make sure we processed the challenge correctly
     if M is None:
-        print("Failed to process challenge")
+        logger.critical("Failed to process challenge")
         return
 
     r = authenticated_request(
@@ -384,7 +387,7 @@ def authenticate(username, password):
     # Make sure that the server's session key matches our session key (and thus that they are not an imposter)
     usr.verify_session(r["M2"])
     if not usr.authenticated():
-        print("Failed to verify session")
+        logger.critical("Failed to verify session")
         return
 
     spd = decrypt_cbc(usr, r["spd"])
@@ -396,7 +399,7 @@ def authenticate(username, password):
     spd = plist.loads(PLISTHEADER + spd)
 
     if "au" in r["Status"] and r["Status"]["au"] == "trustedDeviceSecondaryAuth":
-        print("Trusted device authentication required")
+        logger.info("Trusted device authentication required")
         # Replace bytes with strings
         for k, v in spd.items():
             if isinstance(v, bytes):
@@ -404,10 +407,10 @@ def authenticate(username, password):
         trusted_second_factor(spd["adsid"], spd["GsIdmsToken"])
         return authenticate(username, password)
     elif "au" in r["Status"] and r["Status"]["au"] == "secondaryAuth":
-        print("SMS authentication required")
+        logger.info("SMS authentication required")
         sms_second_factor(spd["adsid"], spd["GsIdmsToken"])
     elif "au" in r["Status"]:
-        print(f"Unknown auth value {r['Status']['au']}")
+        logger.info(f"Unknown auth value {r['Status']['au']}")
         return
     else:
         # print("Assuming 2FA is not required")
