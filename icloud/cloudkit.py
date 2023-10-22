@@ -4,6 +4,8 @@ import random
 import typing
 import uuid
 from typing import Literal
+from io import BytesIO
+
 
 import requests
 
@@ -126,7 +128,26 @@ class CloudKitContainer:
             verify=False,
         )
 
-        print(r.content)
+        _parse_response(r.content) # Will raise an exception if the response is an error
+
+def _parse_response(response: bytes):
+    from io import BytesIO
+    length, read = _utils.ULEB128.decode_reader(BytesIO(response))
+    if length + read < len(response):
+        logger.warning(f"Response is longer than expected: {length + read} < {len(response)} (multiple messages?)")
+    response = response[read:length+read]
+
+    try:
+        r = cloudkit_pb2.ResponseOperation.FromString(response)
+    except Exception as e:
+        logger.warning(f"Failed to parse response: {e} {response.hex()}")
+        raise
+    
+    if r.result.code != cloudkit_pb2.ResponseOperation.Result.Code.SUCCESS:
+        if r.result.code == cloudkit_pb2.ResponseOperation.Result.Code.FAILURE:
+            raise Exception(f"CloudKit request failed: {r.result.error.errorDescription}")
+        else:
+            raise Exception("Unknown CloudKit error")
 
 
 def _build_record_save_request(
