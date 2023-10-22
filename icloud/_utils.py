@@ -16,7 +16,7 @@ class ULEB128:
         assert i >= 0
         r = []
         while True:
-            byte = i & 0x7f
+            byte = i & 0x7F
             i = i >> 7
             if i == 0:
                 r.append(byte)
@@ -27,7 +27,7 @@ class ULEB128:
     def decode(b: bytearray) -> int:
         r = 0
         for i, e in enumerate(b):
-            r = r + ((e & 0x7f) << (i * 7))
+            r = r + ((e & 0x7F) << (i * 7))
         return r
 
     @staticmethod
@@ -46,7 +46,7 @@ class ILEB128:
     def encode(i: int) -> bytearray:
         r = []
         while True:
-            byte = i & 0x7f
+            byte = i & 0x7F
             i = i >> 7
             if (i == 0 and byte & 0x40 == 0) or (i == -1 and byte & 0x40 != 0):
                 r.append(byte)
@@ -57,9 +57,9 @@ class ILEB128:
     def decode(b: bytearray) -> int:
         r = 0
         for i, e in enumerate(b):
-            r = r + ((e & 0x7f) << (i * 7))
+            r = r + ((e & 0x7F) << (i * 7))
         if e & 0x40 != 0:
-            r |= - (1 << (i * 7) + 7)
+            r |= -(1 << (i * 7) + 7)
         return r
 
     @staticmethod

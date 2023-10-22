@@ -1,17 +1,26 @@
-import uuid
-import plistlib
-from . import gsa
-import logging
-import requests
 import base64
+import logging
+import plistlib
+import uuid
+
+import requests
 
 from emulated import nac
+
+from . import gsa
 
 logger = logging.getLogger("icloud")
 
 USER_AGENT = "com.apple.iCloudHelper/282 CFNetwork/1408.0.4 Darwin/22.5.0"
 
-def login(username: str, password: str, delegates: set[str] = ["com.apple.private.ids"], grandslam: bool = True, anisette: str | bool = False):
+
+def login(
+    username: str,
+    password: str,
+    delegates: set[str] = ["com.apple.private.ids"],
+    grandslam: bool = True,
+    anisette: str | bool = False,
+):
     """
     Logs into Apple services listed in `delegates` and returns a dictionary of responses.
     Commonly used delegates are:
@@ -50,10 +59,11 @@ def login(username: str, password: str, delegates: set[str] = ["com.apple.privat
         "X-Apple-ADSID": adsid,
         "X-Mme-Nas-Qualify": base64.b64encode(v).decode(),
         "User-Agent": USER_AGENT,
-        "X-Mme-Client-Info": gsa.build_client(emulated_app="accountsd") # Otherwise we get MOBILEME_TERMS_OF_SERVICE_UPDATE on some accounts
+        "X-Mme-Client-Info": gsa.build_client(
+            emulated_app="accountsd"
+        ),  # Otherwise we get MOBILEME_TERMS_OF_SERVICE_UPDATE on some accounts
     }
     headers.update(gsa.generate_anisette_headers())
-
 
     logger.debug("Making login request")
     r = requests.post(
@@ -63,6 +73,6 @@ def login(username: str, password: str, delegates: set[str] = ["com.apple.privat
         headers=headers,
         verify=False,
     )
-    
+
     # TODO: Error checking and parsing of this response
     return plistlib.loads(r.content)

@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import locale
+import logging
 import plistlib as plist
 import uuid
 from base64 import b64decode, b64encode
@@ -17,19 +18,18 @@ import srp._pysrp as srp
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-import logging
 logger = logging.getLogger("gsa")
 
 
 # Server to use for anisette generation
-ANISETTE = False # Use local generation with AOSKit (macOS only)
+ANISETTE = False  # Use local generation with AOSKit (macOS only)
 # ANISETTE = "https://sign.rheaa.xyz/"
 # ANISETTE = 'http://45.132.246.138:6969/'
-#ANISETTE = "https://ani.sidestore.io/"
+# ANISETTE = "https://ani.sidestore.io/"
 # ANISETTE = 'https://sideloadly.io/anisette/irGb3Quww8zrhgqnzmrx'
 # ANISETTE = "http://jkcoxson.com:2052/"
 
-#USER_AGENT = "com.apple.iCloudHelper/282 CFNetwork/1408.0.4 Darwin/22.5.0"
+# USER_AGENT = "com.apple.iCloudHelper/282 CFNetwork/1408.0.4 Darwin/22.5.0"
 USER_AGENT = "akd/1.0 CFNetwork/978.0.7 Darwin/18.7.0"
 
 # Created here so that it is consistent
@@ -45,53 +45,57 @@ import urllib3
 
 urllib3.disable_warnings()
 
-def build_client(emulated_device: str = "MacBookPro18,3", emulated_app: str = "accountsd") -> str:
-        """'Client Information'
-        String in the following format:
-        <%MODEL%> <%OS%;%MAJOR%.%MINOR%(%SPMAJOR%,%SPMINOR%);%BUILD%> <%AUTHKIT_BUNDLE_ID%/%AUTHKIT_VERSION% (%APP_BUNDLE_ID%/%APP_VERSION%)>
-        Where:
-            MODEL: The model of the device (e.g. MacBookPro15,1 or 'PC'
-            OS: The OS of the device (e.g. Mac OS X or Windows)
-            MAJOR: The major version of the OS (e.g. 10)
-            MINOR: The minor version of the OS (e.g. 15)
-            SPMAJOR: The major version of the service pack (e.g. 0) (Windows only)
-            SPMINOR: The minor version of the service pack (e.g. 0) (Windows only)
-            BUILD: The build number of the OS (e.g. 19C57)
-            AUTHKIT_BUNDLE_ID: The bundle ID of the AuthKit framework (e.g. com.apple.AuthKit)
-            AUTHKIT_VERSION: The version of the AuthKit framework (e.g. 1)
-            APP_BUNDLE_ID: The bundle ID of the app (e.g. com.apple.dt.Xcode)
-            APP_VERSION: The version of the app (e.g. 3594.4.19)
-        """
 
-        model = emulated_device
-        if emulated_device == "PC":
-            # We're emulating a PC, so we run Windows (Vista?)
-            os = "Windows"
-            os_version = "6.2(0,0);9200"
-        else:
-            # We're emulating a Mac, so we run macOS Ventura
-            os = "Mac OS X"
-            os_version = "13.4.1;22F8"
+def build_client(
+    emulated_device: str = "MacBookPro18,3", emulated_app: str = "accountsd"
+) -> str:
+    """'Client Information'
+    String in the following format:
+    <%MODEL%> <%OS%;%MAJOR%.%MINOR%(%SPMAJOR%,%SPMINOR%);%BUILD%> <%AUTHKIT_BUNDLE_ID%/%AUTHKIT_VERSION% (%APP_BUNDLE_ID%/%APP_VERSION%)>
+    Where:
+        MODEL: The model of the device (e.g. MacBookPro15,1 or 'PC'
+        OS: The OS of the device (e.g. Mac OS X or Windows)
+        MAJOR: The major version of the OS (e.g. 10)
+        MINOR: The minor version of the OS (e.g. 15)
+        SPMAJOR: The major version of the service pack (e.g. 0) (Windows only)
+        SPMINOR: The minor version of the service pack (e.g. 0) (Windows only)
+        BUILD: The build number of the OS (e.g. 19C57)
+        AUTHKIT_BUNDLE_ID: The bundle ID of the AuthKit framework (e.g. com.apple.AuthKit)
+        AUTHKIT_VERSION: The version of the AuthKit framework (e.g. 1)
+        APP_BUNDLE_ID: The bundle ID of the app (e.g. com.apple.dt.Xcode)
+        APP_VERSION: The version of the app (e.g. 3594.4.19)
+    """
 
-        if emulated_app == "Xcode":
-            app_bundle = "com.apple.dt.Xcode"
-            app_version = "3594.4.19"
-        elif emulated_app == "accountsd":
-            app_bundle = "com.apple.accountsd"
-            app_version = "113"
-        else:
-            app_bundle = "com.apple.iCloud"
-            app_version = "7.21"
+    model = emulated_device
+    if emulated_device == "PC":
+        # We're emulating a PC, so we run Windows (Vista?)
+        os = "Windows"
+        os_version = "6.2(0,0);9200"
+    else:
+        # We're emulating a Mac, so we run macOS Ventura
+        os = "Mac OS X"
+        os_version = "13.4.1;22F8"
 
-        if os == "Windows":
-            authkit_bundle = "com.apple.AuthKitWin"
-            authkit_version = "1"
-        else:
-            authkit_bundle = "com.apple.AOSKit"
-            authkit_version = "282"
+    if emulated_app == "Xcode":
+        app_bundle = "com.apple.dt.Xcode"
+        app_version = "3594.4.19"
+    elif emulated_app == "accountsd":
+        app_bundle = "com.apple.accountsd"
+        app_version = "113"
+    else:
+        app_bundle = "com.apple.iCloud"
+        app_version = "7.21"
 
-        return f"<{model}> <{os};{os_version}> <{authkit_bundle}/{authkit_version} ({app_bundle}/{app_version})>"
-    
+    if os == "Windows":
+        authkit_bundle = "com.apple.AuthKitWin"
+        authkit_version = "1"
+    else:
+        authkit_bundle = "com.apple.AOSKit"
+        authkit_version = "282"
+
+    return f"<{model}> <{os};{os_version}> <{authkit_bundle}/{authkit_version} ({app_bundle}/{app_version})>"
+
+
 def _generate_cpd() -> dict:
     cpd = {
         # Many of these values are not strictly necessary, but may be tracked by Apple
@@ -112,21 +116,29 @@ def _generate_cpd() -> dict:
     cpd.update(generate_anisette_headers())
     return cpd
 
-def _generate_meta_headers(serial: str = "0", user_id: uuid = uuid.uuid4(), device_id: uuid = uuid.uuid4()) -> dict:
-    return {
-        "X-Apple-I-Client-Time": datetime.utcnow().replace(microsecond=0).isoformat() + "Z", # Current timestamp in ISO 8601 format
-        "X-Apple-I-TimeZone": str(datetime.utcnow().astimezone().tzinfo), # Abbreviation of the timezone of the device (e.g. EST)
 
+def _generate_meta_headers(
+    serial: str = "0", user_id: uuid = uuid.uuid4(), device_id: uuid = uuid.uuid4()
+) -> dict:
+    return {
+        "X-Apple-I-Client-Time": datetime.utcnow().replace(microsecond=0).isoformat()
+        + "Z",  # Current timestamp in ISO 8601 format
+        "X-Apple-I-TimeZone": str(
+            datetime.utcnow().astimezone().tzinfo
+        ),  # Abbreviation of the timezone of the device (e.g. EST)
         # Locale of the device (e.g. en_US)
         "loc": locale.getdefaultlocale()[0] or "en_US",
         "X-Apple-Locale": locale.getdefaultlocale()[0] or "en_US",
-
-        "X-Apple-I-MD-RINFO": "17106176", # either 17106176 or 50660608
-
-        "X-Apple-I-MD-LU": b64encode(str(user_id).upper().encode()).decode(), # 'Local User ID': Base64 encoding of an uppercase UUID
-        "X-Mme-Device-Id": str(device_id).upper(), # 'Device Unique Identifier', uppercase UUID
-        "X-Apple-I-SRL-NO": serial, # Serial number
+        "X-Apple-I-MD-RINFO": "17106176",  # either 17106176 or 50660608
+        "X-Apple-I-MD-LU": b64encode(
+            str(user_id).upper().encode()
+        ).decode(),  # 'Local User ID': Base64 encoding of an uppercase UUID
+        "X-Mme-Device-Id": str(
+            device_id
+        ).upper(),  # 'Device Unique Identifier', uppercase UUID
+        "X-Apple-I-SRL-NO": serial,  # Serial number
     }
+
 
 def _generate_local_anisette() -> dict:
     logger.debug("Using local anisette generation")
@@ -148,6 +160,7 @@ def _generate_local_anisette() -> dict:
         "X-Apple-I-MD-M": str(h["X-Apple-MD-M"]),
     }
 
+
 def _generate_remote_anisette(url: str) -> dict:
     logger.debug("Using remote anisette generation: " + url)
     h = json.loads(requests.get(url, timeout=5).text)
@@ -156,15 +169,16 @@ def _generate_remote_anisette(url: str) -> dict:
         "X-Apple-I-MD-M": h["X-Apple-I-MD-M"],
     }
 
+
 def generate_anisette_headers() -> dict:
     if isinstance(ANISETTE, str) and ANISETTE.startswith("http"):
         a = _generate_remote_anisette(ANISETTE)
     else:
-        a =_generate_local_anisette()
-    
+        a = _generate_local_anisette()
+
     a.update(_generate_meta_headers(user_id=USER_ID, device_id=DEVICE_ID))
     return a
-    
+
 
 def authenticated_request(parameters) -> dict:
     body = {
@@ -205,8 +219,8 @@ def check_error(r):
 
     if status["ec"] != 0:
         raise Exception(f"Error {status['ec']}: {status['em']}")
-        #print(f"Error {status['ec']}: {status['em']}")
-        #return True
+        # print(f"Error {status['ec']}: {status['em']}")
+        # return True
     return False
 
 
@@ -248,11 +262,11 @@ def trusted_second_factor(dsid, idms_token):
         "X-Apple-Identity-Token": identity_token,
         "X-Apple-App-Info": "com.apple.gs.xcode.auth",
         "X-Xcode-Version": "11.2 (11B41)",
-        "X-Mme-Client-Info": build_client(emulated_app="Xcode")
+        "X-Mme-Client-Info": build_client(emulated_app="Xcode"),
     }
 
     headers.update(generate_anisette_headers())
-    
+
     # This will trigger the 2FA prompt on trusted devices
     # We don't care about the response, it's just some HTML with a form for entering the code
     # Easier to just use a text prompt
@@ -296,7 +310,7 @@ def sms_second_factor(dsid, idms_token):
         "X-Apple-Identity-Token": identity_token,
         "X-Apple-App-Info": "com.apple.gs.xcode.auth",
         "X-Xcode-Version": "11.2 (11B41)",
-        "X-Mme-Client-Info": build_client(emulated_app="Xcode")
+        "X-Mme-Client-Info": build_client(emulated_app="Xcode"),
     }
 
     headers.update(generate_anisette_headers())
@@ -359,7 +373,9 @@ def authenticate(username, password):
         return
 
     if r["sp"] != "s2k":
-        logger.error(f"This implementation only supports s2k. Server returned {r['sp']}")
+        logger.error(
+            f"This implementation only supports s2k. Server returned {r['sp']}"
+        )
         return
 
     # Change the password out from under the SRP library, as we couldn't calculate it without the salt.
