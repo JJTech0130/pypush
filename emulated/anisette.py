@@ -8,7 +8,7 @@ import random
 import bags
 import requests
 import plistlib
-import gsa
+import icloud.gsa as gsa
 
 ANISETTE_SERVER = "wss://ani.sidestore.io/v3/provisioning_session"
 

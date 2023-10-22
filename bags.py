@@ -78,7 +78,7 @@ def grandslam_bag():
     if GRANDSLAM_BAG is not None:
         return GRANDSLAM_BAG
     
-    import gsa
+    import icloud.gsa as gsa
 
     r = requests.get(
         "https://gsa.apple.com/grandslam/GsService2/lookup", verify=False,
