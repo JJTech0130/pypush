@@ -290,7 +290,7 @@ async def input_task(im: imessage.iMessageUser):
     while True:
         cmd = await trio.to_thread.run_sync(input, "> ", cancellable=True)
         if cmd != "":
-            await im.send(imessage.iMessage.create(im, cmd, ["tel:+13158824630"]))
+            await im.send(imessage.iMessage.create(im, cmd, ["tel:+16106632676"]))
 
 async def output_task(im: imessage.iMessageUser):
     while True:
