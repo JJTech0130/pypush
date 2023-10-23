@@ -183,7 +183,7 @@ async def main(args: argparse.Namespace):
                 im = imessage.iMessageUser(conn, email_user)
                 await im.send(imessage.iMessage.create(im, "Number registration is valid until " + expiration, [email_addr]))
 
-        logging.info('\033[92m' + "Done!" + '\033[0m')
+        print("Done!")
 
         if args.alive:
             logging.getLogger("apns").setLevel(logging.DEBUG)
