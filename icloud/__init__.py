@@ -51,13 +51,9 @@ def login(
     }
     data = plistlib.dumps(data)
 
-    logger.debug("Generating validation data")
-    v = nac.generate_validation_data()
-    logger.debug("Generated validation data")
-
     headers = {
         "X-Apple-ADSID": adsid,
-        "X-Mme-Nas-Qualify": base64.b64encode(v).decode(),
+        #"X-Mme-Nas-Qualify": base64.b64encode(nac.generate_validation_data()).decode(), # Only necessary with new prefpane URL
         "User-Agent": USER_AGENT,
         "X-Mme-Client-Info": gsa.build_client(
             emulated_app="accountsd"
@@ -67,7 +63,8 @@ def login(
 
     logger.debug("Making login request")
     r = requests.post(
-        "https://setup.icloud.com/setup/prefpane/login",
+        #"https://setup.icloud.com/setup/prefpane/login",
+        "https://setup.icloud.com/setup/iosbuddy/loginDelegates",
         auth=(username, password),
         data=data,
         headers=headers,

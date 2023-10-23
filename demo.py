@@ -25,7 +25,7 @@ logging.getLogger("apns").setLevel(logging.INFO)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.INFO)
-logging.getLogger("imessage").setLevel(logging.INFO)
+logging.getLogger("imessage").setLevel(logging.DEBUG)
 
 logging.captureWarnings(True)
 

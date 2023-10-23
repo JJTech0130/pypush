@@ -39,7 +39,8 @@ def main():
 
         cloudkit_token = r['delegates']['com.apple.mobileme']['service-data']['tokens']['cloudKitToken']
         mme_token = r['delegates']['com.apple.mobileme']['service-data']['tokens']['mmeAuthToken']
-        ds_prs_id = r['delegates']['com.apple.mobileme']['service-data']['appleAccountInfo']['dsPrsID'] # This can also be obtained from the grandslam response
+        #ds_prs_id = r['delegates']['com.apple.mobileme']['service-data']['appleAccountInfo']['dsPrsID'] # This can also be obtained from the grandslam response
+        ds_prs_id = r['dsid']
 
         logging.info("Logged in!")
 
