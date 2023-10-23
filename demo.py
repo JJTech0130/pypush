@@ -182,6 +182,7 @@ async def main(args: argparse.Namespace):
             safe_config()
             if args.reg_notify:
                 im = imessage.iMessageUser(conn, email_user)
+                im.current_handle = email_addr
                 await im.send(imessage.iMessage.create(im, "Number registration is valid until " + expiration, [email_addr]))
 
         print("Done!")
