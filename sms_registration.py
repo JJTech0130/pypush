@@ -1,37 +1,70 @@
 import requests
+from requests.exceptions import ConnectionError
 import random
 import apns
 import trio
 import gateway_fetch
 from base64 import b64decode, b64encode
 
+
+from exceptions import *
+
 import urllib3
 urllib3.disable_warnings()
 
-PHONE_IP = "192.168.5.120"
 API_PORT = 8080
-GATEWAY = "22223333"
 
-def register(push_token: bytes, no_parse = False, gateway = None) -> tuple[str, bytes]:
+def register(push_token: bytes, no_parse, gateway: str | None, phone_ip: str) -> tuple[str, bytes]:
     """Forwards a registration request to the phone and returns the phone number, signature for the provided push token"""
     if gateway is None:
         print("Requesting device MCC+MNC for gateway detection...")
-        mccmnc = requests.get(f"http://{PHONE_IP}:{API_PORT}/info", timeout=30).text
+
+        try:
+            mccmnc = requests.get(f"http://{phone_ip}:{API_PORT}/info", timeout=30).text
+        except ConnectionError:
+
+            raise GatewayConnectionError("Could not connect to device! Please open the Pypush SMS Helper App.")
+
+        except Exception as e:
+
+            raise GatewayError(f"ERROR: An unknown error occurred: '{e}'")
+
         print("MCC+MNC received! " + mccmnc)
         print("Determining gateway...")
+        print(mccmnc)
         gateway = gateway_fetch.getGatewayMCCMNC(mccmnc)
-    if gateway is not None:
-        print("Gateway found!  " + str(gateway))
-    else:
-        print("No gateway was provided, and automatic gateway detection failed. Please run again with the --gateway flag.")
-        # gateway = GATEWAY
-        raise
+        if gateway is not None:
+            print("Gateway found!  " + str(gateway))
+        else:
+
+            raise GatewayError(f"No gateway was provided, and automatic gateway detection failed. Please run again with the --gateway flag.")
+
     token = push_token.hex().upper()
     req_id = random.randint(0, 2**32)
     sms = f"REG-REQ?v=3;t={token};r={req_id};"
     print("Sending message and waiting for response...")
-    r = requests.get(f"http://{PHONE_IP}:{API_PORT}/register", params={"sms": sms, "gateway": gateway}, timeout=30)
-    print("Received response from device!")
+
+    try:
+        r = requests.get(f"http://{phone_ip}:{API_PORT}/register", params={"sms": sms, "gateway": gateway}, timeout=30)
+    except Exception as e:
+        raise GatewayError(f"ERROR: An unknown error occurred: '{e}'")
+
+    if 'error' in r.text.lower():
+
+        if 'permission.SEND_SMS' in r.text.lower():
+            raise GatewayError(f"Please allow the SMS permission!")
+
+        raise GatewayError(f"An error was thrown from PNRgateway Client: '{r.text}'")
+
+        # POSSIBLE ERRORS FROM APP:
+
+        # Error: timeout waiting for response from gateway (unlikely, timeout is implemented here too)
+        # Error sending SMS
+        # Error: sms parameter not found
+        # Error: gateway parameter not found
+
+    print('\033[92m', "Received response from device!", '\033[0m')
+
     if no_parse:
         print("Now do the next part and rerun with --pdu")
         exit()

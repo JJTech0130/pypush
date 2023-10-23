@@ -16,6 +16,8 @@ import imessage
 import trio
 import argparse
 
+from exceptions import *
+
 logging.basicConfig(
     level=logging.NOTSET, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
 )
@@ -107,10 +109,9 @@ async def main(args: argparse.Namespace):
             print("Would you like to register a phone number? (y/n)")
             if input("> ").lower() == "y":
                 import sms_registration
-                if args.gateway is not None:
-                    sms_registration.GATEWAY = args.gateway
-                if args.phone is not None:
-                    sms_registration.PHONE_IP = args.phone
+
+                if args.phone is None:
+                    raise GatewayConnectionError("You did not supply an IP address.")
 
                 if "phone" in CONFIG:
                     phone_sig = b64decode(CONFIG["phone"].get("sig"))
@@ -119,7 +120,9 @@ async def main(args: argparse.Namespace):
                     phone_number, phone_sig = sms_registration.parse_pdu(args.pdu, None)
                 else:
                     import sms_registration
-                    phone_number, phone_sig = sms_registration.register(conn.credentials.token, args.trigger_pdu)
+                    phone_number, phone_sig = sms_registration.register(push_token=conn.credentials.token,
+                                                                        no_parse=args.trigger_pdu, gateway=args.gateway,
+                                                                        phone_ip=args.phone)
                     CONFIG["phone"] = {
                         "number": phone_number,
                         "sig": b64encode(phone_sig).decode(),
@@ -152,7 +155,7 @@ async def main(args: argparse.Namespace):
 
         if args.reregister:
             print("Re-registering...")
-            users = register(conn, users)
+            register(conn, users)
 
             CONFIG["users"] = []
             for user in users:
@@ -165,10 +168,11 @@ async def main(args: argparse.Namespace):
                     "id_cert": user.id_cert,
                     "handles": user.handles,
                 })
+
                 if "P:" in str(user.user_id):
                     expiration = get_not_valid_after_timestamp(user.id_cert)
                     expiration = str(expiration) + " UTC"
-                    print("Number registration is valid until "+ expiration)
+                    print(f"Number registration is valid until {expiration}. (YYYY/MM/DD)")
                 else:
                     email_user = user
                     for n in range(len(user.handles)):
@@ -178,9 +182,10 @@ async def main(args: argparse.Namespace):
             safe_config()
             if args.reg_notify:
                 im = imessage.iMessageUser(conn, email_user)
+                im.current_handle = email_addr
                 await im.send(imessage.iMessage.create(im, "Number registration is valid until " + expiration, [email_addr]))
 
-        print(f"Done?")
+        print("Done!")
 
         if args.alive:
             logging.getLogger("apns").setLevel(logging.DEBUG)
@@ -313,7 +318,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.pdu is not None and not args.pdu.startswith("REG-RESP"):
-        print("Invalid REG-RESP PDU")
-        exit(1)
+        raise InvalidResponseError("Received invalid REG-RESP PDU from Gateway Client.")
 
     trio.run(main, args)
