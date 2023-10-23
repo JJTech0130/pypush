@@ -31,12 +31,13 @@ def register(push_token: bytes, no_parse, gateway: str | None, phone_ip: str) ->
 
         print("MCC+MNC received! " + mccmnc)
         print("Determining gateway...")
+        print(mccmnc)
         gateway = gateway_fetch.getGatewayMCCMNC(mccmnc)
-    if gateway is not None:
-        print("Gateway found!  " + str(gateway))
-    else:
+        if gateway is not None:
+            print("Gateway found!  " + str(gateway))
+        else:
 
-        raise GatewayError(f"No gateway was provided, and automatic gateway detection failed. Please run again with the --gateway flag.")
+            raise GatewayError(f"No gateway was provided, and automatic gateway detection failed. Please run again with the --gateway flag.")
 
     token = push_token.hex().upper()
     req_id = random.randint(0, 2**32)
@@ -49,6 +50,10 @@ def register(push_token: bytes, no_parse, gateway: str | None, phone_ip: str) ->
         raise GatewayError(f"ERROR: An unknown error occurred: '{e}'")
 
     if 'error' in r.text.lower():
+
+        if 'permission.SEND_SMS' in r.text.lower():
+            raise GatewayError(f"Please allow the SMS permission!")
+
         raise GatewayError(f"An error was thrown from PNRgateway Client: '{r.text}'")
 
         # POSSIBLE ERRORS FROM APP:

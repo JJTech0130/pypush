@@ -168,10 +168,11 @@ async def main(args: argparse.Namespace):
                     "id_cert": user.id_cert,
                     "handles": user.handles,
                 })
-                if "P:" in str(user.user_id):
+
+                if "D:" in str(user.user_id):
                     expiration = get_not_valid_after_timestamp(user.id_cert)
                     expiration = str(expiration) + " UTC"
-                    print("Number registration is valid until "+ expiration)
+                    print(f"Number registration is valid until {expiration}. (YYYY/MM/DD)")
                 else:
                     email_user = user
                     for n in range(len(user.handles)):
