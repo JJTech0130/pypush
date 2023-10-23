@@ -1,5 +1,6 @@
 import plistlib
 from base64 import b64decode
+from typing import Union
 
 import requests
 
@@ -14,7 +15,12 @@ import logging
 logger = logging.getLogger("ids")
 
 class IDSIdentity:
-    def __init__(self, signing_key: str | None = None, encryption_key: str | None = None, signing_public_key: str | None = None, encryption_public_key: str | None = None):
+    def __init__(
+        self,
+        signing_key: Union[str, None] = None,
+        encryption_key: Union[str, None] = None,
+        signing_public_key: Union[str, None] = None,
+        encryption_public_key: Union[str, None] = None):
         if signing_key is not None:
             self.signing_key = signing_key
             self.signing_public_key = serialize_key(parse_key(signing_key).public_key())

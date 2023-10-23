@@ -9,6 +9,7 @@ import gzip
 import logging
 import plistlib
 import random
+from typing import Union
 import uuid
 from dataclasses import dataclass, field
 from hashlib import sha1, sha256
@@ -45,11 +46,11 @@ class AttachmentFile:
 
 @dataclass
 class MMCSFile(AttachmentFile):
-    url: str | None = None
-    size: int | None = None
-    owner: str | None = None
-    signature: bytes | None = None
-    decryption_key: bytes | None = None
+    url: Union[str, None] = None
+    size: Union[int, None] = None
+    owner: Union[str, None] = None
+    signature: Union[bytes, None] = None
+    decryption_key: Union[bytes, None] = None
 
     def data(self) -> bytes:
         import requests
@@ -107,17 +108,16 @@ class Attachment:
                         versions.append(MMCSFile())
 
                     val = attrs[attribute_name]
-                    match attribute_name:
-                        case "mmcs-url":
-                            versions[index].url = val
-                        case "mmcs-owner":
-                            versions[index].owner = val
-                        case "mmcs-signature-hex":
-                            versions[index].signature = base64.b16decode(val)
-                        case "file-size":
-                            versions[index].size = int(val)
-                        case "decryption-key":
-                            versions[index].decryption_key = base64.b16decode(val)[1:]
+                    if attribute_name == "mmcs-url":
+                        versions[index].url = val
+                    elif attribute_name == "mmcs-owner":
+                        versions[index].owner = val
+                    elif attribute_name == "mmcs-signature-hex":
+                        versions[index].signature = base64.b16decode(val)
+                    elif attribute_name == "file-size":
+                        versions[index].size = int(val)
+                    elif attribute_name == "decryption-key":
+                        versions[index].decryption_key = base64.b16decode(val)[1:]
 
             self.versions = versions
 
@@ -131,25 +131,25 @@ class iMessage:
 
     text: str = ""
     """Plain text of message, always required, may be an empty string"""
-    xml: str | None = None
+    xml: Union[str, None] = None
     """XML portion of message, may be None"""
     participants: list[str] = field(default_factory=list)
     """List of participants in the message, including the sender"""
-    sender: str | None = None
+    sender: Union[str, None] = None
     """Sender of the message"""
-    id: uuid.UUID | None = None
+    id: Union[uuid.UUID, None] = None
     """ID of the message, will be randomly generated if not provided"""
-    group_id: uuid.UUID | None = None
+    group_id: Union[uuid.UUID, None] = None
     """Group ID of the message, will be randomly generated if not provided"""
-    body: BalloonBody | None = None
+    body: Union[BalloonBody, None] = None
     """BalloonBody, may be None"""
-    effect: str | None = None
+    effect: Union[str, None] = None
     """iMessage effect sent with this message, may be None"""
 
     _compressed: bool = True
     """Internal property representing whether the message should be compressed"""
 
-    _raw: dict | None = None
+    _raw: Union[dict, None] = None
     """Internal property representing the original raw message, may be None"""
 
     def attachments(self) -> list[Attachment]:
@@ -183,7 +183,7 @@ class iMessage:
 
         return True
 
-    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
+    def from_raw(message: bytes, sender: Union[str, None] = None) -> "iMessage":
         """Create an `iMessage` from raw message bytes"""
         compressed = False
         try:
@@ -420,7 +420,7 @@ class iMessageUser:
         except:
             return False
 
-    def receive(self) -> iMessage | None:
+    def receive(self) -> Union[iMessage, None]:
         """
         Will return the next iMessage in the queue, or None if there are no messages
         """
