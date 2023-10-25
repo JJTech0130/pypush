@@ -6,6 +6,7 @@ import time
 from base64 import b64decode, b64encode
 from getpass import getpass
 from cryptography import x509
+import datetime
 
 from rich.logging import RichHandler
 
@@ -60,7 +61,12 @@ def get_not_valid_after_timestamp(cert_data):
     except Exception as e:
         return None  # Return None in case of an error
 
+expiration = None
+
 async def main(args: argparse.Namespace):
+
+    global expiration
+
     # Load any existing push credentials
     token = CONFIG.get("push", {}).get("token")
     token = b64decode(token) if token is not None else b""
@@ -171,8 +177,8 @@ async def main(args: argparse.Namespace):
 
                 if "P:" in str(user.user_id):
                     expiration = get_not_valid_after_timestamp(user.id_cert)
-                    expiration = str(expiration) + " UTC"
-                    print(f"Number registration is valid until {expiration}. (YYYY/MM/DD)")
+                    expirationstr = str(expiration) + " UTC"
+                    print(f"Number registration is valid until {expirationstr}. (YYYY/MM/DD)")
                 else:
                     email_user = user
                     for n in range(len(user.handles)):
@@ -183,7 +189,7 @@ async def main(args: argparse.Namespace):
             if args.reg_notify:
                 im = imessage.iMessageUser(conn, email_user)
                 im.current_handle = email_addr
-                await im.send(imessage.iMessage.create(im, "Number registration is valid until " + expiration, [email_addr]))
+                await im.send(imessage.iMessage.create(im, "Number registration is valid until " + expirationstr, [email_addr]))
 
         print("Done!")
 
@@ -314,6 +320,7 @@ if __name__ == "__main__":
     parser.add_argument("--pdu", type=str, help="Override the PDU REG-RESP")
     parser.add_argument("--phone", type=str, help="Override the phone IP")
     parser.add_argument("--gateway", type=str, help="Override the gateway phone number")
+    parser.add_argument("--keepalive", action="store_true", help="test")
 
     args = parser.parse_args()
     
@@ -321,3 +328,32 @@ if __name__ == "__main__":
         raise InvalidResponseError("Received invalid REG-RESP PDU from Gateway Client.")
 
     trio.run(main, args)
+
+    if args.keepalive:
+
+        wait_time_minutes = 5  # this is in minutes. 5 recommended
+
+        def trigger_event(event_time, seconds):
+            current_time = datetime.datetime.now()
+            time_difference = event_time - current_time
+            seconds_until_event = time_difference.total_seconds()
+
+            if seconds_until_event <= 0:
+                print("You are not registered. Reregistering...")
+            elif seconds_until_event <= seconds + 10:
+                print("You are set to be deregistered in less than 5 minutes. Reregistering now...")
+            else:
+                print(f"Waiting for {int((seconds_until_event - seconds) / 60)} minutes...")
+                time.sleep(seconds_until_event - seconds)
+                print("Reregistered.")
+
+
+        while True:
+            wait_time_seconds = wait_time_minutes * 60
+            # trio.run(main, args)
+            input_time = expiration
+
+            event_time = input_time - datetime.timedelta(minutes=wait_time_minutes)
+            trigger_event(event_time, wait_time_seconds)
+
+            trio.run(main, args)
