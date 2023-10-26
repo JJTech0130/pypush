@@ -147,7 +147,7 @@ def register(
 
     }
     
-    logger.warning(f"Sending IDS registration request: {body}")
+    logger.debug(f"Sending IDS registration request: {body}")
 
     body = plistlib.dumps(body)
 
