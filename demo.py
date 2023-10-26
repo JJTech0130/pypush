@@ -320,7 +320,7 @@ if __name__ == "__main__":
     parser.add_argument("--pdu", type=str, help="Override the PDU REG-RESP")
     parser.add_argument("--phone", type=str, help="Override the phone IP")
     parser.add_argument("--gateway", type=str, help="Override the gateway phone number")
-    parser.add_argument("--keepalive", action="store_true", help="test")
+    parser.add_argument("--daemon", action="store_true", help="Continuously reregister 5 minutes before the certificate expires")
 
     args = parser.parse_args()
     
@@ -329,22 +329,23 @@ if __name__ == "__main__":
 
     trio.run(main, args)
 
-    if args.keepalive:
+    if args.daemon:
 
         wait_time_minutes = 5  # this is in minutes. 5 recommended
 
         def trigger_event(event_time, seconds):
-            current_time = datetime.datetime.now()
+            current_time = datetime.datetime.utcnow()
             time_difference = event_time - current_time
-            seconds_until_event = time_difference.total_seconds()
+            seconds_until_event = int(time_difference.total_seconds())
 
             if seconds_until_event <= 0:
                 print("You are not registered. Reregistering...")
             elif seconds_until_event <= seconds + 10:
                 print("You are set to be deregistered in less than 5 minutes. Reregistering now...")
             else:
-                print(f"Waiting for {int((seconds_until_event - seconds) / 60)} minutes...")
-                time.sleep(seconds_until_event - seconds)
+                print(f"Waiting for {int(seconds_until_event / 60)} minutes...")
+                time.sleep(seconds_until_event)
+                # time.sleep(10)
                 print("Reregistered.")
 
 
