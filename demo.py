@@ -114,8 +114,7 @@ async def main(args: argparse.Namespace):
                 expiration = expiration.replace(tzinfo=datetime.timezone.utc)
                 logging.info(expire_msg(expiration))
 
-            # This is an Apple ID user, so we can use it to send the notification iMessage (if enabled)
-            if "U:" in str(user.user_id):
+            else:
                 email_user = user
                 for n in range(len(user.handles)):
                     # HACK: Just pick the first email address they have to avoid picking the linked phone number
