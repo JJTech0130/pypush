@@ -25,7 +25,7 @@ class IDSUser:
 
     encryption_identity: identity.IDSIdentity | None = None
 
-    id_cert: bytes | None = None
+    id_cert: str | None = None
     """
     Short-lived identity certificate,
     same private key as auth_keypair

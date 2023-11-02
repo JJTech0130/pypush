@@ -80,6 +80,59 @@ async def main(args: argparse.Namespace):
         vd = b64encode(vd).decode()
         users = ids.register(conn, users, vd, args.client_data or args.reg_notify)
         return users
+    
+    async def reregister(conn: apns.APNSConnection, users: list[ids.IDSUser]) -> datetime.datetime:
+        register(conn, users)
+
+        CONFIG["users"] = []
+
+        expiration = None
+        # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
+        expire_msg = lambda expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds()/60))} minutes from now)"
+        email_user = None
+        email_addr = None # For HACK below
+
+        for user in users:
+            # Clear the config and re-save everything to match the new registration
+            CONFIG["users"].append({
+                "id": user.user_id,
+                "auth_key": user.auth_keypair.key,
+                "auth_cert": user.auth_keypair.cert,
+                "encryption_key": user.encryption_identity.encryption_key if user.encryption_identity is not None else None,
+                "signing_key": user.encryption_identity.signing_key if user.encryption_identity is not None else None,
+                "id_cert": user.id_cert,
+                "handles": user.handles,
+            })
+
+            # If this is a phone number user, then it's got the be the one we just linked
+            # so pull out the expiration date from the certificate
+            if "P:" in str(user.user_id):
+                # There is not really a good reason to try/catch here: If we couldn't reregister, just crash (very unlikely we can recover)
+                cert = x509.load_pem_x509_certificate(user.id_cert.encode('utf-8'))
+                expiration = cert.not_valid_after 
+                # Make it a UTC aware timezone, for reasons
+                expiration = expiration.replace(tzinfo=datetime.timezone.utc)
+                logging.info(expire_msg(expiration))
+
+            # This is an Apple ID user, so we can use it to send the notification iMessage (if enabled)
+            if "U:" in str(user.user_id):
+                email_user = user
+                for n in range(len(user.handles)):
+                    # HACK: Just pick the first email address they have to avoid picking the linked phone number
+                    # TODO: Properly fix this, so that the linked phone number is not in the Apple ID user's list of handles
+                    if "mailto:" in str(user.handles[n]):
+                        email_addr = user.handles[n]
+
+        # Save the config to disk
+        safe_config()
+
+        # Send the notification iMessage (if enabled)
+        if args.reg_notify:
+            im = imessage.iMessageUser(conn, email_user)
+            im.current_handle = email_addr # HACK: See above
+            await im.send(imessage.iMessage.create(im, expire_msg(expiration), [email_addr]))
+
+        return expiration
 
     async with apns.APNSConnection.start(push_creds) as conn:
         # Save the push credentials to the config
@@ -116,19 +169,25 @@ async def main(args: argparse.Namespace):
             if input("> ").lower() == "y":
                 import sms_registration
 
-                if args.phone is None:
-                    raise GatewayConnectionError("You did not supply an IP address.")
-
                 if "phone" in CONFIG:
                     phone_sig = b64decode(CONFIG["phone"].get("sig"))
                     phone_number = CONFIG["phone"].get("number")
                 elif args.pdu is not None:
                     phone_number, phone_sig = sms_registration.parse_pdu(args.pdu, None)
                 else:
+                    if args.phone is None:
+                        #raise GatewayConnectionError("You did not supply an IP address.")
+                        # Prompt for IP address
+                        print("Please enter the IP address of your phone.")
+                        print("This should be displayed in the SMS registration helper app")
+                        print("You must be on the same network as your phone.")
+                        phone = input("> ")
+                    else:
+                        phone = args.phone
                     import sms_registration
                     phone_number, phone_sig = sms_registration.register(push_token=conn.credentials.token,
                                                                         no_parse=args.trigger_pdu, gateway=args.gateway,
-                                                                        phone_ip=args.phone)
+                                                                        phone_ip=phone)
                     CONFIG["phone"] = {
                         "number": phone_number,
                         "sig": b64encode(phone_sig).decode(),
@@ -144,69 +203,27 @@ async def main(args: argparse.Namespace):
 
                 users.append(ids.IDSAppleUser.authenticate(conn, username, password))
 
-            users = register(conn, users)
+            await reregister(conn, users)
 
-            CONFIG["users"] = []
-            for user in users:
-                CONFIG["users"].append({
-                    "id": user.user_id,
-                    "auth_key": user.auth_keypair.key,
-                    "auth_cert": user.auth_keypair.cert,
-                    "encryption_key": user.encryption_identity.encryption_key if user.encryption_identity is not None else None,
-                    "signing_key": user.encryption_identity.signing_key if user.encryption_identity is not None else None,
-                    "id_cert": user.id_cert,
-                    "handles": user.handles,
-                })
-            safe_config()
+        if args.daemon:
+            wait_time_minutes = 5  # this is in minutes. 5 recommended
+
+            expiration = await reregister(conn, users)
+
+            while True:
+                reregister_time = expiration - datetime.timedelta(minutes=wait_time_minutes)  # wait_time_minutes before expiration
+                reregister_delta = (reregister_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
+
+                logging.info(f"Reregistering in {int(reregister_delta / 60)} minutes...")
+                await trio.sleep(reregister_delta)
+
+                logging.info("Reregistering...")
+                register(conn, users)
+
+                logging.info("Reregistered!")
 
         if args.reregister:
-            print("Re-registering...")
-            register(conn, users)
-
-            CONFIG["users"] = []
-            for user in users:
-                CONFIG["users"].append({
-                    "id": user.user_id,
-                    "auth_key": user.auth_keypair.key,
-                    "auth_cert": user.auth_keypair.cert,
-                    "encryption_key": user.encryption_identity.encryption_key if user.encryption_identity is not None else None,
-                    "signing_key": user.encryption_identity.signing_key if user.encryption_identity is not None else None,
-                    "id_cert": user.id_cert,
-                    "handles": user.handles,
-                })
-
-                if "P:" in str(user.user_id):
-                    expiration = get_not_valid_after_timestamp(user.id_cert)
-                    expirationstr = str(expiration) + " UTC"
-                    print(f"Number registration is valid until {expirationstr}. (YYYY/MM/DD)")
-                else:
-                    email_user = user
-                    for n in range(len(user.handles)):
-                        if "mailto:" in str(user.handles[n]):
-                            email_addr = user.handles[n]
-
-            safe_config()
-            if args.reg_notify:
-                im = imessage.iMessageUser(conn, email_user)
-                im.current_handle = email_addr
-                await im.send(imessage.iMessage.create(im, "Number registration is valid until " + expirationstr, [email_addr]))
-
-            if args.daemon:
-
-                wait_time_minutes = 5  # this is in minutes. 5 recommended
-
-                while True:
-
-                    reregister_time = expiration - datetime.timedelta(minutes=wait_time_minutes)  # wait_time_minutes before expiration
-                    reregister_delta = (reregister_time - datetime.datetime.utcnow()).total_seconds()
-
-                    logging.info(f"Reregistering in {int(reregister_delta / 60)} minutes...")
-                    await trio.sleep(reregister_delta)
-
-                    logging.info("Reregistering...")
-                    register(conn, users)
-
-                    logging.info("Reregistered!")
+            await reregister(conn, users)
 
         print("Done!")
 
@@ -214,105 +231,6 @@ async def main(args: argparse.Namespace):
             logging.getLogger("apns").setLevel(logging.DEBUG)
             while True:
                 await trio.sleep(20)
-
-        # im = imessage.iMessageUser(conn, users[0])
-        # await im.send(imessage.iMessage.create(im, "Hello world!", ["tel:+16106632676", "mailto:testu3@icloud.com"]))
-
-        # while True:
-        #     print(await im.receive())
-
-    #     user = ids.IDSUser(conn)
-
-    #     if CONFIG.get("auth", {}).get("cert") is not None:
-    #         auth_keypair = ids._helpers.KeyPair(CONFIG["auth"]["key"], CONFIG["auth"]["cert"])
-    #         user_id = CONFIG["auth"]["user_id"]
-    #         handles = CONFIG["auth"]["handles"]
-    #         user.restore_authentication(auth_keypair, user_id, handles)
-    #     else:
-    #         username = input("Username: ")
-    #         password = getpass("Password: ")
-
-    #         user.authenticate(username, password)
-
-    #     import sms_registration
-    #     phone_sig = safe_b64decode(CONFIG.get("phone", {}).get("sig"))
-    #     phone_number = CONFIG.get("phone", {}).get("number")
-
-    #     if phone_sig is None or phone_number is None:
-    #         print("Registering phone number...")
-    #         phone_number, phone_sig = sms_registration.register(user.push_connection.credentials.token)
-    #         CONFIG["phone"] = {
-    #             "number": phone_number,
-    #             "sig": b64encode(phone_sig).decode(),
-    #         }
-    #     if CONFIG.get("phone", {}).get("auth_key") is not None and CONFIG.get("phone", {}).get("auth_cert") is not None:
-    #         phone_auth_keypair = ids._helpers.KeyPair(CONFIG["phone"]["auth_key"], CONFIG["phone"]["auth_cert"])
-    #     else:
-    #         phone_auth_keypair = ids.profile.get_phone_cert(phone_number, user.push_connection.credentials.token, [phone_sig])
-    #         CONFIG["phone"]["auth_key"] = phone_auth_keypair.key
-    #         CONFIG["phone"]["auth_cert"] = phone_auth_keypair.cert
-
-
-    #     user.encryption_identity = ids.identity.IDSIdentity(
-    #         encryption_key=CONFIG.get("encryption", {}).get("rsa_key"),
-    #         signing_key=CONFIG.get("encryption", {}).get("ec_key"),
-    #     )
-
-    #     #user._auth_keypair = phone_auth_keypair
-    #     user.handles = [f"tel:{phone_number}"]
-    #     print(user.user_id)
-    #    # user.user_id = f"P:{phone_number}"
-
-
-    #     if (
-    #         CONFIG.get("id", {}).get("cert") is not None
-    #         and user.encryption_identity is not None
-    #     ):
-    #         id_keypair = ids._helpers.KeyPair(CONFIG["id"]["key"], CONFIG["id"]["cert"])
-    #         user.restore_identity(id_keypair)
-    #     else:
-    #         logging.info("Registering new identity...")
-    #         import emulated.nac
-
-    #         vd = emulated.nac.generate_validation_data()
-    #         vd = b64encode(vd).decode()
-
-    #         ids.register
-    #         user.register(vd, [("P:" + phone_number, phone_auth_keypair)])
-    #         #user.register(vd)
-
-    #     print("Handles: ", user.handles)
-
-    #     # Write config.json
-    #     CONFIG["encryption"] = {
-    #         "rsa_key": user.encryption_identity.encryption_key,
-    #         "ec_key": user.encryption_identity.signing_key,
-    #     }
-    #     CONFIG["id"] = {
-    #         "key": user._id_keypair.key,
-    #         "cert": user._id_keypair.cert,
-    #     }
-    #     CONFIG["auth"] = {
-    #         "key": user._auth_keypair.key,
-    #         "cert": user._auth_keypair.cert,
-    #         "user_id": user.user_id,
-    #         "handles": user.handles,
-    #     }
-    #     CONFIG["push"] = {
-    #         "token": b64encode(user.push_connection.credentials.token).decode(),
-    #         "key": user.push_connection.credentials.private_key,
-    #         "cert": user.push_connection.credentials.cert,
-    #     }
-
-    #     with open("config.json", "w") as f:
-    #         json.dump(CONFIG, f, indent=4)
-
-    #     im = imessage.iMessageUser(conn, user)
-
-        # Send a message to myself
-        # async with trio.open_nursery() as nursery:
-        #     nursery.start_soon(input_task, im)
-        #     nursery.start_soon(output_task, im)
 
 async def input_task(im: imessage.iMessageUser):
     while True:
