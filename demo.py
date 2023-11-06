@@ -217,7 +217,7 @@ async def main(args: argparse.Namespace):
                 await trio.sleep(reregister_delta)
 
                 logging.info("Reregistering...")
-                register(conn, users)
+                expiration = await reregister(conn, users)
 
                 logging.info("Reregistered!")
 
