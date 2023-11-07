@@ -58,7 +58,7 @@ and reregistering 5 minutes before expiration. Put the following in a text file 
 #!/bin/bash
 cd /path/to/pypush
 source ~/.venv/pypush/bin/activate
-python ./demo.py --reregister --daemon
+python ./demo.py --daemon
 ```
 1. Make the reregistration script executable:
 ```
