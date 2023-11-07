@@ -88,7 +88,7 @@ async def main(args: argparse.Namespace):
 
         expiration = None
         # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
-        expire_msg = lambda expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds()/60))} minutes from now)"
+        expire_msg = lambda expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds()/60))} minutes from now)"
         email_user = None
         email_addr = None # For HACK below
 
@@ -217,7 +217,7 @@ async def main(args: argparse.Namespace):
                 await trio.sleep(reregister_delta)
 
                 logging.info("Reregistering...")
-                register(conn, users)
+                expiration = await reregister(conn, users)
 
                 logging.info("Reregistered!")
 
