@@ -66,7 +66,7 @@ chmod +x ~/pypush_reregister.sh
 ```
 2. Use [Screen](https://www.gnu.org/software/screen/manual/screen.html) to easily monitor reregistration status and set to run on boot, replacing "user" with your username:
 ```
-@reboot screen -S pypush -d -m /home/user/pypush_reregister.sh > /dev/null 2>&1
+@reboot sleep 60;screen -S pypush -d -m /home/user/pypush_reregister.sh > /dev/null 2>&1
 ```
 3. Reboot
 
