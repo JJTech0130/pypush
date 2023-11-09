@@ -11,7 +11,7 @@ However, Beeper is completely free and easy to use, and comes packed with multip
 You will first install Pypush onto your machine. *Please keep in mind that you will have to have a script running on a home server or PC 24/7 to keep your number active! See below for instructions.*
 
 ### PNRgateway
-In order for Apple to verify your number, a specialized message has to be sent from your phone to Apple's "gateway number" and have the r     nbnnnnnnnnnnnnnnnnnnnnnnesponse captured. This number is different for each carrier, however the newest app version should automatically find your gateway number. If PNRgateway cannot find your gateway number, see below for help.
+In order for Apple to verify your number, a specialized message has to be sent from your phone to Apple's "gateway number" and have the response captured. This number is different for each carrier, however the newest app version should automatically find your gateway number. If PNRgateway cannot find your gateway number, see below for help.
 
 1. Enable USB debugging/ADB on your phone. There are multiple online guides that guide you through this based on your phone.
 2. Install the APK. The message link containing the APK is located [here](https://discord.com/channels/1130633272595066880/1145177252015915080/1153070972090470481), and the GitHub repository is [here](https://github.com/JJTech0130/PNRGatewayClientV2).
