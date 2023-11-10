@@ -233,7 +233,7 @@ async def main(args: argparse.Namespace):
                     reregister_time = reregister_time.astimezone(datetime.timezone.utc)
                     logging.info(f'Reregistration will occur at: {reregister_time}')
                     reregister_delta = (reregister_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
-                    logging.info(f'The time between now and reregistration time is: {reregister_delta / 3600} hours or {reregister_delta / 86400} days')
+                    logging.info(f'The time between now and reregistration time is: {(reregister_delta / 3600):.2f} hours or {(reregister_delta / 86400):.2f} days')
                     if reregister_delta > 3600:
                         logging.info('Certificates expiration is greater than 60 minutes, quiting')
                     else:
