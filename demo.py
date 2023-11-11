@@ -240,7 +240,6 @@ async def main(args: argparse.Namespace):
                         logging.info('Certificate expires soon, reregistering now')
                         expiration = await reregister(conn, users)
                         logging.info('Reregistered')
-                        logging.info(expire_msg(expiration))
 
         if args.reregister:
             await reregister(conn, users)
