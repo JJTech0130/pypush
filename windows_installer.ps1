@@ -1,18 +1,22 @@
 Import-Module Microsoft.PowerShell.Management
 
 # Check if Python is installed.
+Write-Output "Checking if Python is installed"
 if (-not (Test-Path "$env:USERPROFILE\AppData\Local\Programs\Python\Python310\python.exe")) {
     # Python is not installed, so download and install it.
+    Write-Output "Installing Python"
     $pythonUrl = "https://www.python.org/ftp/python/3.10.0/python-3.10.0-amd64.exe"
     $pythonInstaller = "$($env:TEMP)\python.exe"
     Invoke-WebRequest -Uri $pythonUrl -OutFile $pythonInstaller
     Start-Process -FilePath $pythonInstaller -ArgumentList "/quiet" -Wait
   }
   
+  Write-Output "Checking if git is installed"
   # Check if Git is installed.
   if (-not (Test-Path "$env:USERPROFILE\AppData\Local\Programs\Git\cmd\git.exe")) {
     # Git is not installed, so download and install it.
-    $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.38.1/Git-for-Windows-2.38.1.exe"
+    Write-Output "Installing git"
+    $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.42.0.windows.2/Git-2.42.0.2-32-bit.exe"
     $gitInstaller = "$($env:TEMP)\git.exe"
     Invoke-WebRequest -Uri $gitUrl -OutFile $gitInstaller
     Start-Process -FilePath $gitInstaller -ArgumentList "/SILENT" -Wait
