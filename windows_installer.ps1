@@ -1,8 +1,7 @@
-Install-Module -Name Microsoft.PowerShell.Management
 Import-Module Microsoft.PowerShell.Management
 
 # Check if Python is installed.
-if (!Test-Path "$env:USERPROFILE\AppData\Local\Programs\Python\Python310\python.exe") {
+if (-not (Test-Path "$env:USERPROFILE\AppData\Local\Programs\Python\Python310\python.exe")) {
     # Python is not installed, so download and install it.
     $pythonUrl = "https://www.python.org/ftp/python/3.10.0/python-3.10.0-amd64.exe"
     $pythonInstaller = "$($env:TEMP)\python.exe"
@@ -11,7 +10,7 @@ if (!Test-Path "$env:USERPROFILE\AppData\Local\Programs\Python\Python310\python.
   }
   
   # Check if Git is installed.
-  if (!Test-Path "$env:USERPROFILE\AppData\Local\Programs\Git\cmd\git.exe") {
+  if (-not (Test-Path "$env:USERPROFILE\AppData\Local\Programs\Git\cmd\git.exe")) {
     # Git is not installed, so download and install it.
     $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.38.1/Git-for-Windows-2.38.1.exe"
     $gitInstaller = "$($env:TEMP)\git.exe"
@@ -20,7 +19,7 @@ if (!Test-Path "$env:USERPROFILE\AppData\Local\Programs\Python\Python310\python.
   }
   
   # Create the folder for virtual environments if it doesn't exist.
-  if (!Test-Path "$env:USERPROFILE\AppData\Local\Python\VirtualEnvs") {
+  if (Test-Path "$env:USERPROFILE\AppData\Local\Python\VirtualEnvs") {
     New-Item "$env:USERPROFILE\AppData\Local\Python\VirtualEnvs" -ItemType Directory
   }
   
