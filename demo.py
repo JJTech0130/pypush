@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+import traceback
 from base64 import b64decode, b64encode
 from getpass import getpass
 from cryptography import x509
@@ -225,7 +226,7 @@ async def main(args: argparse.Namespace):
             reregister_within = 60 # Minutes, time where if expiration time is less than, rereg.
             for user in users:
                 if "P:" in str(user.user_id):
-                    logging.info(f'The user is: {user}')
+                    # logging.info(f'The user is: {user}')
                     cert = x509.load_pem_x509_certificate(user.id_cert.encode('utf-8'))
                     expiration = cert.not_valid_after
                     logging.info(f'Certificate expires on: {expiration}')

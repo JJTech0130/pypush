@@ -37,7 +37,7 @@ mkdir ~/.venv
 ```
 2. Create a virtual environment using Python 3.10:
 ```
-python3.10 -m pypush ~/.venv
+python3.10 -m venv ~/.venv/pypush
 ```
 3. Activate the virtual environment:
 ```
