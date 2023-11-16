@@ -10,7 +10,7 @@ import dataclasses
 import apns
 from . import profile, _helpers
 from base64 import b64encode
-from typing import Callable
+from typing import Callable, Union
 
 @dataclasses.dataclass
 class IDSUser:
@@ -23,9 +23,9 @@ class IDSUser:
     Long-lived authentication keypair
     """
 
-    encryption_identity: identity.IDSIdentity | None = None
+    encryption_identity: Union[identity.IDSIdentity, None] = None
 
-    id_cert: str | None = None
+    id_cert: Union[str, None] = None
     """
     Short-lived identity certificate,
     same private key as auth_keypair
@@ -61,7 +61,7 @@ class IDSAppleUser(IDSUser):
     """
 
     @staticmethod
-    def authenticate(push_connection: apns.APNSConnection, username: str, password: str, factor_callback: Callable | None = None) -> IDSUser:
+    def authenticate(push_connection: apns.APNSConnection, username: str, password: str, factor_callback: Union[Callable, None] = None) -> IDSUser:
         user_id, auth_token = profile.get_auth_token(username, password, factor_callback)
         auth_keypair = profile.get_auth_cert(user_id, auth_token)
 

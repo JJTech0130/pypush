@@ -18,7 +18,7 @@ from ._helpers import PROTOCOL_VERSION, USER_AGENT, KeyPair
 import logging
 logger = logging.getLogger("ids")
 
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 
 def _auth_token_request(username: str, password: str) -> Any:
@@ -48,7 +48,7 @@ def _auth_token_request(username: str, password: str) -> Any:
 # If factor_gen is not None, it will be called to get the 2FA code, otherwise it will be prompted
 # Returns (realm user id, auth token)
 def get_auth_token(
-    username: str, password: str, factor_gen: Callable | None = None
+    username: str, password: str, factor_gen: Union[Callable, None] = None
 ) -> tuple[str, str]:
     from sys import platform
     

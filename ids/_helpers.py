@@ -1,4 +1,5 @@
 from collections import namedtuple
+from typing import Union
 
 USER_AGENT = "com.apple.madrid-lookup [macOS,13.2.1,22D68,MacBookPro18,3]"
 PROTOCOL_VERSION = "1640"
@@ -12,7 +13,7 @@ import apns
 def get_key_pair(creds: apns.PushCredentials):
     return KeyPair(creds.private_key, creds.cert)
 
-def recursive_del_none(d: dict | list):
+def recursive_del_none(d: Union[dict, list]):
     if isinstance(d, dict):
         for k, v in list(d.items()):
             if v is None:
