@@ -81,7 +81,8 @@ async def main(args: argparse.Namespace):
         users = ids.register(conn, users, vd, args.client_data or args.reg_notify)
         return users
     
-    def expiration_identifier(users: list[ids.IDSUser]) -> datetime.datetime:
+    def expiration_identifier(users: list[ids.IDSUser]) -> datetime.datetime | None:
+            expiration = None
             # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
             expire_msg = lambda expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds()/60))} minutes from now)"
             for user in users:
@@ -94,6 +95,7 @@ async def main(args: argparse.Namespace):
                     # Make it a UTC aware timezone, for reasons
                     expiration = expiration.replace(tzinfo=datetime.timezone.utc)
                     logging.info(expire_msg(expiration))
+            return expiration
 
     
     async def reregister(conn: apns.APNSConnection, users: list[ids.IDSUser]) -> datetime.datetime:
@@ -218,6 +220,9 @@ async def main(args: argparse.Namespace):
                 expiration = await reregister(conn, users)
             else:
                 expiration = expiration_identifier(users)
+            
+            if expiration is None:
+                expiration = await reregister(conn, users)
 
             while True:
                 reregister_time = expiration - datetime.timedelta(minutes=wait_time_minutes)  # wait_time_minutes before expiration
