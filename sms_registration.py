@@ -5,6 +5,7 @@ import apns
 import trio
 import gateway_fetch
 from base64 import b64decode, b64encode
+from typing import Union
 
 
 from exceptions import *
@@ -14,7 +15,7 @@ urllib3.disable_warnings()
 
 API_PORT = 8080
 
-def register(push_token: bytes, no_parse, gateway: str | None, phone_ip: str) -> tuple[str, bytes]:
+def register(push_token: bytes, no_parse, gateway: Union[str, None], phone_ip: str) -> tuple[str, bytes]:
     """Forwards a registration request to the phone and returns the phone number, signature for the provided push token"""
     if gateway is None:
         print("Requesting device MCC+MNC for gateway detection...")
@@ -83,7 +84,7 @@ def register(push_token: bytes, no_parse, gateway: str | None, phone_ip: str) ->
 
     # return resp_params["n"], signature
 
-def parse_pdu(r: str, req_id: int | None = None):
+def parse_pdu(r: str, req_id: Union[int, None] = None):
     if r.split("?")[0] != "REG-RESP":
         raise Exception(f"Failed to register: {r}")
     #assert r.text.split("?")[0] == "REG-RESP"

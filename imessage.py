@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 from hashlib import sha1, sha256
 from io import BytesIO
+from typing import Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding
@@ -39,11 +40,11 @@ class AttachmentFile:
 
 @dataclass
 class MMCSFile(AttachmentFile):
-    url: str | None = None
-    size: int | None = None
-    owner: str | None = None
-    signature: bytes | None = None
-    decryption_key: bytes | None = None
+    url: Union[str, None] = None
+    size: Union[int, None] = None
+    owner: Union[str, None] = None
+    signature: Union[bytes, None] = None
+    decryption_key: Union[bytes, None] = None
 
     def data(self) -> bytes:
         import requests
@@ -136,15 +137,15 @@ class Message:
     """List of participants in the message, including the sender"""
     id: uuid.UUID
     """ID of the message, will be randomly generated if not provided"""
-    _raw: dict | None = None
+    _raw: Union[dict, None] = None
     """Internal property representing the original raw message, may be None"""
     _compressed: bool = True
     """Internal property representing whether the message should be compressed"""
-    xml: str | None = None
+    xml: Union[str, None] = None
     """XML portion of message, may be None"""
     
     @staticmethod
-    def from_raw(message: bytes, sender: str | None = None) -> "Message":
+    def from_raw(message: bytes, sender: Union[str, None] = None) -> "Message":
         """Create a `Message` from raw message bytes"""
 
         raise NotImplementedError()
@@ -160,7 +161,7 @@ class Message:
 @dataclass
 class SMSReflectedMessage(Message):
     @staticmethod
-    def from_raw(message: bytes, sender: str | None = None) -> "SMSReflectedMessage":
+    def from_raw(message: bytes, sender: Union[str, None] = None) -> "SMSReflectedMessage":
         """Create a `SMSReflectedMessage` from raw message bytes"""
 
         # Decompress the message
@@ -224,7 +225,7 @@ class SMSReflectedMessage(Message):
 @dataclass
 class SMSIncomingMessage(Message):
     @staticmethod
-    def from_raw(message: bytes, sender: str | None = None) -> "SMSIncomingMessage":
+    def from_raw(message: bytes, sender: Union[str, None] = None) -> "SMSIncomingMessage":
         """Create a `SMSIncomingMessage` from raw message bytes"""
 
         # Decompress the message
@@ -253,7 +254,7 @@ class SMSIncomingMessage(Message):
 @dataclass
 class SMSIncomingImage(Message):
     @staticmethod
-    def from_raw(message: bytes, sender: str | None = None) -> "SMSIncomingImage":
+    def from_raw(message: bytes, sender: Union[str, None] = None) -> "SMSIncomingImage":
         """Create a `SMSIncomingImage` from raw message bytes"""
 
         # TODO: Implement this
@@ -261,7 +262,7 @@ class SMSIncomingImage(Message):
 
 @dataclass
 class iMessage(Message):
-    effect: str | None = None
+    effect: Union[str, None] = None
 
     @staticmethod
     def create(user: "iMessageUser", text: str, participants: list[str]) -> "iMessage":
@@ -279,7 +280,7 @@ class iMessage(Message):
         )
     
     @staticmethod
-    def from_raw(message: bytes, sender: str | None = None) -> "iMessage":
+    def from_raw(message: bytes, sender: Union[str, None] = None) -> "iMessage":
         """Create a `iMessage` from raw message bytes"""
 
         # Decompress the message
@@ -577,8 +578,8 @@ class iMessageUser:
         type: int,
         participants: list[str],
         topic: str,
-        payload: bytes | None = None,
-        id: uuid.UUID | None = None,
+        payload: Union[bytes, None] = None,
+        id: Union[uuid.UUID, None] = None,
         extra: dict = {},
     ):
         await self._cache_keys(participants, topic)
@@ -628,7 +629,7 @@ class iMessageUser:
 
         await self.connection.send_notification(topic, body, message_id)
 
-    async def _receive_raw(self, c: int | list[int], topics: str | list[str]) -> dict:
+    async def _receive_raw(self, c: Union[int, list[int]], topics: Union[str, list[str]]) -> dict:
         def check(payload: apns.APNSPayload):
             # Check if the "c" key matches
             body = payload.fields_with_id(3)[0].value
