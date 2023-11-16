@@ -81,14 +81,29 @@ async def main(args: argparse.Namespace):
         users = ids.register(conn, users, vd, args.client_data or args.reg_notify)
         return users
     
+    def expiration_identifier(users: list[ids.IDSUser]) -> datetime.datetime:
+            # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
+            expire_msg = lambda expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds()/60))} minutes from now)"
+            for user in users:
+                # If this is a phone number user, then it's got to be the one we just linked
+                # so pull out the expiration date from the certificate
+                if "P:" in str(user.user_id):
+                    # There is not really a good reason to try/catch here: If we couldn't reregister, just crash (very unlikely we can recover)
+                    cert = x509.load_pem_x509_certificate(user.id_cert.encode('utf-8'))
+                    expiration = cert.not_valid_after 
+                    # Make it a UTC aware timezone, for reasons
+                    expiration = expiration.replace(tzinfo=datetime.timezone.utc)
+                    logging.info(expire_msg(expiration))
+
+    
     async def reregister(conn: apns.APNSConnection, users: list[ids.IDSUser]) -> datetime.datetime:
         register(conn, users)
 
         CONFIG["users"] = []
 
         expiration = None
-        # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
-        expire_msg = lambda expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds()/60))} minutes from now)"
+        
+        
         email_user = None
         email_addr = None # For HACK below
 
@@ -104,23 +119,15 @@ async def main(args: argparse.Namespace):
                 "handles": user.handles,
             })
 
-            # If this is a phone number user, then it's got the be the one we just linked
-            # so pull out the expiration date from the certificate
-            if "P:" in str(user.user_id):
-                # There is not really a good reason to try/catch here: If we couldn't reregister, just crash (very unlikely we can recover)
-                cert = x509.load_pem_x509_certificate(user.id_cert.encode('utf-8'))
-                expiration = cert.not_valid_after 
-                # Make it a UTC aware timezone, for reasons
-                expiration = expiration.replace(tzinfo=datetime.timezone.utc)
-                logging.info(expire_msg(expiration))
-
-            else:
+            if not "P:" in str(user.user_id):
                 email_user = user
                 for n in range(len(user.handles)):
                     # HACK: Just pick the first email address they have to avoid picking the linked phone number
                     # TODO: Properly fix this, so that the linked phone number is not in the Apple ID user's list of handles
                     if "mailto:" in str(user.handles[n]):
                         email_addr = user.handles[n]
+
+        expiration = expiration_identifier(users)
 
         # Save the config to disk
         safe_config()
@@ -206,22 +213,27 @@ async def main(args: argparse.Namespace):
 
         if args.daemon:
             wait_time_minutes = 5  # this is in minutes. 5 recommended
-
-            expiration = await reregister(conn, users)
+            
+            if args.reregister:
+                expiration = await reregister(conn, users)
+            else:
+                expiration = expiration_identifier(users)
 
             while True:
                 reregister_time = expiration - datetime.timedelta(minutes=wait_time_minutes)  # wait_time_minutes before expiration
                 reregister_delta = (reregister_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
 
                 logging.info(f"Reregistering in {int(reregister_delta / 60)} minutes...")
-                await trio.sleep(reregister_delta)
+                if (reregister_delta > 0):
+                    await trio.sleep(reregister_delta)
 
                 logging.info("Reregistering...")
                 expiration = await reregister(conn, users)
 
                 logging.info("Reregistered!")
 
-        if args.reregister:
+
+        elif args.reregister:
             await reregister(conn, users)
 
         print("Done!")
