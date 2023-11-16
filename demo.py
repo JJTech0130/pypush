@@ -104,7 +104,8 @@ async def main(args: argparse.Namespace):
         CONFIG["users"] = []
 
         expiration = None
-        
+        # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
+        expire_msg = lambda expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds()/60))} minutes from now)"
         
         email_user = None
         email_addr = None # For HACK below
