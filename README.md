@@ -22,17 +22,83 @@ In order for Apple to verify your number, a specialized message has to be sent f
 Make sure you have git and Python installed.
 
 1. `git clone -b sms-registration https://github.com/beeper/pypush`
-2. `cd pypush` ,  `python3 -m pip install -r requirements.txt`
+2. `cd pypush` 
 
-# Number Registration
+# Number Registration on Linux/MacOS
+It is *strongly* recommended to use a Python virtual environment to setup Pypush. This ensures changes in your system's Python installation does not 
+break compatibility with Pypush with system updates.
 
-1. `python3 demo.py --phone [ip]`. Replace `ip` with your phone's local IP. *(Usually this starts with `192.168.x.x`, however it can also start with `172` or `10`.)*
-2. If the previous command ran successfully, you can now run `python3 demo.py --reregister`
+1. If you do not already have a directory where Python virtual environments are located then 
+create a directory for your Python virtual environment. If you already have one then skip this step.
+Virtual environments are traditionally placed in a hidden folder in your home directory on Linux/MacOS.
+It can be created anywhere you wish. These instructions will assume you created it in your home directory.
+```
+mkdir ~/.venv
+```
+2. Create a virtual environment using Python 3.10:
+```
+python3.10 -m venv ~/.venv/pypush
+```
+3. Activate the virtual environment:
+```
+source ~/.venv/pypush/bin/activate
+```
+4. Install the required packages using pip:
+```
+pip install -r requirements.txt
+```
+5. Run the demo script, replacing `[ip]` with your phone's local IP address:
+```
+python demo.py --phone [ip]
+```
+# Number reregistration option 1, automatic reregistration
+Automatic reregistration is handled by determining when your imessage registration certificate expires
+and reregistering 5 minutes before expiration. Put the following in a text file and save as `pypush_reregister.sh` in your home directory:
+```
+#!/bin/bash
+cd /path/to/pypush
+source ~/.venv/pypush/bin/activate
+python ./demo.py --daemon
+```
+1. Make the reregistration script executable:
+```
+chmod +x ~/pypush_reregister.sh
+```
+2. Use [Screen](https://www.gnu.org/software/screen/manual/screen.html) to easily monitor reregistration status and set to run on boot, replacing "user" with your username:
+```
+@reboot sleep 60;screen -S pypush -d -m /home/user/pypush_reregister.sh > /dev/null 2>&1
+```
+3. Reboot
+
+The basics of using screen are outlined below but this is not intended to be a tutorial in using screen. In order to see a more complete
+guid please visit the following [guide](https://linuxize.com/post/how-to-use-linux-screen/). To monitor the status of registration you can 
+connect to the virtual screen you created. 
+```
+$ screen -r pypush
+```
+To disconnect from the virtual screen press ctrl+a d. 
+
+# Number reregistration option 2, registration every 30 minutes
+Put the following in a text file and save as `pypush_reregister.sh` in your home directory:
+```
+#!/bin/bash
+cd /path/to/pypush
+source ~/.venv/pypush/bin/activate
+python ./demo.py --reregister
+```
+1. Make the reregistration script executable:
+```
+chmod +x ~/pypush_reregister.sh
+```
+2. To automatically reregister every 30 minutes, execute the following:
+```crontab -e
+```
+3. Add the following to your crontab file, replacing "user" with your username:
+```
+*/30 * * * * /home/user/pypush_reregister.sh
+```
 
 ***Please note:*** This last script is the script you will be running continuously. We recommend every 30 minutes.
-
-### Automatic registration
-There should also be a file called `reregister.py`, if you run this it should reregister you every 30 minutes. You can edit this file to rerun at any other interval. You can also use a cronjob to do this task for you in a more streamlined way if you are more familiar with IT.
 
 ### Good to Know
 

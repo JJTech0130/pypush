@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+import traceback
 from base64 import b64decode, b64encode
 from getpass import getpass
 from cryptography import x509
@@ -238,6 +239,25 @@ async def main(args: argparse.Namespace):
 
                 logging.info("Reregistered!")
 
+        if args.cronreg:
+            reregister_within = 60 # Minutes, time where if expiration time is less than, rereg.
+            for user in users:
+                if "P:" in str(user.user_id):
+                    # logging.info(f'The user is: {user}')
+                    cert = x509.load_pem_x509_certificate(user.id_cert.encode('utf-8'))
+                    expiration = cert.not_valid_after
+                    logging.info(f'Certificate expires on: {expiration}')
+                    reregister_time = expiration - datetime.timedelta(minutes=reregister_within)
+                    reregister_time = reregister_time.astimezone(datetime.timezone.utc)
+                    logging.info(f'Reregistration will occur at: {reregister_time}')
+                    reregister_delta = (reregister_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
+                    logging.info(f'The time between now and reregistration time is: {(reregister_delta / 3600):.2f} hours or {(reregister_delta / 86400):.2f} days')
+                    if reregister_delta > 3600:
+                        logging.info('Certificates expiration is greater than 60 minutes, quiting')
+                    else:
+                        logging.info('Certificate expires soon, reregistering now')
+                        expiration = await reregister(conn, users)
+                        logging.info('Reregistered')
 
         elif args.reregister:
             await reregister(conn, users)
@@ -273,6 +293,7 @@ if __name__ == "__main__":
     parser.add_argument("--phone", type=str, help="Override the phone IP")
     parser.add_argument("--gateway", type=str, help="Override the gateway phone number")
     parser.add_argument("--daemon", action="store_true", help="Continuously reregister 5 minutes before the certificate expires")
+    parser.add_argument("--cronreg", action="store_true", help="Reregister if less than 60 minutes from expiration")
 
     args = parser.parse_args()
     
