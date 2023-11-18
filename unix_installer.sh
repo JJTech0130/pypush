@@ -16,14 +16,22 @@ if [[ "$OS_NAME" == "Darwin" ]]; then
 	brew install cmake
 	brew install pkgconfig
 elif [[ "$OS_NAME" == "Linux" ]]; then
-	echo "The operating system is Linux."
+    echo "The operating system is Linux."
+    echo "Installing dependencies: cmake and pkgconfig"
+    sudo wget -O /usr/local/bin/pacapt https://github.com/icy/pacapt/raw/ng/pacapt
+    sudo chmod 755 /usr/local/bin/pacapt
+    sudo ln -sv /usr/local/bin/pacapt /usr/local/bin/pacman || true
+    sudo /usr/local/bin/pacapt -S cmake pkg-config git
+    echo "Removing temporary files"
+    sudo rm /usr/local/bin/pacapt
+    sudo rm /usr/local/bin/pacman 
 else
 	echo "Unknown operating system: $OS_NAME"
 fi
 
 # Create a virtual environment
 mkdir -p ~/.venv
-python3.10 -m venv ~/.venv/pypush
+python3 -m venv ~/.venv/pypush
 source ~/.venv/pypush/bin/activate
 
 # Clone the repo
@@ -31,11 +39,14 @@ cd ~
 git clone -b sms-registration https://github.com/beeper/pypush
 cd pypush
 
+# Install dependencies
+pip install -r requirements.txt
+
 # Prompt the user for the IP address of their phone.
-read -p "Enter the IP address of your phone: " PHONEIP
+read -p "Enter the IP address of your phone(displayed in the Android helper app): " PHONEIP
 
 # Execute the `python demo.py` script with the phone IP address passed as a parameter.
-python demo.py --phone $PHONEIP
+python3 demo.py --phone $PHONEIP
 
 # Create a reregistration script
 cat > reregister.sh <<EOF
@@ -44,7 +55,7 @@ cd ~/pypush
 source ~/.venv/pypush/bin/activate
 while true
 do
-	python ./demo.py --daemon
+	python3 ./demo.py --daemon
 # If it disconnects, wait 5 minutes before reconnecting to avoid spamming servers
   	sleep 300
 done
