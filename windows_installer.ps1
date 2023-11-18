@@ -64,9 +64,4 @@ $phoneIpVariable = Set-Variable -Name phoneIp -Value $phoneIp -Scope Global
   
 # Execute the `python demo.py` script with the phone IP address passed as a parameter.
 Write-Output "Registering"  
-python demo.py --phone $phoneIpVariable
-  
-# Execute the daemon for reregistration
-Write-Output "Executing the daemon"  
-python demo.py --daemon
-  
+python demo.py --phone $phoneIpVariable 
