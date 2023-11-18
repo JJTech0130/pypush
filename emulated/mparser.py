@@ -27,8 +27,8 @@ from struct import unpack
 from uuid import UUID
 from typing import Any
 
-from asn1crypto.cms import ContentInfo
-from asn1crypto.x509 import DirectoryString
+#from asn1crypto.cms import ContentInfo
+#from asn1crypto.x509 import DirectoryString
 from plistlib import loads
 
 #import mdictionary as mdictionary
@@ -1062,6 +1062,7 @@ class Parser():
 
     def parse_certs(self, sig_offset, index_offset):
         """Parse X509 certificates out of code signature."""
+        raise NotImplementedError('REMOVED')
 
         prev = self.__file.tell()
 
