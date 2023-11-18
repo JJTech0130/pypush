@@ -21,7 +21,7 @@ logging.getLogger("py.warnings").setLevel(logging.ERROR)  # Ignore warnings from
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("jelly").setLevel(logging.INFO)
 logging.getLogger("nac").setLevel(logging.INFO)
-logging.getLogger("apns").setLevel(logging.INFO)
+logging.getLogger("apns").setLevel(logging.DEBUG)
 logging.getLogger("albert").setLevel(logging.INFO)
 logging.getLogger("ids").setLevel(logging.DEBUG)
 logging.getLogger("bags").setLevel(logging.INFO)
@@ -171,6 +171,16 @@ async def input_task(im: imessage.iMessageUser):
                     im.user.current_handle = handle
                 else:
                     print(f"Handle {handle} not found")
+        elif is_cmd(cmd, "typing"):
+            if len(current_participants) > 0:
+                await im.typing(current_participants)
+            else:
+                print("No chat selected")
+        elif is_cmd(cmd, "typingoff"):
+            if len(current_participants) > 0:
+                await im.typing(current_participants, False)
+            else:
+                print("No chat selected")
         elif len(current_participants) > 0:
             if cmd.startswith("\\"):
                 cmd = cmd[1:]

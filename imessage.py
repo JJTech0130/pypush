@@ -156,7 +156,8 @@ class Message:
         raise NotImplementedError()
 
     def __str__(self):
-        raise NotImplementedError()
+        #raise NotImplementedError()
+        return f"[Message {self.sender}] '{self.text}'"
 
 @dataclass
 class SMSReflectedMessage(Message):
@@ -344,6 +345,7 @@ class iMessage(Message):
 
 MESSAGE_TYPES = {
     100: ("com.apple.madrid", iMessage),
+    101: ("com.apple.madrid", iMessage),
     140: ("com.apple.private.alloy.sms", SMSIncomingMessage),
     141: ("com.apple.private.alloy.sms", SMSIncomingImage),
     143: ("com.apple.private.alloy.sms", SMSReflectedMessage),
@@ -516,12 +518,20 @@ class iMessageUser:
         body: dict[str, Any] = await self._receive_raw(list(MESSAGE_TYPES.keys()), [t[0] for t in MESSAGE_TYPES.values()])
         t: type[Message] = MESSAGE_TYPES[body["c"]][1]
 
+        if not "P" in body:
+            return Message(text="No payload", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
+
         if not await self._verify_payload(body["P"], body["sP"], body["t"]):
-            raise Exception("Failed to verify payload")
+            return Message(text="Failed to verify payload", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
+            #raise Exception("Failed to verify payload")
 
         logger.debug(f"Encrypted body : {body}")
 
-        decrypted: bytes = self._decrypt_payload(body["P"])
+        try:
+            decrypted: bytes = self._decrypt_payload(body["P"])
+        except Exception as e:
+            logger.error(f"Failed to decrypt message : {e}")
+            return Message(text="Failed to decrypt message", sender="System", participants=[], id=uuid.uuid4(), _raw=body)
 
         try:
             return t.from_raw(decrypted, body["sP"])
@@ -632,10 +642,26 @@ class iMessageUser:
 
         body.update(extra)
 
+        # Remove keys that are None
+        body = {k: v for k, v in body.items() if v is not None}
+
         body = plistlib.dumps(body, fmt=plistlib.FMT_BINARY)
 
         await self.connection.send_notification(topic, body, message_id)
 
+    async def typing(self, participants: list[str], start=True):
+        await self._cache_keys(participants, "com.apple.madrid")
+
+        await self._send_raw(
+            100,
+            participants,
+            "com.apple.madrid",
+            extra={
+                "eX": 0 if start else None, # expiration
+                "nr": 1 if start else None, # no response
+            },
+        )
+        
     async def _receive_raw(self, c: int | list[int], topics: str | list[str]) -> dict[str, Any]:
         def check(payload: apns.APNSPayload):
             # Check if the "c" key matches
