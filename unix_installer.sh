@@ -15,6 +15,7 @@ if [[ "$OS_NAME" == "Darwin" ]]; then
 	fi
 	brew install cmake
 	brew install pkgconfig
+	brew install git
 elif [[ "$OS_NAME" == "Linux" ]]; then
     echo "The operating system is Linux."
     echo "Installing dependencies: cmake and pkgconfig"
