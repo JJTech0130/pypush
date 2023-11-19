@@ -10,8 +10,6 @@ from io import BytesIO
 
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from typing import Self
-
 import logging
 logger = logging.getLogger("ids")
 
@@ -45,7 +43,7 @@ class IDSIdentity:
             self.encryption_public_key = serialize_key(parse_key(self.encryption_key).public_key())# type: ignore
 
     @classmethod
-    def decode(cls, inp: bytes) -> Self:
+    def decode(cls, inp: bytes) -> "IDSIdentity":
         input = BytesIO(inp)
 
         assert input.read(5) == b'\x30\x81\xF6\x81\x43' # DER header
