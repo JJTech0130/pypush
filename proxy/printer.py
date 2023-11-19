@@ -106,7 +106,8 @@ def _p_filter(prefix, fields: list[tuple[int, bytes]]):
     )
 
 
-import apns
+from pypush import apns
+
 
 def print_payload(payload: apns.APNSPayload, to_server: bool):
     prefix = "apsd -> APNs" if to_server else "APNs -> apsd"

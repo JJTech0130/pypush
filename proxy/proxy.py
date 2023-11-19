@@ -16,7 +16,7 @@ import trio
 from rich.logging import RichHandler
 
 import printer
-import apns
+from pypush import apns
 
 logging.basicConfig(
     level=logging.NOTSET,

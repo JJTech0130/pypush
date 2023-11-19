@@ -5,7 +5,7 @@ from websockets.sync.client import connect
 import json
 from base64 import b64encode
 import random
-import bags
+from pypush import bags
 import requests
 import plistlib
 import icloud.gsa as gsa
@@ -52,7 +52,7 @@ with connect(ANISETTE_SERVER) as websocket:
         elif message["result"] == "GiveEndProvisioningData":
 
             if 'cpim' in message:
-            cpim = message['cpim']
+                cpim = message['cpim']
 
         elif message["result"] == "Timeout":
             break
