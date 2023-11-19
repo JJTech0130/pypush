@@ -196,5 +196,9 @@ async def output_task(im: imessage.iMessageUser):
         print(str(msg))
 
 
-if __name__ == "__main__":
+def entrypoint():
     trio.run(main)
+
+
+if __name__ == "__main__":
+    entrypoint()

@@ -23,6 +23,9 @@ ipython = "^8.17.2"
 asn1crypto = "^1.5.1"
 websockets = "^12.0"
 
+[tool.poetry.scripts]
+pypush = "pypush.__main__:entrypoint"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
