@@ -131,6 +131,13 @@ async def main(args: argparse.Namespace):
                     if "mailto:" in str(user.handles[n]):
                         email_addr = user.handles[n]
 
+        # Set up a temporary iMessage user to send notifications
+        im = imessage.iMessageUser(conn, email_user)
+        im.current_handle = email_addr # HACK: See above
+        
+        # Notify other devices on the account that new handles are available
+        await im._send_raw(130, [im.current_handle], "com.apple.madrid")
+
         expiration = expiration_identifier(users)
 
         # Save the config to disk
@@ -138,8 +145,6 @@ async def main(args: argparse.Namespace):
 
         # Send the notification iMessage (if enabled)
         if args.reg_notify:
-            im = imessage.iMessageUser(conn, email_user)
-            im.current_handle = email_addr # HACK: See above
             await im.send(imessage.iMessage.create(im, expire_msg(expiration), [email_addr]))
 
         return expiration
