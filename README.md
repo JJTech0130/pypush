@@ -32,7 +32,7 @@ If you need help or run into errors please reach out on our [Discord](https://di
 ### Pypush Manual Installation
 Make sure you have git and Python installed.
 
-1. `git clone -b sms-registration https://github.com/beeper/pypush`
+1. `git clone -b sms-registration https://github.com/JJTech0130/pypush`
 2. `cd pypush` 
 
 # Number Registration on Linux/MacOS

@@ -47,9 +47,9 @@ Write-Output "Activating virtual environment"
 
 cd "$env:USERPROFILE"
 
-# Clone the "sms-registration" branch of the repository located at https://github.com/beeper/pypush using git.
+# Clone the "sms-registration" branch of the repository located at https://github.com/JJTech0130/pypush using git.
 Write-Output "Cloning sms-registration branch"  
-git clone -b sms-registration https://github.com/beeper/pypush
+git clone -b sms-registration https://github.com/JJTech0130/pypush
   
 # Change directories to the repository.
 Write-Output "Changing directories"  
