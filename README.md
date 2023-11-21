@@ -21,7 +21,7 @@ In order for Apple to verify your number, a specialized message has to be sent f
 ### Pypush
 Once you have the PNRgateway app installed on your phone, open it so it is displaying your IP address as you will need it for the next steps. 
 
-Use one of the automated installers for your operating system: [Windows](https://github.com/beeper/pypush/blob/sms-registration/windows_installer.ps1) or [MacOS/Linux](https://github.com/beeper/pypush/blob/sms-registration/unix_installer.sh)
+Use one of the automated installers for your operating system: [Windows](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/windows_installer.ps1) or [MacOS/Linux](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/unix_installer.sh)
 
 For Windows open up PowerShell and navigate to your downloads folder `cd Downloads` and then execute the installer `.\windows_installer.ps1` and follow the prompts. When initial registration has completed execute the file `windows_reregister.ps1` to handle reregistration. This file will reregister your number 5 minutes before registration expires and you must keep the PowerShell window open. Length of registration will gradually increase. 
 
