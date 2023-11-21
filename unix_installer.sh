@@ -37,7 +37,7 @@ source ~/.venv/pypush/bin/activate
 
 # Clone the repo
 cd ~
-git clone -b sms-registration https://github.com/JJTech0170/pypush
+git clone -b sms-registration https://github.com/beeper/pypush
 cd pypush
 
 # Install dependencies
