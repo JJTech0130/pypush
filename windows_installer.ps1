@@ -47,9 +47,9 @@ Write-Output "Activating virtual environment"
 
 cd "$env:USERPROFILE"
 
-# Clone the "sms-registration" branch of the repository located at https://github.com/beeper/pypush using git.
+# Clone the "sms-registration" branch of the repository located at https://github.com/JJTech0130/pypush using git.
 Write-Output "Cloning sms-registration branch"  
-git clone -b sms-registration https://github.com/beeper/pypush
+git clone -b sms-registration https://github.com/JJTech0130/pypush
   
 # Change directories to the repository.
 Write-Output "Changing directories"  
@@ -64,9 +64,4 @@ $phoneIpVariable = Set-Variable -Name phoneIp -Value $phoneIp -Scope Global
   
 # Execute the `python demo.py` script with the phone IP address passed as a parameter.
 Write-Output "Registering"  
-python demo.py --phone $phoneIpVariable
-  
-# Execute the daemon for reregistration
-Write-Output "Executing the daemon"  
-python demo.py --daemon
-  
+python demo.py --phone $phoneIpVariable 

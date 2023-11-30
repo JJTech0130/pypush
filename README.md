@@ -19,9 +19,20 @@ In order for Apple to verify your number, a specialized message has to be sent f
 4. Connect your phone to the same WiFi network as your host PC, and open the app.
 
 ### Pypush
+Once you have the PNRgateway app installed on your phone, open it so it is displaying your IP address as you will need it for the next steps. 
+
+Use one of the automated installers for your operating system: [Windows](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/windows_installer.ps1) or [MacOS/Linux](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/unix_installer.sh)
+
+For Windows open up PowerShell and navigate to your downloads folder `cd Downloads` and then execute the installer `.\windows_installer.ps1` and follow the prompts. When initial registration has completed execute the file `windows_reregister.ps1` to handle reregistration. This file will reregister your number 5 minutes before registration expires and you must keep the PowerShell window open. Length of registration will gradually increase. 
+
+For MacOS/Linux open up your terminal and navigate to your downloads folder `cd Downloads` or similar. Make the script executable by executing `chmod +x unix_installer.sh`. Execute the script `./unix_installer.sh`. Upon completion a shell script is created called `reregister.sh`. Execute this script in your terminal `./reregister.sh`. This file will reregister your number 5 minutes before registration expires and you must keep the terminal window open. Length of registration will gradually increase.
+
+If you need help or run into errors please reach out on our [Discord](https://discord.gg/BtSbcExKJ9) server.
+
+### Pypush Manual Installation
 Make sure you have git and Python installed.
 
-1. `git clone -b sms-registration https://github.com/beeper/pypush`
+1. `git clone -b sms-registration https://github.com/JJTech0130/pypush`
 2. `cd pypush` 
 
 # Number Registration on Linux/MacOS
@@ -37,7 +48,7 @@ mkdir ~/.venv
 ```
 2. Create a virtual environment using Python 3.10:
 ```
-python3.10 -m venv ~/.venv/pypush
+python -m venv ~/.venv/pypush
 ```
 3. Activate the virtual environment:
 ```
@@ -56,35 +67,29 @@ Automatic reregistration is handled by determining when your imessage registrati
 and reregistering 5 minutes before expiration. Put the following in a text file and save as `pypush_reregister.sh` in your home directory:
 ```
 #!/bin/bash
-cd /path/to/pypush
+cd ~/pypush
 source ~/.venv/pypush/bin/activate
-python ./demo.py --daemon
+while true
+do
+	python ./demo.py --daemon
+# If it disconnects, wait 5 minutes before reconnecting to avoid spamming servers
+  	sleep 300
+done
 ```
 1. Make the reregistration script executable:
 ```
 chmod +x ~/pypush_reregister.sh
 ```
-2. Use [Screen](https://www.gnu.org/software/screen/manual/screen.html) to easily monitor reregistration status and set to run on boot, replacing "user" with your username:
-```
-@reboot sleep 60;screen -S pypush -d -m /home/user/pypush_reregister.sh > /dev/null 2>&1
-```
-3. Reboot
+2. Execute the script
+```./pypush_reregister.sh```
 
-The basics of using screen are outlined below but this is not intended to be a tutorial in using screen. In order to see a more complete
-guid please visit the following [guide](https://linuxize.com/post/how-to-use-linux-screen/). To monitor the status of registration you can 
-connect to the virtual screen you created. 
-```
-$ screen -r pypush
-```
-To disconnect from the virtual screen press ctrl+a d. 
-
-# Number reregistration option 2, registration every 30 minutes
+# Number reregistration option 2, registration using crontab
 Put the following in a text file and save as `pypush_reregister.sh` in your home directory:
 ```
 #!/bin/bash
-cd /path/to/pypush
+cd ~/pypush
 source ~/.venv/pypush/bin/activate
-python ./demo.py --reregister
+python ./demo.py --cronreg
 ```
 1. Make the reregistration script executable:
 ```
@@ -95,7 +100,7 @@ chmod +x ~/pypush_reregister.sh
 ```
 3. Add the following to your crontab file, replacing "user" with your username:
 ```
-*/30 * * * * /home/user/pypush_reregister.sh
+*/25 * * * * ~/pypush_reregister.sh > ~/pypush_log.out
 ```
 
 ***Please note:*** This last script is the script you will be running continuously. We recommend every 30 minutes.
