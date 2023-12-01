@@ -14,7 +14,7 @@ from rich.logging import RichHandler
 minor_version = int(platform.python_version().split('.')[1])
 
 if minor_version < 10 or minor_version > 11:
-    raise Exception (f"Incompatible Python version '{platform.python_version()}'
+    raise Exception (f"Incompatible Python version '{platform.python_version()}'")
 
 import apns
 import ids
