@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import threading
+import platform
 import time
 import traceback
 from base64 import b64decode, b64encode
@@ -10,6 +11,11 @@ from cryptography import x509
 import datetime
 
 from rich.logging import RichHandler
+
+minor_version = int(platform.python_version().split('.')[1]) 
+  
+ if minor_version < 10 or minor_version > 11: 
+     raise Exception(f"Incompatible Python version '{platform.python_version()}'")
 
 import apns
 import ids
