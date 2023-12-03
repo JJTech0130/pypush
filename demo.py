@@ -83,8 +83,10 @@ def expire_msg(expiration):
         time_unit = "days"
         time_value = float(remaining_seconds / 86400)
 
-    expire_message = f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({time_value:.2f} {time_unit} from now)"
+    expire_message = f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} \
+    ({time_value:.2f} {time_unit} from now)"
     return expire_message
+
 
 async def main(args: argparse.Namespace):
     global expiration
@@ -134,7 +136,8 @@ async def main(args: argparse.Namespace):
                 "id": user.user_id,
                 "auth_key": user.auth_keypair.key,
                 "auth_cert": user.auth_keypair.cert,
-                "encryption_key": user.encryption_identity.encryption_key if user.encryption_identity is not None else None,
+                "encryption_key": user.encryption_identity.encryption_key if user.encryption_identity
+                                                                             is not None else None,
                 "signing_key": user.encryption_identity.signing_key if user.encryption_identity is not None else None,
                 "id_cert": user.id_cert,
                 "handles": user.handles,
@@ -144,7 +147,8 @@ async def main(args: argparse.Namespace):
                 email_user = user
                 for n in range(len(user.handles)):
                     # HACK: Just pick the first email address they have to avoid picking the linked phone number
-                    # TODO: Properly fix this, so that the linked phone number is not in the Apple ID user's list of handles
+                    # TODO: Properly fix this, so that the linked phone number is not in the Apple ID user's list of
+                    #  handles
                     if "mailto:" in str(user.handles[n]):
                         email_addr = user.handles[n]
 
@@ -258,7 +262,7 @@ async def main(args: argparse.Namespace):
                 reregister_delta = (reregister_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
 
                 logging.info(f"Reregistering in {int(reregister_delta / 60)} minutes...")
-                if (reregister_delta > 0):
+                if reregister_delta > 0:
                     await trio.sleep(reregister_delta)
 
                 logging.info("Reregistering...")
@@ -267,10 +271,10 @@ async def main(args: argparse.Namespace):
                 logging.info("Reregistered!")
 
         if args.cronreg:
-            reregister_within = 60  # Minutes, time where if expiration time is less than, rereg.
+            reregister_within = 60  # Minutes, time when if expiration time is less than, reregister.
             for user in users:
                 if "P:" in str(user.user_id):
-                    # logging.info(f'The user is: {user}')
+                    # logging.info(f"The user is: {user}")
                     cert = x509.load_pem_x509_certificate(user.id_cert.encode('utf-8'))
                     expiration = cert.not_valid_after
                     logging.info(f'Certificate expires on: {expiration}')
@@ -279,7 +283,8 @@ async def main(args: argparse.Namespace):
                     logging.info(f'Reregistration will occur at: {reregister_time}')
                     reregister_delta = (reregister_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
                     logging.info(
-                        f'The time between now and reregistration time is: {(reregister_delta / 3600):.2f} hours or {(reregister_delta / 86400):.2f} days')
+                        f'The time between now and reregistration time is: {(reregister_delta / 3600):.2f} hours or \
+                                                                           {(reregister_delta / 86400):.2f} days')
                     if reregister_delta > 3600:
                         logging.info('Certificates expiration is greater than 60 minutes, quiting')
                     else:
@@ -325,7 +330,8 @@ if __name__ == "__main__":
     parser.add_argument("--gateway", type=str, help="Override the gateway phone number")
     parser.add_argument("--daemon", action="store_true",
                         help="Continuously reregister 5 minutes before the certificate expires")
-    parser.add_argument("--cronreg", action="store_true", help="Reregister if less than 60 minutes from expiration")
+    parser.add_argument("--cronreg", action="store_true", help="Reregister if less than 60 minutes "
+                                                               "from expiration")
 
     args = parser.parse_args()
 
