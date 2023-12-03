@@ -27,12 +27,10 @@ in order to call some obfuscated functions.
 This is only necessary during initial registration, so theoretically you can register on one device, and then copy the `config.json`
 to another device that doesn't support the Unicorn emulator. Or you could switch out the emulator for another x86 emulator if you really wanted to.
 
-### Public key caching
-iMessage will cache public keys. If you get decryption errors in pypush or can only send and not receive messages from another device,
-try logging out and back into iMessage on that device, forcing it to refresh it's key cache. Alternatively, you can wait and the cache should
-expire eventually.
+## "data.plist" and Mac serial numbers
+This repository contains a sample [`data.plist`](https://github.com/JJTech0130/pypush/blob/main/emulated/data.plist), which contains the serial number and several other identifiers from a real Mac device. If you run into issues related to rate-limiting or messessages failing to deliver, you may regenerate this file by cloning [nacserver](https://github.com/JJTech0130/nacserver) and running `build.sh` on a non-M1 Mac. It should place the generated file in the current directory, which you can then copy to the emulated/ folder in pypush.
 
 ## Licensing
 This project is licensed under the terms of the [SSPL](https://www.mongodb.com/licensing/server-side-public-license). Portions of this project are based on [macholibre by Aaron Stephens](https://github.com/aaronst/macholibre/blob/master/LICENSE) under the Apache 2.0 license.
 
-If you would like to use all or portions of this project in a commercial produce (without releasing source code), we are open to contacts about possible dual-licensing terms.
+This project has been purchased by [Beeper](https://github.com/beeper), please contact them with any questions about licensing.
