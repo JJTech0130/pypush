@@ -66,6 +66,26 @@ def get_not_valid_after_timestamp(cert_data):
 expiration = None
 
 
+def expire_msg(expiration):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    remaining_seconds = int((expiration - now).total_seconds())
+
+    if remaining_seconds <= 60:
+        time_unit = "seconds"
+        time_value = remaining_seconds
+    elif remaining_seconds <= 3600:
+        time_unit = "minutes"
+        time_value = int(remaining_seconds / 60)
+    elif remaining_seconds <= 86400:
+        time_unit = "hours"
+        time_value = int(remaining_seconds / 3600)
+    else:
+        time_unit = "days"
+        time_value = float(remaining_seconds / 86400)
+
+    expire_message = f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({time_value:.2f} {time_unit} from now)"
+    return expire_message
+
 async def main(args: argparse.Namespace):
     global expiration
 
@@ -85,9 +105,7 @@ async def main(args: argparse.Namespace):
 
     def expiration_identifier(users: list[ids.IDSUser]) -> datetime.datetime | None:
         expiration = None
-        # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
-        expire_msg = lambda \
-                expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds() / 60))} minutes from now)"
+
         for user in users:
             # If this is a phone number user, then it's got to be the one we just linked
             # so pull out the expiration date from the certificate
@@ -107,10 +125,6 @@ async def main(args: argparse.Namespace):
         CONFIG["users"] = []
 
         expiration = None
-        # Format time as HH:MM:SS PM/AM EST/EDT (X minutes from now)
-        expire_msg = lambda \
-                expiration: f"Number registration is valid until {str(expiration.astimezone().strftime('%x %I:%M:%S %p %Z'))} ({str(int((expiration - datetime.datetime.now(datetime.timezone.utc)).total_seconds() / 60))} minutes from now)"
-
         email_user = None
         email_addr = None  # For HACK below
 
