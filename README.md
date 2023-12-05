@@ -6,10 +6,10 @@ It can currently register as a new device on an Apple ID, set up encryption keys
 
 ## Installation
 It's pretty self explanatory:
-1. `git clone https://github.com/JJTech0130/pypush`
+1. `git clone https://github.com/JJTech0130/pypush && cd pypush`
 2. `python3 -m venv venv && source venv/bin/activate`
 3. `pip3 install -r requirements.txt`
-5. `python3 ./demo.py`
+4. `python3 ./demo.py`
 
 ## Troubleshooting
 If you have any issues, please join [the Discord](https://discord.gg/BVvNukmfTC) and ask for help.
