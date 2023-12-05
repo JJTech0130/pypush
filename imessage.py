@@ -143,6 +143,10 @@ class Message:
     """Internal property representing whether the message should be compressed"""
     xml: str | None = None
     """XML portion of message, may be None"""
+    group_name: str | None = None
+    """iMessage group chat name, may be None"""
+    group_id: int | None = None
+    """The ID of the iMessage group chat, may be None"""
 
     @staticmethod
     def from_raw(message: bytes, sender: str | None = None) -> "Message":
@@ -273,7 +277,7 @@ class iMessage(Message):
     effect: str | None = None
 
     @staticmethod
-    def create(user: "iMessageUser", text: str, participants: list[str], effect: str | None) -> "iMessage":
+    def create(user: "iMessageUser", text: str, participants: list[str], effect: str | None, group_id: uuid.UUID | None) -> "iMessage":
         """Creates a basic outgoing `iMessage` from the given text and participants"""
 
         sender = user.user.current_handle
@@ -285,7 +289,8 @@ class iMessage(Message):
             sender=sender,
             participants=participants,
             id=uuid.uuid4(),
-            effect=effect
+            effect=effect,
+            group_id=group_id
         )
 
     @staticmethod
@@ -311,6 +316,8 @@ class iMessage(Message):
             xml=message["x"] if "x" in message else None, # type: ignore
             _raw=message, # type: ignore
             _compressed=compressed,
+            group_name=message["n"] if "n" in message else None,
+            group_id=uuid.UUID(message["gid"]) if "gid" in message else None,
             effect=message["iid"] if "iid" in message else None, # type: ignore
         )
 
@@ -322,6 +329,8 @@ class iMessage(Message):
             "x": self.xml,
             "p": self.participants,
             "r": str(self.id).upper(),
+            "gid": str(self.group_id).upper(),
+            "n": self.group_name,
             "pv": 0,
             "gv": "8",
             "v": "1",
@@ -341,7 +350,7 @@ class iMessage(Message):
         return d
 
     def __str__(self):
-        return f"[iMessage {self.sender}] '{self.text}'"
+        return f"[iMessage {self.group_name if self.group_name is not None else self.group_id} {self.sender}] '{self.text}'"
 
 MESSAGE_TYPES = {
     100: ("com.apple.madrid", iMessage),

@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from base64 import b64decode, b64encode
 from subprocess import PIPE, Popen
 
@@ -106,6 +107,7 @@ async def main():
 async def input_task(im: imessage.iMessageUser):
     current_effect: str | None = None
     current_participants: list[str] = []
+    current_group_id: uuid.UUID | None = None
 
     def is_cmd(cmd_str: str, name: str) -> bool:
         return cmd_str in [name, name[0]] or cmd_str.startswith(f"{name} ") or cmd_str.startswith(f"{name[0]} ")
@@ -159,6 +161,11 @@ async def input_task(im: imessage.iMessageUser):
                 fixed_participants: list[str] = list(map(fixup_handle, participants))
                 print(f"Filtering to {fixed_participants}")
                 current_participants = fixed_participants
+        elif is_cmd(cmd, "group"):
+            if (group_id := get_parameters(cmd, "group [recipients]")) is not None:
+                print(group_id)
+                current_group_id: uuid.UUID = uuid.UUID(group_id[0])
+                print(f"Group ID is {group_id}")
         elif is_cmd(cmd, "handle"):
             handles: list[str] = im.user.handles
             av_handles: str = "\n".join([f"\t{h}{' (current)' if h == im.user.current_handle else ''}" for h in handles])
@@ -185,7 +192,7 @@ async def input_task(im: imessage.iMessageUser):
             if cmd.startswith("\\"):
                 cmd = cmd[1:]
 
-            await im.send(imessage.iMessage.create(im, cmd, current_participants, current_effect))
+            await im.send(imessage.iMessage.create(im, cmd, current_participants, current_effect, current_group_id))
             current_effect = None
         else:
             print("No chat selected")
