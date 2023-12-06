@@ -1,0 +1,13 @@
+# This is a list of the namespaces of the effects you can use with the effect command.
+# Example: `effect com.apple.messages.effect.CKEchoEffect`
+com.apple.MobileSMS.expressivesend.invisibleink
+com.apple.MobileSMS.expressivesend.gentle
+com.apple.MobileSMS.expressivesend.loud
+com.apple.MobileSMS.expressivesend.impact
+com.apple.messages.effect.CKEchoEffect
+com.apple.messages.effect.CKSpotlightEffect
+com.apple.messages.effect.CKHappyBirthdayEffect
+com.apple.messages.effect.CKHeartEffect
+com.apple.messages.effect.CKLasersEffect
+com.apple.messages.effect.CKFireworksEffect
+com.apple.messages.effect.CKSparklesEffect
