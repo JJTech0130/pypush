@@ -44,23 +44,23 @@ create a directory for your Python virtual environment. If you already have one 
 Virtual environments are traditionally placed in a hidden folder in your home directory on Linux/MacOS.
 It can be created anywhere you wish. These instructions will assume you created it in your home directory.
 ```
-mkdir ~/.venv
+$ mkdir ~/.venv
 ```
 2. Create a virtual environment using Python 3.10:
 ```
-python -m venv ~/.venv/pypush
+$ python -m venv ~/.venv/pypush
 ```
 3. Activate the virtual environment:
 ```
-source ~/.venv/pypush/bin/activate
+$ source ~/.venv/pypush/bin/activate
 ```
 4. Install the required packages using pip:
 ```
-pip install -r requirements.txt
+$ pip install -r requirements.txt
 ```
 5. Run the demo script, replacing `[ip]` with your phone's local IP address:
 ```
-python demo.py --phone [ip]
+$ python demo.py --phone [ip]
 ```
 # Number reregistration option 1, automatic reregistration
 Automatic reregistration is handled by determining when your imessage registration certificate expires
@@ -78,10 +78,12 @@ done
 ```
 1. Make the reregistration script executable:
 ```
-chmod +x ~/pypush_reregister.sh
+$ chmod +x ~/pypush_reregister.sh
 ```
 2. Execute the script
-```./pypush_reregister.sh```
+```
+$ ./pypush_reregister.sh
+```
 
 # Number reregistration option 2, registration using crontab
 Put the following in a text file and save as `pypush_reregister.sh` in your home directory:
@@ -93,11 +95,11 @@ python ./demo.py --cronreg
 ```
 1. Make the reregistration script executable:
 ```
-chmod +x ~/pypush_reregister.sh
+$ chmod +x ~/pypush_reregister.sh
 ```
 2. To automatically reregister every 30 minutes, execute the following:
 ```
-crontab -e
+$ crontab -e
 ```
 3. Add the following to your crontab file, replacing "user" with your username:
 ```
