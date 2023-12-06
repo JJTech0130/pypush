@@ -3,6 +3,14 @@ name = "pypush"
 version = "0.1.0"
 description = ""
 authors = ["Your Name <you@example.com>"] # TODO: Change this
+authors = [
+    "JJTech <jjtech@jjtech.dev>",
+    "Christopher <christopher@huntwork.net>",  # pixelmonaskarion
+    "Dadoum <24679280+Dadoum@users.noreply.github.com>",
+    "Peter <PeterKW@users.noreply.github.com>",  # PeterKW
+    "SpaceSaver <60277022+SpaceSaver@users.noreply.github.com>",
+    "Kasherpete <119694008+Kasherpete@users.noreply.github.com>",
+]
 license = "SSPL-1.0"
 readme = "README.md"
 
