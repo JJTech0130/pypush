@@ -154,7 +154,8 @@ def fixup_handle(handle):
 
 current_participants = []
 current_effect = None
-while True:
+hasQuit = False
+while not hasQuit:
     msg = im.receive()
     if msg is not None:
         # print(f'[{msg.sender}] {msg.text}')
@@ -185,6 +186,7 @@ while True:
             print('handle <handle>: set the current handle (for sending messages)')
             print('\\: escape commands (will be removed from message)')
         elif msg == 'quit' or msg == 'q':
+            hasQuit = True
             break
         elif msg == 'effect' or msg == 'e' or msg.startswith("effect ") or msg.startswith("e "):
             msg = msg.split(" ")
