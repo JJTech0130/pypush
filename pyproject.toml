@@ -1,8 +1,7 @@
 [tool.poetry]
 name = "pypush"
 version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"] # TODO: Change this
+description = "Cross-platform iMessage POC"
 authors = [
     "JJTech <jjtech@jjtech.dev>",
     "Christopher <christopher@huntwork.net>",  # pixelmonaskarion
