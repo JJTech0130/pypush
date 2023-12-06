@@ -46,7 +46,7 @@ to another device that doesn't support the Unicorn emulator. Or you could switch
 
 ### Public key caching
 iMessage will cache public keys. If you get decryption errors in pypush or can only send and not receive messages from another device,
-try logging out and back into iMessage on that device, forcing it to refresh it's key cache. Alternatively, you can wait and the cache should
+try logging out and back into iMessage on that device, forcing it to refresh its key cache. Alternatively, you can wait and the cache should
 expire eventually.
 
 ## Licensing
