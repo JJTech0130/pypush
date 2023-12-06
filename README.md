@@ -10,11 +10,11 @@ It's pretty self-explanatory:
 <!-- NOTE: Using pip's git support requires that git be installed -->
 1. `python3 -m pip install pipx`
 2. `python3 -m pipx ensurepath`
-3. `pipx install git+https://github.com/beeper/pypush@async`
+3. `pipx install git+https://github.com/JJTech0130/pypush@async`
 4. `pypush`
 
 ### For Developers
-1. `git clone -b async https://github.com/beeper/pypush`
+1. `git clone -b async https://github.com/JJTech0130/pypush`
 2. `cd pypush`
 3. Install pypush and dependencies
     - via pip & requirements.txt (A virtual environment is recommended)
