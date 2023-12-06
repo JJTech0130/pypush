@@ -96,7 +96,8 @@ python ./demo.py --cronreg
 chmod +x ~/pypush_reregister.sh
 ```
 2. To automatically reregister every 30 minutes, execute the following:
-```crontab -e
+```
+crontab -e
 ```
 3. Add the following to your crontab file, replacing "user" with your username:
 ```
