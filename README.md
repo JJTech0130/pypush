@@ -3,7 +3,7 @@ This is the Pypush sms-registration branch. This branch allows you to register y
 
 sms-registration is not fully developed yet, and still contains bugs! If you encounter any sort of bug, please join [our Discord](https://discord.gg/BtSbcExKJ9), however please note we cannot get to everyone, so try to figure out any errors yourself before asking.
 
-***Please note:*** You will have to use a client to send messages from your phone. We recommend [Beeper](https://www.beeper.com/), which is the best solution to keep all your chat apps inside one place, including iMessage! You can also use [BlueBubbles](https://bluebubbles.app/) (which requires you to have a server Mac running 24/7). One of our community members is also currently working on a BlueBubbles fork that implements a version of Pypush within it, so no server is needed and number reregistration is automatically ran.
+***Please note:*** You will have to use a client to send messages from your phone. We recommend [Beeper](https://www.beeper.com/), which is the best solution to keep all your chat apps inside one place, including iMessage! You can also use [BlueBubbles](https://bluebubbles.app/) (which requires you to have a server Mac running 24/7). One of our community members is also currently working on a BlueBubbles fork that implements a version of Pypush within it, so no server is needed and number reregistration is automatically ran.  Additionally, Beeper has a more complete proprietary paid Android app solution derived from this Pypush PoC named [Beeper Mini](https://blog.beeper.com/p/introducing-beeper-mini-get-blue) ([details](https://blog.beeper.com/p/how-beeper-mini-works)) that includes both the messaging app and the registration.  
 
 However, Beeper is completely free and easy to use, and comes packed with multiple features that rivals native apps. Beeper is currently in the process of removing the waitlist, so you will have to use an invite link shared to you in order to skip the waitlist until this change is made. This app is what most testing is done on, and is by far the most popular in the Android and iMessage community.
 
@@ -13,21 +13,113 @@ You will first install Pypush onto your machine. *Please keep in mind that you w
 ### PNRgateway
 In order for Apple to verify your number, a specialized message has to be sent from your phone to Apple's "gateway number" and have the response captured. This number is different for each carrier, however the newest app version should automatically find your gateway number. If PNRgateway cannot find your gateway number, see below for help.
 
-1. Enable USB debugging/ADB on your phone. There are multiple online guides that guide you through this based on your phone.
-2. Install the APK. The message link containing the APK is located [here](https://discord.com/channels/1130633272595066880/1145177252015915080/1153070972090470481), and the GitHub repository is [here](https://github.com/JJTech0130/PNRGatewayClientV2).
-3. Grant SMS permissions. This will be in the app info page, and on the newer version, there should be a button in the app that does this for you.
-4. Connect your phone to the same WiFi network as your host PC, and open the app.
+1. Install the APK. The message link containing the APK is located [here](https://discord.com/channels/1130633272595066880/1145177252015915080/1153070972090470481), and the GitHub repository is [here](https://github.com/JJTech0130/PNRGatewayClientV2).
+2. Open the app.
+3. Grant SMS permissions by clicking the button and approving the permissions.
+4. Connect your phone to the same WiFi network as your host PC, and open the app (unless using Android: Termux, then it doesn't matter what network)
 
 ### Pypush
 Once you have the PNRgateway app installed on your phone, open it so it is displaying your IP address as you will need it for the next steps. 
 
-Use one of the automated installers for your operating system: [Windows](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/windows_installer.ps1) or [MacOS/Linux](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/unix_installer.sh)
-
-For Windows open up PowerShell and navigate to your downloads folder `cd Downloads` and then execute the installer `.\windows_installer.ps1` and follow the prompts. When initial registration has completed execute the file `windows_reregister.ps1` to handle reregistration. This file will reregister your number 5 minutes before registration expires and you must keep the PowerShell window open. Length of registration will gradually increase. 
-
-For MacOS/Linux open up your terminal and navigate to your downloads folder `cd Downloads` or similar. Make the script executable by executing `chmod +x unix_installer.sh`. Execute the script `./unix_installer.sh`. Upon completion a shell script is created called `reregister.sh`. Execute this script in your terminal `./reregister.sh`. This file will reregister your number 5 minutes before registration expires and you must keep the terminal window open. Length of registration will gradually increase.
+Use one of the automated installers for your operating system: [Windows](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/windows_installer.ps1), [MacOS/Linux](https://github.com/JJTech0130/pypush/blob/bacefed8b8eb78d5d3f295be5304830665464a04/unix_installer.sh), or [Android Termux](./termux_installer.sh).  
 
 If you need help or run into errors please reach out on our [Discord](https://discord.gg/BtSbcExKJ9) server.
+
+#### Windows
+
+1. Open up Powershell and navigate to your downloads folder
+
+```powershell
+cd Downloads
+```
+
+2. Execute the installer
+
+```powershell
+.\windows_installer.ps1
+```
+
+3. Follow the prompts
+4. Once initial registration has completed successfully, execute the reregistration setup file
+
+```powershell
+windows_reregistration.ps1
+```
+
+This file will re-register your number 5 minutes before registration expires.  
+
+5. Leave the Powershell window open permanently
+
+The length of your registration will gradually increase the longer the reregistration process runs.
+
+##### MacOS/Linux
+
+1. Open up your temrinal and navigate to your downloads folder
+
+```shell
+cd Downloads
+```
+
+2. Make the script executable
+
+```shell
+chmod +x unix_installer.sh
+```
+
+3. Execute the script
+
+```shell
+./unix_installer.sh
+```
+
+4. Once initial registration has completed successfully, a `reregister.sh` script is created.
+5. Execute the reregistration script
+
+```shell
+./reregister.sh
+```
+
+This will reregister your number 5 minutes before registration expires.  
+
+6. Leave the terminal window open permanently
+
+The length of your registration will gradually increase the longer the reregistration process runs.
+
+##### Android Termux
+
+This solution should be run on the same mobile device as the PNRGateway, and greatly simplifies the Pypush to PNRGateway connection required during initial setup.  
+
+1. Ensure you have [`Termux`](https://f-droid.org/en/packages/com.termux/) and [`Termux: API`](https://f-droid.org/en/packages/com.termux.api/) apps installed from F-Droid.  
+**The Google Play `Termux` app is not updated, and is incompatible with the `Termux: API` app that's only available on F-Droid.**  
+2. Download the `termux_installer.sh` script above onto your phone.
+3. Open `Termux`
+4. Grant storage permissions to `Termux`
+
+```shell
+termux-setup-storage
+```
+
+And accept the permissions prompt for all files.  
+
+5. Open the `PNRGateway` app on a split screen.  
+**The `PNRGateway` app must be open in the foreground at the same time as `Termux` for it to function correctly.**  
+
+6. Set the permissions on the script
+
+```shell
+chmod +x /storage/emulated/0/Download/termux_installer.sh
+```
+
+7. Execute the script
+
+```shell
+/storage/emualted/0/Download/termux_installer.sh
+```
+
+8. You will be walked thru the steps to register your phone number, create `~/pypush/reregistration.sh`, and setup a persistent system job to run the reregistration automatically.
+9. If the registration indicates Apple has given you an expiration time of less than 15 minutes, you will need to manually run the `~/pypush/reregistration.sh` script about 5 minutes before expiration. Android system jobs are not able to be run more frequently than 15 minutes.
+
+The length of your registration will gradually increase the longer the reregistration process runs.
 
 ### Pypush Manual Installation
 Make sure you have git and Python installed.
