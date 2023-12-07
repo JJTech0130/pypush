@@ -28,7 +28,7 @@ This is only necessary during initial registration, so theoretically you can reg
 to another device that doesn't support the Unicorn emulator. Or you could switch out the emulator for another x86 emulator if you really wanted to.
 
 ## "data.plist" and Mac serial numbers
-This repository contains a sample [`data.plist`](https://github.com/JJTech0130/pypush/blob/main/emulated/data.plist), which contains the serial number and several other identifiers from a real Mac device. If you run into issues related to rate-limiting or messessages failing to deliver, you may regenerate this file by cloning [nacserver](https://github.com/JJTech0130/nacserver) and running `build.sh` on a non-M1 Mac. It should place the generated file in the current directory, which you can then copy to the emulated/ folder in pypush.
+This repository contains a sample [`data.plist`](https://github.com/JJTech0130/pypush/blob/main/emulated/data.plist), which contains the serial number and several other identifiers from a real Mac device. If you run into issues related to rate-limiting or messages failing to deliver, you may regenerate this file by cloning [nacserver](https://github.com/JJTech0130/nacserver) and running `build.sh` on a non-M1 Mac. It should place the generated file in the current directory, which you can then copy to the emulated/ folder in pypush.
 
 ## Licensing
 This project is licensed under the terms of the [SSPL](https://www.mongodb.com/licensing/server-side-public-license). Portions of this project are based on [macholibre by Aaron Stephens](https://github.com/aaronst/macholibre/blob/master/LICENSE) under the Apache 2.0 license.
