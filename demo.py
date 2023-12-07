@@ -34,8 +34,13 @@ logging.captureWarnings(True)
 
 # Try and load config.json
 try:
-    with open("config.json", "r") as f:
-        CONFIG = json.load(f)
+    if os.path.isfile("./config.json"):
+        with open("config.json", "r") as f:
+            CONFIG = json.load(f)
+    else:
+        with open("config.json", "w") as f:
+            f.write("{}")
+            CONFIG = {} 
 except FileNotFoundError:
     CONFIG = {}
 
