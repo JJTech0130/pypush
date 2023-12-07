@@ -5,25 +5,28 @@ It can currently register as a new device on an Apple ID, set up encryption keys
 `pypush` is completely platform-independent, and does not require a Mac or other Apple device to use!
 
 ## Installation
-It's pretty self-explanatory:
+Installation is done via pipx:
 <!-- TODO: Change the branch upon merge with main -->
 <!-- NOTE: Using pip's git support requires that git be installed -->
-1. `python3 -m pip install pipx`
-2. `python3 -m pipx ensurepath`
-3. `pipx install git+https://github.com/JJTech0130/pypush@async`
-4. `pypush`
+#### Install dependencies
+1. `$ python3 -m pip install pipx`
+2. `$ python3 -m pipx ensurepath`
+#### Install pypush
+3. `$ pipx install git+https://github.com/JJTech0130/pypush@async`
+#### Run pypush
+4. `$ pypush`
 
 ### For Developers
-1. `git clone -b async https://github.com/JJTech0130/pypush`
-2. `cd pypush`
+1. `$ git clone -b async https://github.com/JJTech0130/pypush`
+2. `$ cd pypush`
 3. Install pypush and dependencies
     - via pip & requirements.txt (A virtual environment is recommended)
-        1. `python3 -m pip install -r requirements/requirements.txt`
-        2. `python3 -m pip install -r requirements/requirements-dev.txt`
-        3. `python3 -m pip install --editable ./pypush`
+        1. `$ python3 -m pip install -r requirements/requirements.txt`
+        2. `$ python3 -m pip install -r requirements/requirements-dev.txt`
+        3. `$ python3 -m pip install --editable ./pypush`
     - via [Poetry](https://python-poetry.org/docs/#installation)
-        1. `poetry install`
-        2. `poetry shell`
+        1. `$ poetry install`
+        2. `$ poetry shell`
 
 <!-- TODO: Add instructions on adding pypush to PATH(?) -->
 
