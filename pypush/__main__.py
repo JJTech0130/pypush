@@ -5,9 +5,9 @@ from subprocess import PIPE, Popen
 
 from rich.logging import RichHandler
 
-import apns
-import ids
-import imessage
+from . import apns
+from . import ids
+from . import imessage
 
 import trio
 
@@ -196,5 +196,9 @@ async def output_task(im: imessage.iMessageUser):
         print(str(msg))
 
 
-if __name__ == "__main__":
+def entrypoint():
     trio.run(main)
+
+
+if __name__ == "__main__":
+    entrypoint()

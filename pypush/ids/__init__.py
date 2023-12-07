@@ -2,7 +2,7 @@ from base64 import b64encode
 from getpass import getpass
 import logging
 
-import apns
+from .. import apns
 
 from . import _helpers, identity, profile, query
 from typing import Callable, Any

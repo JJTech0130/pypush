@@ -1,6 +1,5 @@
 import plistlib
 import random
-import uuid
 from base64 import b64decode
 
 import requests
@@ -10,7 +9,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-import bags
+from .. import bags
 
 from . import signing
 from ._helpers import PROTOCOL_VERSION, KeyPair
