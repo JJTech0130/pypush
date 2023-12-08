@@ -3,13 +3,15 @@ from . import mparser as macholibre
 from .jelly import Jelly
 import plistlib
 import logging
+from pathlib import Path
 logger = logging.getLogger("nac")
 
 BINARY_HASH = "e1181ccad82e6629d52c6a006645ad87ee59bd13"
 BINARY_PATH = "emulated/IMDAppleServices"
 BINARY_URL = "https://github.com/JJTech0130/nacserver/raw/main/IMDAppleServices"
 
-FAKE_DATA = plistlib.load(open("emulated/data.plist", "rb"))
+with open(Path(__file__).parent / "data.plist", "rb") as f:
+    FAKE_DATA = plistlib.load(f)
 
 def load_binary() -> bytes:
     # Open the file at BINARY_PATH, check the hash, and return the binary
