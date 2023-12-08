@@ -58,10 +58,7 @@ cd "$env:USERPROFILE\pypush"
 # Install dependencies from the requirements.txt file using pip.
 Write-Output "Installing dependencies"  
 pip install -r "requirements.txt"
-  
-# Store the IP address in a variable.
-$phoneIpVariable = Set-Variable -Name phoneIp -Value $phoneIp -Scope Global
-  
+    
 # Execute the `python demo.py` script with the phone IP address passed as a parameter.
 Write-Output "Registering"  
-python demo.py --phone $phoneIpVariable 
+python demo.py --phone $phoneIp 
