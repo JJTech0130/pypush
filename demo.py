@@ -276,10 +276,9 @@ async def main(args: argparse.Namespace):
                 if "P:" in str(user.user_id):
                     # logging.info(f"The user is: {user}")
                     cert = x509.load_pem_x509_certificate(user.id_cert.encode('utf-8'))
-                    expiration = cert.not_valid_after
+                    expiration = cert.not_valid_after.astimezone()
                     logging.info(f'Certificate expires on: {expiration}')
                     reregister_time = expiration - datetime.timedelta(minutes=reregister_within)
-                    reregister_time = reregister_time.astimezone(datetime.timezone.utc)
                     logging.info(f'Reregistration will occur at: {reregister_time}')
                     reregister_delta = (reregister_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
                     logging.info(
