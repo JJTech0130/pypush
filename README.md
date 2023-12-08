@@ -4,11 +4,26 @@ It can currently register as a new device on an Apple ID, set up encryption keys
 
 `pypush` is completely platform-independent, and does not require a Mac or other Apple device to use!
 
-## Installation
-It's pretty self explanatory:
-1. `git clone https://github.com/JJTech0130/pypush`
-2. `pip3 install -r requirements.txt`
-3. `python3 ./demo.py`
+## Project Setup Instructions
+1.Clone Repository
+To get started with the project, follow these simple steps to set up your development environment:
+
+git clone https://github.com/JJTech0130/pypush
+
+2.Navigate to Project Directory
+Change your current working directory to the cloned repository:
+
+cd pypush
+
+3.Install Dependencies
+Install the required dependencies using pip3 and the provided requirements.txt file:
+
+pip3 install -r requirements.txt
+
+4.Run Demo
+Execute the demo script to see the project in action:
+
+python3 ./demo.py
 
 ## Troubleshooting
 If you have any issues, please join [the Discord](https://discord.gg/BVvNukmfTC) and ask for help.
