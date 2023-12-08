@@ -7,7 +7,7 @@ from pathlib import Path
 logger = logging.getLogger("nac")
 
 BINARY_HASH = "e1181ccad82e6629d52c6a006645ad87ee59bd13"
-BINARY_PATH = "emulated/IMDAppleServices"
+BINARY_PATH = BINARY_PATH = Path(__file__).parent / "IMDAppleServices"
 BINARY_URL = "https://github.com/JJTech0130/nacserver/raw/main/IMDAppleServices"
 
 with open(Path(__file__).parent / "data.plist", "rb") as f:
@@ -23,7 +23,8 @@ def load_binary() -> bytes:
         resp = requests.get(BINARY_URL)
         b = resp.content
         # Save the binary
-        open(BINARY_PATH, "wb").write(b)
+        with open(BINARY_PATH, "rb") as f:
+            b = f.read()
     else:
         logger.debug("Using already downloaded IMDAppleServices")
         b = open(BINARY_PATH, "rb").read()
