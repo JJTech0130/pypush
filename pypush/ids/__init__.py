@@ -115,9 +115,9 @@ class IDSUser:
             self.restore_identity(id_keypair)
         else:
             logging.info("Registering new identity...")
-            import pypush.emulated.nac
+            from pypush.emulated import nac
 
-            vd = pypush.emulated.nac.generate_validation_data()
+            vd = nac.generate_validation_data()
             vd = b64encode(vd).decode()
 
             self.register(vd)
