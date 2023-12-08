@@ -4,14 +4,16 @@ from .jelly import Jelly
 import plistlib
 import logging
 from pathlib import Path
+
 logger = logging.getLogger("nac")
 
 BINARY_HASH = "e1181ccad82e6629d52c6a006645ad87ee59bd13"
-BINARY_PATH = BINARY_PATH = Path(__file__).parent / "IMDAppleServices"
+BINARY_PATH = Path(__file__).parent / "IMDAppleServices"
 BINARY_URL = "https://github.com/JJTech0130/nacserver/raw/main/IMDAppleServices"
 
 with open(Path(__file__).parent / "data.plist", "rb") as f:
     FAKE_DATA = plistlib.load(f)
+
 
 def load_binary() -> bytes:
     # Open the file at BINARY_PATH, check the hash, and return the binary
@@ -23,11 +25,12 @@ def load_binary() -> bytes:
         resp = requests.get(BINARY_URL)
         b = resp.content
         # Save the binary
-        with open(BINARY_PATH, "rb") as f:
-            b = f.read()
+        with open(BINARY_PATH, "wb") as f:
+            f.write(b)
     else:
         logger.debug("Using already downloaded IMDAppleServices")
-        b = open(BINARY_PATH, "rb").read()
+        with open(BINARY_PATH, "rb") as f:
+            b = f.read()
     if hashlib.sha1(b).hexdigest() != BINARY_HASH:
         raise Exception("Hashes don't match")
     return b
@@ -39,7 +42,7 @@ def get_x64_slice(binary: bytes) -> bytes:
     p = macholibre.Parser(binary)
     # Parse the binary to find the x64 slice
     off, size = p.u_get_offset(cpu_type="X86_64")
-    return binary[off : off + size]
+    return binary[off: off + size]
 
 
 def nac_init(j: Jelly, cert: bytes):
@@ -64,7 +67,7 @@ def nac_init(j: Jelly, cert: bytes):
         ],
     )
 
-    #print(hex(ret))
+    # print(hex(ret))
 
     if ret != 0:
         n = ret & 0xffffffff
@@ -86,6 +89,7 @@ def nac_init(j: Jelly, cert: bytes):
     validation_ctx_addr = int.from_bytes(validation_ctx_addr, 'little')
     return validation_ctx_addr, request
 
+
 def nac_key_establishment(j: Jelly, validation_ctx: int, response: bytes):
     response_addr = j.malloc(len(response))
     j.uc.mem_write(response_addr, response)
@@ -104,8 +108,9 @@ def nac_key_establishment(j: Jelly, validation_ctx: int, response: bytes):
         n = (n ^ 0x80000000) - 0x80000000
         raise Exception(f"Error calling nac_submit: {n}")
 
+
 def nac_sign(j: Jelly, validation_ctx: int):
-    #void *validation_ctx, void *unk_bytes, int unk_len,
+    # void *validation_ctx, void *unk_bytes, int unk_len,
     #            void **validation_data, int *validation_data_len
 
     out_validation_data_addr = j.malloc(8)
@@ -145,7 +150,7 @@ def hook_code(uc, address: int, size: int, user_data):
 def malloc(j: Jelly, len: int) -> int:
     # Hook malloc
     # Return the address of the allocated memory
-    #print("malloc hook called with len = %d" % len)
+    # print("malloc hook called with len = %d" % len)
     return j.malloc(len)
 
 
@@ -168,6 +173,7 @@ def memcpy(j: Jelly, dest: int, src: int, len: int):
     j.uc.mem_write(dest, bytes(orig))
     return 0
 
+
 CF_OBJECTS = []
 
 # struct __builtin_CFString {
@@ -178,6 +184,7 @@ CF_OBJECTS = []
 # }
 import struct
 
+
 def _parse_cfstr_ptr(j: Jelly, ptr: int) -> str:
     size = struct.calcsize("<QQQQ")
     data = j.uc.mem_read(ptr, size)
@@ -185,9 +192,11 @@ def _parse_cfstr_ptr(j: Jelly, ptr: int) -> str:
     str_data = j.uc.mem_read(str_ptr, length)
     return str_data.decode("utf-8")
 
+
 def _parse_cstr_ptr(j: Jelly, ptr: int) -> str:
-    data = j.uc.mem_read(ptr, 256) # Lazy way to do it
+    data = j.uc.mem_read(ptr, 256)  # Lazy way to do it
     return data.split(b"\x00")[0].decode("utf-8")
+
 
 def IORegistryEntryCreateCFProperty(j: Jelly, entry: int, key: int, allocator: int, options: int):
     key_str = _parse_cfstr_ptr(j, key)
@@ -196,10 +205,12 @@ def IORegistryEntryCreateCFProperty(j: Jelly, entry: int, key: int, allocator: i
         logger.debug(f"IOKit Entry: {key_str} -> {fake}")
         # Return the index of the fake data in CF_OBJECTS
         CF_OBJECTS.append(fake)
-        return len(CF_OBJECTS) # NOTE: We will have to subtract 1 from this later, can't return 0 here since that means NULL
+        return len(
+            CF_OBJECTS)  # NOTE: We will have to subtract 1 from this later, can't return 0 here since that means NULL
     else:
         logger.debug(f"IOKit Entry: {key_str} -> None")
         return 0
+
 
 def CFGetTypeID(j: Jelly, obj: int):
     obj = CF_OBJECTS[obj - 1]
@@ -210,12 +221,14 @@ def CFGetTypeID(j: Jelly, obj: int):
     else:
         raise Exception("Unknown CF object type")
 
+
 def CFDataGetLength(j: Jelly, obj: int):
     obj = CF_OBJECTS[obj - 1]
     if isinstance(obj, bytes):
         return len(obj)
     else:
         raise Exception("Unknown CF object type")
+
 
 def CFDataGetBytes(j: Jelly, obj: int, range_start: int, range_end: int, buf: int):
     obj = CF_OBJECTS[obj - 1]
@@ -227,9 +240,11 @@ def CFDataGetBytes(j: Jelly, obj: int, range_start: int, range_end: int, buf: in
     else:
         raise Exception("Unknown CF object type")
 
+
 def CFDictionaryCreateMutable(j: Jelly) -> int:
     CF_OBJECTS.append({})
     return len(CF_OBJECTS)
+
 
 def maybe_object_maybe_string(j: Jelly, obj: int):
     # If it's already a str
@@ -237,17 +252,18 @@ def maybe_object_maybe_string(j: Jelly, obj: int):
         return obj
     elif obj > len(CF_OBJECTS):
         return obj
-        #raise Exception(f"WTF: {hex(obj)}")
+        # raise Exception(f"WTF: {hex(obj)}")
         # This is probably a CFString
-       # return _parse_cfstr_ptr(j, obj)
+    # return _parse_cfstr_ptr(j, obj)
     else:
         return CF_OBJECTS[obj - 1]
+
 
 def CFDictionaryGetValue(j: Jelly, d: int, key: int) -> int:
     logger.debug(f"CFDictionaryGetValue: {d} {hex(key)}")
     d = CF_OBJECTS[d - 1]
     if key == 0xc3c3c3c3c3c3c3c3:
-        key = "DADiskDescriptionVolumeUUIDKey" # Weirdness, this is a hack
+        key = "DADiskDescriptionVolumeUUIDKey"  # Weirdness, this is a hack
     key = maybe_object_maybe_string(j, key)
     if isinstance(d, dict):
         if key in d:
@@ -261,6 +277,7 @@ def CFDictionaryGetValue(j: Jelly, d: int, key: int) -> int:
     else:
         raise Exception("Unknown CF object type")
 
+
 def CFDictionarySetValue(j: Jelly, d: int, key: int, val: int):
     d = CF_OBJECTS[d - 1]
     key = maybe_object_maybe_string(j, key)
@@ -270,14 +287,17 @@ def CFDictionarySetValue(j: Jelly, d: int, key: int, val: int):
     else:
         raise Exception("Unknown CF object type")
 
+
 def DADiskCopyDescription(j: Jelly) -> int:
     description = CFDictionaryCreateMutable(j)
     CFDictionarySetValue(j, description, "DADiskDescriptionVolumeUUIDKey", FAKE_DATA["root_disk_uuid"])
     return description
 
+
 def CFStringCreate(j: Jelly, string: str) -> int:
     CF_OBJECTS.append(string)
     return len(CF_OBJECTS)
+
 
 def CFStringGetLength(j: Jelly, string: int) -> int:
     string = CF_OBJECTS[string - 1]
@@ -285,6 +305,7 @@ def CFStringGetLength(j: Jelly, string: int) -> int:
         return len(string)
     else:
         raise Exception("Unknown CF object type")
+
 
 def CFStringGetCString(j: Jelly, string: int, buf: int, buf_len: int, encoding: int) -> int:
     string = CF_OBJECTS[string - 1]
@@ -295,6 +316,7 @@ def CFStringGetCString(j: Jelly, string: int, buf: int, buf_len: int, encoding: 
         return len(data)
     else:
         raise Exception("Unknown CF object type")
+
 
 def IOServiceMatching(j: Jelly, name: int) -> int:
     # Read the raw c string pointed to by name
@@ -309,16 +331,21 @@ def IOServiceMatching(j: Jelly, name: int) -> int:
     # Return the dictionary
     return d
 
+
 def IOServiceGetMatchingService(j: Jelly) -> int:
     return 92
 
+
 ETH_ITERATOR_HACK = False
+
+
 def IOServiceGetMatchingServices(j: Jelly, port, match, existing) -> int:
     global ETH_ITERATOR_HACK
     ETH_ITERATOR_HACK = True
     # Write 93 to existing
     j.uc.mem_write(existing, bytes([93]))
     return 0
+
 
 def IOIteratorNext(j: Jelly, iterator: int) -> int:
     global ETH_ITERATOR_HACK
@@ -328,33 +355,42 @@ def IOIteratorNext(j: Jelly, iterator: int) -> int:
     else:
         return 0
 
+
 def bzero(j: Jelly, ptr: int, len: int):
     j.uc.mem_write(ptr, bytes([0]) * len)
     return 0
+
 
 def IORegistryEntryGetParentEntry(j: Jelly, entry: int, _, parent: int) -> int:
     j.uc.mem_write(parent, bytes([entry + 100]))
     return 0
 
+
 import requests, plistlib
+
+
 def get_cert():
     resp = requests.get("http://static.ess.apple.com/identity/validation/cert-1.0.plist")
     resp = plistlib.loads(resp.content)
     return resp["cert"]
+
 
 def get_session_info(req: bytes) -> bytes:
     body = {
         'session-info-request': req,
     }
     body = plistlib.dumps(body)
-    resp = requests.post("https://identity.ess.apple.com/WebObjects/TDIdentityService.woa/wa/initializeValidation", data=body, verify=False)
+    resp = requests.post("https://identity.ess.apple.com/WebObjects/TDIdentityService.woa/wa/initializeValidation",
+                         data=body, verify=False)
     resp = plistlib.loads(resp.content)
     return resp["session-info"]
+
 
 def arc4random(j: Jelly) -> int:
     import random
     return random.randint(0, 0xFFFFFFFF)
-    #return 0
+    # return 0
+
 
 def load_nac() -> Jelly:
     binary = load_binary()
@@ -405,10 +441,11 @@ def load_nac() -> Jelly:
 
     return j
 
+
 def generate_validation_data() -> bytes:
     j = load_nac()
     logger.debug("Loaded NAC library")
-    val_ctx, req = nac_init(j,get_cert())
+    val_ctx, req = nac_init(j, get_cert())
     logger.debug("Initialized NAC")
     session_info = get_session_info(req)
     logger.debug("Got session info")
@@ -418,8 +455,10 @@ def generate_validation_data() -> bytes:
     logger.info("Generated validation data")
     return bytes(val_data)
 
+
 if __name__ == "__main__":
     from base64 import b64encode
+
     val_data = generate_validation_data()
     logger.info(f"Validation Data: {b64encode(val_data).decode()}")
-    #main()
+    # main()
