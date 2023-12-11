@@ -92,7 +92,7 @@ def generate_push_cert() -> tuple[str, str]:
     }
 
     resp = requests.post(
-        "https://albert.apple.com/WebObjects/ALUnbrick.woa/wa/deviceActivation?device=Windows",
+        "https://albert.apple.com/deviceservices/deviceActivation?device=MacOS",
         data={"activation-info": plistlib.dumps(body)},
         verify=False,
     )
