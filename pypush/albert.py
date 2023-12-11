@@ -63,12 +63,12 @@ def generate_push_cert() -> tuple[str, str]:
     activation_info = {
         "ActivationRandomness": str(uuid.uuid4()),
         "ActivationState": "Unactivated",
-        "BuildVersion": "10.6.4",
+        "BuildVersion": "22F82",
         "DeviceCertRequest": csr.encode("utf-8"),
-        "DeviceClass": "Windows",
-        "ProductType": "windows1,1",
-        "ProductVersion": "10.6.4",
-        "SerialNumber": "WindowSerial",
+        "DeviceClass": "MacOS",
+        "ProductType": "MacBookPro18,3",
+        "ProductVersion": "13.4.1",
+        "SerialNumber": SERIAL_NUMBER,
         "UniqueDeviceID": str(uuid.uuid4()),
     }
 
