@@ -56,7 +56,7 @@ def generate_push_cert() -> tuple[str, str]:
     Returns [private key PEM, certificate PEM]
     """
     private_key = rsa.generate_private_key(
-        public_exponent=65537, key_size=2048, backend=default_backend()
+        public_exponent=65537, key_size=1024, backend=default_backend()
     )
     csr = _generate_csr(private_key)
 
