@@ -6,6 +6,7 @@ It can currently register as a new device on an Apple ID, set up encryption keys
 
 ## Installation
 It's pretty self explanatory:
+If on windows, open terminal as admin,
 1. `git clone https://github.com/JJTech0130/pypush`
 2. `pip3 install -r requirements.txt`
 3. `python3 ./demo.py`
