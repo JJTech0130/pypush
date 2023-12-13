@@ -104,10 +104,10 @@ def add_auth_signature(
     headers["x-push-token"] = push_token
 
     auth_sig, auth_nonce = _sign_payload(auth_key.key, bag_key, "", push_token, body)
-    auth_postfix = "-" + str(auth_number) if auth_number is not None else ""
-    headers["x-auth-sig" + auth_postfix] = auth_sig
-    headers["x-auth-nonce" + auth_postfix] = b64encode(auth_nonce)
-    headers["x-auth-cert" + auth_postfix] = dearmour(auth_key.cert)
+    auth_postfix = f"-{str(auth_number)}" if auth_number is not None else ""
+    headers[f"x-auth-sig{auth_postfix}"] = auth_sig
+    headers[f"x-auth-nonce{auth_postfix}"] = b64encode(auth_nonce)
+    headers[f"x-auth-cert{auth_postfix}"] = dearmour(auth_key.cert)
 
 
 def add_id_signature(
