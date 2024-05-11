@@ -3,9 +3,10 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pypush-apns"
+name = "pypush"
 version = "0.0.1"
 dependencies = [
+    "pypush-apns",
     "httpx",
     "cryptography",
     'importlib_metadata; python_version>="3.9"',
@@ -16,12 +17,6 @@ test = [
     "pytest",
     "pytest-asyncio",
 ]
-
-# Use pypush namespace
-[tool.setuptools.packages.find]
-namespaces = true
-where = ["src"]
-include = ["pypush.*"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
