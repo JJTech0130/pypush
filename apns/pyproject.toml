@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pypush-apns"
+version = "0.0.1"
+dependencies = [
+    "httpx",
+    "cryptography",
+    'importlib_metadata; python_version>="3.10"',
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-trio"
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "-q"]
+testpaths = ["tests"]
