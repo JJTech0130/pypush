@@ -17,12 +17,6 @@ test = [
     "pytest-asyncio",
 ]
 
-# Use pypush namespace
-[tool.setuptools.packages.find]
-namespaces = true
-where = ["src"]
-include = ["pypush.*"]
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = ["-ra", "-q"]
