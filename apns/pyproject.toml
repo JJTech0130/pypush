@@ -8,7 +8,7 @@ version = "0.0.1"
 dependencies = [
     "httpx",
     "cryptography",
-    'importlib_metadata; python_version>="3.9"',
+    'importlib_metadata; python_version>="3.8"',
 ]
 
 [project.optional-dependencies]
