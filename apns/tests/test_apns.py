@@ -17,3 +17,9 @@ async def test_connect():
     assert connection.connected == True
     await connection.aclose()
     assert connection.connected == False
+
+@pytest.mark.asyncio
+async def test_with_block():
+    async with apns.connection.Connection(certificate, key) as connection:
+        assert connection.connected == True
+    assert connection.connected == False
