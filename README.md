@@ -8,10 +8,16 @@ It can currently register as a new device on an Apple ID, set up encryption keys
 `pypush` is completely platform-independent, and does not require a Mac or other Apple device to use!
 
 ## Installation
-1. `git clone https://github.com/JJTech0130/pypush.git`
-2. `cd pypush`
-3. `pip install -e ./apns`
-4. `pip install -e .`
+Simple installation:
+```bash
+pip install git+https://github.com/JJTech0130/pypush
+```
+Editable installation (for development):
+```bash
+git clone https://github.com/JJTech0130/pypush
+cd pypush
+pip install -e .
+```
 
 ## Licensing
 This project is licensed under the terms of the [SSPL](https://www.mongodb.com/licensing/server-side-public-license)
