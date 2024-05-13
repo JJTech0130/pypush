@@ -18,6 +18,7 @@ test = [
 ]
 
 [tool.setuptools_scm]
+version_file = "pypush/_version.py"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
