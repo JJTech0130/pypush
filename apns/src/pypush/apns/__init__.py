@@ -1,3 +1,4 @@
-# Should be very hands-off: accept device details as arguments to everything, don't make assumptions
+__all__ = ["connection", "albert"]
+
+from . import connection
 from . import albert
-__all__ = ['albert']

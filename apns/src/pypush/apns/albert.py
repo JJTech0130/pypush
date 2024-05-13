@@ -1,3 +1,5 @@
+__all__ = ["activate"]
+
 import logging
 import plistlib
 import re
@@ -13,9 +15,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 
-
-# These keys are from https://github.com/MiUnlockCode/albertsimlockapple/blob/main/ALBERTBUGBYMIUNLOCK.php, which is licensed under the MIT license
-# If this becomes a problem, I know how to generate new keys
 FAIRPLAY_PRIVATE_KEY = b64decode(
     "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlDV3dJQkFBS0JnUUMzQktyTFBJQmFiaHByKzRTdnVRSG5iRjBzc3FSSVE2Ny8xYlRmQXJWdVVGNnA5c2RjdjcwTityOHlGeGVzRG1wVG1LaXRMUDA2c3pLTkFPMWs1SlZrOS9QMWVqejA4Qk1lOWVBYjRqdUFoVldkZkFJeWFKN3NHRmplU0wwMTVtQXZyeFRGY09NMTBGL3FTbEFSQmljY3hIalBYdHVXVnIwZkxHcmhNKy9BTVFJREFRQUJBb0dBQ0dXM2JISFBOZGI5Y1Z6dC9wNFBmMDNTakoxNXVqTVkwWFk5d1VtL2gxczZyTE84Ky8xME1ETUVHTWxFZGNtSGlXUmt3T1ZpalJIeHpOUnhFQU1JODdBcnVvZmhqZGRiTlZMdDZwcFcybkxDSzdjRURRSkZhaFRXOUdRRnpwVlJRWFhmeHI0Y3MxWDNrdXRsQjZ1WTJWR2x0eFFGWXNqNWRqdjdEK0E3MkEwQ1FRRFpqMVJHZHhiZU9vNFh6eGZBNm40MkdwWmF2VGxNM1F6R0ZvQkpnQ3FxVnUxSlFPem9vQU1SVCtOUGZnb0U4K3VzSVZWQjRJbzBiQ1VUV0xwa0V5dFRBa0VBMTFyeklwR0loRmtQdE5jLzMzZnZCRmd3VWJzalRzMVY1RzZ6NWx5L1huRzlFTmZMYmxnRW9iTG1TbXozaXJ2QlJXQURpd1V4NXpZNkZOL0RtdGk1NndKQWRpU2Nha3VmY255dnp3UVo3UndwLzYxK2VyWUpHTkZ0YjJDbXQ4Tk82QU9laGNvcEhNWlFCQ1d5MWVjbS83dUovb1ozYXZmSmRXQkkzZkd2L2twZW13SkFHTVh5b0RCanB1M2oyNmJEUno2eHRTczc2N3IrVmN0VExTTDYrTzRFYWFYbDNQRW1DcngvVSthVGpVNDVyN0RuaThaK3dkaElKRlBkbkpjZEZrd0dId0pBUFErd1ZxUmpjNGgzSHd1OEk2bGxrOXdocEs5TzcwRkxvMUZNVmRheXRFbE15cXpRMi8wNWZNYjdGNnlhV2h1K1EyR0dYdmRsVVJpQTN0WTBDc2ZNMHc9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQ=="
 )
@@ -24,7 +23,7 @@ FAIRPLAY_CERT_CHAIN = b64decode(
 )
 
 
-def generate_csr(private_key: rsa.RSAPrivateKey, name: str = str(uuid.uuid4())) -> str:
+def _generate_csr(private_key: rsa.RSAPrivateKey, name: str = str(uuid.uuid4())) -> str:
     csr = (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
@@ -56,7 +55,7 @@ async def activate(
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=1024, backend=default_backend()
     )
-    csr = generate_csr(private_key)
+    csr = _generate_csr(private_key)
 
     activation_info = plistlib.dumps(
         {
@@ -108,6 +107,3 @@ async def activate(
         ),
         private_key,
     )
-
-
-__all__ = ["activate"]
