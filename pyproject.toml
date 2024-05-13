@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pypush"
-version = "0.0.1"
+dynamic = ["version"]
 dependencies = [
     "httpx",
     "cryptography",
@@ -16,6 +16,8 @@ test = [
     "pytest",
     "pytest-asyncio",
 ]
+
+[tool.setuptools_scm]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
