@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from asyncio import StreamReader, StreamWriter
+from anyio.streams.tls import TLSStream
 
 
 @dataclass
@@ -21,6 +21,11 @@ class Field:
             self.id.to_bytes(1, "big") + len(self.value).to_bytes(2, "big") + self.value
         )
 
+async def receive_exact(stream: TLSStream, length: int) -> bytes:
+    buffer = b""
+    while len(buffer) < length:
+        buffer += await stream.receive(length - len(buffer))
+    return buffer
 
 @dataclass
 class Payload:
@@ -28,13 +33,13 @@ class Payload:
     fields: list[Field]
 
     @staticmethod
-    async def read_from_stream(stream: StreamReader) -> Payload:
+    async def read_from_stream(stream: TLSStream) -> Payload:
         # TODO: Can some of this error handling be removed with readexactly?
-        if not (id_bytes := await stream.readexactly(1)):
+        if not (id_bytes := await receive_exact(stream, 1)):
             raise Exception("Unable to read payload id from stream")
         id: int = int.from_bytes(id_bytes, "big")
 
-        if (length := await stream.readexactly(4)) is None:
+        if (length := await receive_exact(stream, 4)) is None:
             raise Exception("Unable to read payload length from stream")
         length = int.from_bytes(length, "big")
 
@@ -44,7 +49,7 @@ class Payload:
         # buffer = await receive_exact(stream, length)
         # if buffer is None:
         #    raise Exception("Unable to read payload from stream")
-        buffer = await stream.readexactly(length)
+        buffer = await receive_exact(stream, length)
         fields = []
 
         while len(buffer) > 0:
@@ -54,7 +59,7 @@ class Payload:
 
         return Payload(id, fields)
 
-    async def write_to_stream(self, stream: StreamWriter):
+    async def write_to_stream(self, stream: TLSStream):
         payload = b""
 
         for field in self.fields:
@@ -62,8 +67,7 @@ class Payload:
 
         buffer = self.id.to_bytes(1, "big") + len(payload).to_bytes(4, "big") + payload
 
-        stream.write(buffer)
-        await stream.drain()
+        await stream.send(buffer)
 
     def fields_with_id(self, id: int):
         return [field for field in self.fields if field.id == id]
