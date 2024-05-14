@@ -2,6 +2,7 @@ import pytest
 from pypush import apns
 import asyncio
 
+
 @pytest.mark.asyncio
 async def test_activate():
     global certificate, key
@@ -18,9 +19,10 @@ async def test_activate():
 #     await connection.aclose()
 #     assert connection.connected == False
 
+
 @pytest.mark.asyncio
 async def test_with_block():
     async with apns.connection.Connection(certificate, key) as connection:
         pass
-        #assert connection.connected == True
-    #assert connection.connected == False
+        # assert connection.connected == True
+    # assert connection.connected == False

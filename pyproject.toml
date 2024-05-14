@@ -12,10 +12,16 @@ dependencies = [
     'importlib_metadata; python_version>="3.8"',
 ]
 
+[project.scripts]
+apnsproxy = "pypush.cli.apnsproxy:main"
+
 [project.optional-dependencies]
 test = [
     "pytest",
     "pytest-asyncio",
+]
+proxy = [
+    "frida",
 ]
 
 [tool.setuptools_scm]
