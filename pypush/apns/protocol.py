@@ -125,8 +125,8 @@ class Packet:
 
     @staticmethod
     async def _from_stream(stream: ByteStream) -> Packet:
-        #id = int.from_bytes(await receive_exact(stream, 1), "big")
-        #print("got id")
+        # id = int.from_bytes(await receive_exact(stream, 1), "big")
+        # print("got id")
 
         # TODO: Can some of this error handling be removed with readexactly?
         if not (id_bytes := await receive_exact(stream, 1)):

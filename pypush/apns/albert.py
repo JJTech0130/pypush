@@ -1,12 +1,10 @@
 __all__ = ["activate"]
 
-import logging
 import plistlib
 import re
-from typing import Tuple
 import uuid
 from base64 import b64decode
-from pathlib import Path
+from typing import Tuple
 
 import httpx
 from cryptography import x509
