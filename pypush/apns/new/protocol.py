@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 from hashlib import sha1
 
 from anyio.abc import ByteStream, ObjectStream
@@ -185,7 +185,7 @@ class SendMessageCommand(Command):
     payload: bytes = fid(3)
     id: bytes = fid(4)
 
-    topic: Optional[bytes] = None
+    topic: Optional[Union[str, bytes]] = None
     token: Optional[bytes] = None
     outgoing: Optional[bool] = None
 
@@ -208,20 +208,20 @@ class SendMessageCommand(Command):
         
         if self.outgoing == True:
             assert self.topic and self.token
-            self._token_topic_1 = self.topic
+            self._token_topic_1 = sha1(self.topic.encode()).digest() if isinstance(self.topic, str) else self.topic
             self._token_topic_2 = self.token
         elif self.outgoing == False:
             assert self.topic and self.token
             self._token_topic_1 = self.token
-            self._token_topic_2 = self.topic
+            self._token_topic_2 = sha1(self.topic.encode()).digest() if isinstance(self.topic, str) else self.topic
         else:
             assert self._token_topic_1 and self._token_topic_2
             if len(self._token_topic_1) == 20: # SHA1 hash, topic
-                self.topic = self._token_topic_1
+                self.topic = KNOWN_TOPICS_LOOKUP[self._token_topic_1] if self._token_topic_1 in KNOWN_TOPICS_LOOKUP else self._token_topic_1
                 self.token = self._token_topic_2
                 self.outgoing = True
             else:
-                self.topic = self._token_topic_2
+                self.topic = KNOWN_TOPICS_LOOKUP[self._token_topic_2] if self._token_topic_2 in KNOWN_TOPICS_LOOKUP else self._token_topic_2
                 self.token = self._token_topic_1
                 self.outgoing = False
 
