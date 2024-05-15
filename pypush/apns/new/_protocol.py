@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import field, fields as dataclass_fields, MISSING
 from typing import TypeVar, Any
+import logging
 
 from pypush.apns.new.transport import Packet
 
@@ -17,6 +18,8 @@ def auto_packet(cls: T) -> T:
         assert packet.id == cls.PacketType
         field_values = {}
         for f in dataclass_fields(cls):
+            if f.metadata is None or "packet_id" not in f.metadata:
+                continue
             field_value = packet.fields_for_id(f.metadata["packet_id"])
             t = f.type
             if "Optional[" in str(f.type):
@@ -38,15 +41,24 @@ def auto_packet(cls: T) -> T:
                 field_values[f.name] = field_value[0].decode()
             elif t == "bytes":
                 field_values[f.name] = field_value[0]
-            elif t == "list[bytes]":
+            elif t == "list":
                 field_values[f.name] = field_value
             else:
                 raise TypeError(f"Unsupported field type: {t}")
+        # Check for extra fields
+        for field in packet.fields:
+            if field.id not in [f.metadata["packet_id"] for f in dataclass_fields(cls) if f.metadata is not None and "packet_id" in f.metadata]:
+                logging.warning(
+                    f"Unexpected field with packet ID {field.id} in packet {packet}"
+                )
+                # raise ValueError(f"Unexpected field with packet ID {field.id}")
         return cls(**field_values)
 
     def to_packet(self) -> Packet:
         packet_fields = []
         for f in dataclass_fields(self):
+            if f.metadata is None or "packet_id" not in f.metadata:
+                continue
             value = getattr(self, f.name)
             if isinstance(value, int):
                 packet_value = value.to_bytes(f.metadata["packet_bytes"], "big")
@@ -74,14 +86,17 @@ def auto_packet(cls: T) -> T:
     return cls
 
 
-def fid(packet_id: int, byte_len: int = 1, default: Any = MISSING):
+def fid(packet_id: int, byte_len: int = 1, default: Any = MISSING, default_factory: Any = MISSING, repr: bool = True):
     """
     :param packet_id: The packet ID of the field
     :param byte_len: The length of the field in bytes (for int fields)
     :param default: The default value of the field
     """
-    if default is MISSING:
-        return field(metadata={"packet_id": packet_id, "packet_bytes": byte_len})
-    return field(
-        metadata={"packet_id": packet_id, "packet_bytes": byte_len}, default=default
-    )
+    if not default == MISSING and not default_factory == MISSING:
+        raise ValueError("Cannot specify both default and default_factory")
+    if not default == MISSING:
+        return field(metadata={"packet_id": packet_id, "packet_bytes": byte_len}, default=default, repr=repr)
+    if not default_factory == MISSING:
+        return field(metadata={"packet_id": packet_id, "packet_bytes": byte_len}, default_factory=default_factory, repr=repr)
+    else:
+        return field(metadata={"packet_id": packet_id, "packet_bytes": byte_len}, repr=repr)

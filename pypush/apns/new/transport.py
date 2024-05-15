@@ -31,8 +31,9 @@ class Packet:
         KeepAliveAck = 13
         NoStorage = 14
         SetState = 20
-        Unknown = 29
-        Unknown2 = 32
+        Unknown29 = 29
+        Unknown30 = 30
+        Unknown32 = 32
 
     id: Type
     fields: list[Field]
@@ -52,7 +53,9 @@ async def create_courier_connection(
     context.verify_mode = ssl.CERT_NONE
 
     return PacketStream(
-        await anyio.connect_tcp(courier, COURIER_PORT, ssl_context=context)
+        await anyio.connect_tcp(
+            courier, COURIER_PORT, ssl_context=context, tls_standard_compatible=False
+        )
     )
 
 

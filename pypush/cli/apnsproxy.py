@@ -27,9 +27,18 @@ async def forward_packets(
 ):
     while True:
         packet = await source.receive()
-        command = protocol.command_from_packet(packet)
-        logging.info(f"{name} -> {command}")
-        await dest.send(packet)
+        try:
+            command = protocol.command_from_packet(packet)
+            if not isinstance(command, protocol.UnknownCommand):
+                logging.info(f"{name} -> {command}")
+            else:
+                logging.warning(f"{name} -> {packet}")
+        except Exception as e:
+            logging.error(f"Error parsing packet: {e}")
+            logging.error(f"Packet: {packet}")
+            await dest.send(packet)
+            continue
+        await dest.send(command.to_packet())
 
 
 async def handle(client: TLSStream):
