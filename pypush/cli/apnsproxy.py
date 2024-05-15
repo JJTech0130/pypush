@@ -21,25 +21,35 @@ from . import _frida
 
 logging.basicConfig(level=logging.DEBUG, handlers=[RichHandler()], format="%(message)s")
 
-async def forward_commands(
-    source: protocol.CommandStream, dest: protocol.CommandStream, name: str = ""
+
+async def forward_packets(
+    source: transport.PacketStream, dest: transport.PacketStream, name: str = ""
 ):
-    async for command in source:
-        logging.info(f"{name} -> {command}")
-        await dest.send(command
-)
+    async for packet in source:
+        try:
+            command = protocol.command_from_packet(packet)
+            if not isinstance(command, protocol.UnknownCommand):
+                logging.info(f"{name} -> {command}")
+            else:
+                logging.warning(f"{name} -> {command}")
+        except Exception as e:
+            logging.error(f"Error parsing packet: {e}")
+            logging.error(f"{name} => {packet}")
+            await dest.send(packet)
+            continue
+        await dest.send(command.to_packet())
 
 async def handle(client: TLSStream):
     async with client:
-        client_cmd = protocol.CommandStream(transport.PacketStream(client))
+        client_pkt = transport.PacketStream(client)
         print("Connected")
-        async with protocol.CommandStream(await transport.create_courier_connection()) as conn:
+        async with await transport.create_courier_connection() as conn:
             print("Connected to courier")
             async with anyio.create_task_group() as tg:
-                #tg.start_soon(forward_packets, client_pkt, conn, "client")
-                #tg.start_soon(forward_packets, conn, client_pkt, "server")
-                tg.start_soon(forward_commands, client_cmd, conn, "client")
-                tg.start_soon(forward_commands, conn, client_cmd, "server")
+                tg.start_soon(forward_packets, client_pkt, conn, "client")
+                tg.start_soon(forward_packets, conn, client_pkt, "server")
+                #tg.start_soon(forward_commands, client_cmd, conn, "client")
+                #tg.start_soon(forward_commands, conn, client_cm, "server")
                 print("Started forwarding")
 
         print("Disconnecting")
