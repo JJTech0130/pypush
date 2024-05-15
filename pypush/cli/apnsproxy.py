@@ -90,7 +90,7 @@ async def courier_proxy():
     context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     context.set_alpn_protocols(["apns-security-v3"])
     context.load_cert_chain(*temp_certs())
-    listener = TLSListener(listener, ssl_context=context)
+    listener = TLSListener(listener, ssl_context=context, standard_compatible=False)
     print("Listening on port", apns.connection.COURIER_PORT)
     await listener.serve(handle)
 
