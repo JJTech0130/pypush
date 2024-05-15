@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Optional
 from hashlib import sha1
 
+from anyio.abc import ByteStream, ObjectStream
+
 from pypush.apns.new.transport import Packet
 from pypush.apns.new._protocol import auto_packet, fid
 
@@ -190,6 +192,7 @@ class SendMessageCommand(Command):
     expiry: Optional[int] = fid(5, byte_len=4, default=None)
     timestamp: Optional[int] = fid(6, byte_len=8, default=None)
     unknown7: Optional[bytes] = fid(7, default=None)
+    unknown9: Optional[int] = fid(9, byte_len=1, default=None)
     unknown13: Optional[int] = fid(13, byte_len=1, default=None)
     unknown15: Optional[bytes] = fid(15, default=None)
     unknown21: Optional[bytes] = fid(21, default=None)
@@ -268,3 +271,20 @@ def command_from_packet(packet: Packet) -> Command:
         return command_class.from_packet(packet)
     else:
         return UnknownCommand.from_packet(packet)
+
+@dataclass
+class CommandStream(ObjectStream[Command]):
+    transport_stream: ObjectStream[Packet]
+
+    async def send(self, command: Command) -> None:
+        await self.transport_stream.send(command.to_packet())
+
+    async def receive(self) -> Command:
+        return command_from_packet(await self.transport_stream.receive())
+        
+
+    async def aclose(self) -> None:
+        await self.transport_stream.aclose()
+
+    async def send_eof(self) -> None:
+        await self.transport_stream.send_eof()
