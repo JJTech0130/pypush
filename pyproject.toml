@@ -22,6 +22,7 @@ test = [
 ]
 proxy = [
     "frida",
+    "rich"
 ]
 
 [tool.setuptools_scm]
