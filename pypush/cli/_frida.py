@@ -34,7 +34,7 @@ def redirect_courier(
         + """');
                         console.log('getaddrinfo("' + node + '", ...) => getaddrinfo("localhost", ...)');
                     } else {
-                        console.log('getaddrinfo("' + node + '", ...)');
+                        //console.log('getaddrinfo("' + node + '", ...)');
                     }
                 }
             });

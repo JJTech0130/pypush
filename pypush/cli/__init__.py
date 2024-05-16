@@ -13,12 +13,6 @@ def proxy(
     attach: Annotated[
         bool, typer.Option(help="Use Frida to attach to the running `apsd`")
     ] = True,
-    dual: Annotated[
-        bool,
-        typer.Option(
-            help="EXPERIMENTAL: Listen on both 127.0.0.2 and 127.0.0.3, to proxy both production and sandbox connections"
-        ),
-    ] = False,
 ):
     """
     Proxy APNs traffic between the local machine and the APNs courier
@@ -27,7 +21,7 @@ def proxy(
     """
     from . import apnsproxy
 
-    apnsproxy.main(attach, dual)
+    apnsproxy.main(attach)
 
 
 @app.command()
