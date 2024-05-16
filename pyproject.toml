@@ -13,16 +13,17 @@ dependencies = [
 ]
 
 [project.scripts]
-apnsproxy = "pypush.cli.apnsproxy:main"
+pypush = "pypush.cli:main"
 
 [project.optional-dependencies]
 test = [
     "pytest",
     "pytest-asyncio",
 ]
-proxy = [
+cli = [
     "frida",
-    "rich"
+    "rich",
+    "typer"
 ]
 
 [tool.setuptools_scm]

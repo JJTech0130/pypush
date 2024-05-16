@@ -1,7 +1,9 @@
 import pytest
 from pypush import apns
 import asyncio
-
+from aioapns import *
+import uuid
+import anyio
 
 # @pytest.mark.asyncio
 # async def test_activate():
@@ -30,13 +32,22 @@ import asyncio
 
 @pytest.mark.asyncio
 async def test_more():
-    import pypush.apns.new.transport
-
-    conn = await pypush.apns.new.transport.create_apns_connection()
-    await conn.send(
-        pypush.apns.new.transport.Packet(
-            pypush.apns.new.transport.Packet.Type.Connect,
-            [pypush.apns.new.transport.Packet.Field(1, b"hello")],
-        )
+    apns_cert_client = APNs(
+        client_cert="/Users/jjtech/Downloads/dev.jjtech.pypush.tests.pem",
+        use_sandbox=True,
     )
-    print(await conn.receive())
+    request = NotificationRequest(
+        device_token="496945db19bed82226c24900daa0ee71fda92c315a956c1044fc49d0f1fda394",
+        message={
+            "aps": {
+                "alert": "test",
+                "badge": 1,
+            }
+        },
+        notification_id=str(uuid.uuid4()),
+        time_to_live=3,
+        push_type=PushType.ALERT,
+    )
+    await apns_cert_client.send_notification(request)
+
+    await anyio.sleep_forever()

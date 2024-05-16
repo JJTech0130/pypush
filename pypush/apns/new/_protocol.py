@@ -47,7 +47,11 @@ def auto_packet(cls: T) -> T:
                 raise TypeError(f"Unsupported field type: {t}")
         # Check for extra fields
         for field in packet.fields:
-            if field.id not in [f.metadata["packet_id"] for f in dataclass_fields(cls) if f.metadata is not None and "packet_id" in f.metadata]:
+            if field.id not in [
+                f.metadata["packet_id"]
+                for f in dataclass_fields(cls)
+                if f.metadata is not None and "packet_id" in f.metadata
+            ]:
                 logging.warning(
                     f"Unexpected field with packet ID {field.id} in packet {packet}"
                 )
@@ -86,7 +90,13 @@ def auto_packet(cls: T) -> T:
     return cls
 
 
-def fid(packet_id: int, byte_len: int = 1, default: Any = MISSING, default_factory: Any = MISSING, repr: bool = True):
+def fid(
+    packet_id: int,
+    byte_len: int = 1,
+    default: Any = MISSING,
+    default_factory: Any = MISSING,
+    repr: bool = True,
+):
     """
     :param packet_id: The packet ID of the field
     :param byte_len: The length of the field in bytes (for int fields)
@@ -95,8 +105,18 @@ def fid(packet_id: int, byte_len: int = 1, default: Any = MISSING, default_facto
     if not default == MISSING and not default_factory == MISSING:
         raise ValueError("Cannot specify both default and default_factory")
     if not default == MISSING:
-        return field(metadata={"packet_id": packet_id, "packet_bytes": byte_len}, default=default, repr=repr)
+        return field(
+            metadata={"packet_id": packet_id, "packet_bytes": byte_len},
+            default=default,
+            repr=repr,
+        )
     if not default_factory == MISSING:
-        return field(metadata={"packet_id": packet_id, "packet_bytes": byte_len}, default_factory=default_factory, repr=repr)
+        return field(
+            metadata={"packet_id": packet_id, "packet_bytes": byte_len},
+            default_factory=default_factory,
+            repr=repr,
+        )
     else:
-        return field(metadata={"packet_id": packet_id, "packet_bytes": byte_len}, repr=repr)
+        return field(
+            metadata={"packet_id": packet_id, "packet_bytes": byte_len}, repr=repr
+        )

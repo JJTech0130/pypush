@@ -12,14 +12,11 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from rich.logging import RichHandler
 
-from pypush import apns
+# from pypush import apns
 from pypush.apns.new import transport, protocol
 
 from . import _frida
-
-logging.basicConfig(level=logging.DEBUG, handlers=[RichHandler()], format="%(message)s")
 
 
 async def forward_packets(
@@ -39,20 +36,32 @@ async def forward_packets(
             continue
         await dest.send(command.to_packet())
 
-async def handle(client: TLSStream):
+
+connection_cnt = 0
+
+
+async def handle(client: TLSStream, forward):
+    global connection_cnt
+    connection_cnt += 1
+    # TODO: Check what SNI the client is connecting to, use that instead of guessing based on local IP
     async with client:
         client_pkt = transport.PacketStream(client)
-        print("Connected")
-        async with await transport.create_courier_connection() as conn:
-            print("Connected to courier")
+        logging.debug("Client connected")
+        async with await transport.create_courier_connection(forward) as conn:
+            logging.debug("Connected to courier")
             async with anyio.create_task_group() as tg:
-                tg.start_soon(forward_packets, client_pkt, conn, "client")
-                tg.start_soon(forward_packets, conn, client_pkt, "server")
-                #tg.start_soon(forward_commands, client_cmd, conn, "client")
-                #tg.start_soon(forward_commands, conn, client_cm, "server")
-                print("Started forwarding")
-
-        print("Disconnecting")
+                tg.start_soon(
+                    forward_packets, client_pkt, conn, f"client-{connection_cnt}"
+                )
+                tg.start_soon(
+                    forward_packets, conn, client_pkt, f"server-{connection_cnt}"
+                )
+                # await anyio.sleep(4)
+                # await conn.send(protocol.SetStateCommand(1, 0x7FFFFFFF).to_packet())
+                # tg.start_soon(forward_commands, client_cmd, conn, "client")
+                # tg.start_soon(forward_commands, conn, client_cm, "server")
+                logging.debug("Started forwarding")
+        logging.debug("Courier disconnected")
 
 
 def temp_certs():
@@ -92,16 +101,23 @@ def temp_certs():
     return cert_path, key_path
 
 
-async def courier_proxy():
+async def courier_proxy(host, forward):
     # Start listening on localhost:COURIER_PORT
-    listener = await anyio.create_tcp_listener(local_port=apns.connection.COURIER_PORT)
+    listener = await anyio.create_tcp_listener(
+        local_port=transport.COURIER_PORT, local_host=host
+    )
     # Create an SSL context
     context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     context.set_alpn_protocols(["apns-security-v3"])
     context.load_cert_chain(*temp_certs())
     listener = TLSListener(listener, ssl_context=context, standard_compatible=False)
-    print("Listening on port", apns.connection.COURIER_PORT)
-    await listener.serve(handle)
+    logging.info(f"Listening on {host}:{transport.COURIER_PORT}")
+    logging.debug(f"Forwarding to {forward}")
+
+    async def handle_wrap(client: TLSStream):
+        await handle(client, forward)
+
+    await listener.serve(handle_wrap)
 
 
 async def ainput(prompt: str = "") -> str:
@@ -109,22 +125,40 @@ async def ainput(prompt: str = "") -> str:
     return await anyio.to_thread.run_sync(input)
 
 
-async def start():
+async def start(attach, double_courier=False):
     # Attach to the target app
-    apsd = _frida.attach_to_apsd()
+    if attach:
+        apsd = _frida.attach_to_apsd()
 
-    async with anyio.create_task_group() as tg:
-        tg.start_soon(courier_proxy)
-        _frida.redirect_courier(apsd)
-        _frida.trust_all_hosts(apsd)
+        async with anyio.create_task_group() as tg:
+            if double_courier:
+                logging.info("Double courier mode enabled")
+                logging.info(
+                    "Make sure to run `sudo ifconfig lo0 alias 127.0.0.2` and `sudo ifconfig lo0 alias 127.0.0.3` to add the extra IPs"
+                )
+                tg.start_soon(courier_proxy, "127.0.0.2", "2-courier.push.apple.com")
+                tg.start_soon(
+                    courier_proxy, "127.0.0.3", "7-courier.sandbox.push.apple.com"
+                )
+                _frida.redirect_courier(apsd, "courier.push.apple.com", "127.0.0.2")
+                _frida.redirect_courier(
+                    apsd, "courier.sandbox.push.apple.com", "127.0.0.3"
+                )
+            else:
+                tg.start_soon(courier_proxy, "localhost", "1-courier.push.apple.com")
+                _frida.redirect_courier(apsd, "courier.push.apple.com", "localhost")
+            _frida.trust_all_hosts(apsd)
 
-        await ainput("Press Enter to exit...\n")
-        tg.cancel_scope.cancel()
+            logging.info("Press Enter to exit...")
+            await ainput()
+            tg.cancel_scope.cancel()
+    else:
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(courier_proxy, "localhost", "1-courier.push.apple.com")
+            logging.info("Press Enter to exit...")
+            await ainput()
+            tg.cancel_scope.cancel()
 
 
-def main():
-    anyio.run(start)
-
-
-if __name__ == "__main__":
-    main()
+def main(attach, double_courier=False):
+    anyio.run(start, attach, double_courier)

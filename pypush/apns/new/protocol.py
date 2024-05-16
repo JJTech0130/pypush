@@ -30,7 +30,7 @@ class Command:
 class ConnectCommand(Command):
     PacketType = Packet.Type.Connect
 
-    push_token: bytes = fid(1)
+    push_token: Optional[bytes] = fid(1)
     state: Optional[int] = fid(2)
     flags: int = fid(5, byte_len=4)
     certificate: Optional[bytes] = fid(12)
@@ -60,17 +60,19 @@ class ConnectAck(Command):
     max_message_size: int = fid(4, byte_len=2)
     unknown5: bytes = fid(5)
     capabilities: bytes = fid(6)
-    large_message_size: int = fid(8, byte_len=2)
+    large_message_size: Optional[int] = fid(8, byte_len=2)
     timestamp: int = fid(10, byte_len=8)
     region: Optional[str] = fid(11)
     timestamp2: Optional[int] = fid(12, byte_len=8)
     unknown19: Optional[bytes] = fid(19)
+
 
 @auto_packet
 @dataclass
 class NoStorageCommand(Command):
     PacketType = Packet.Type.NoStorage
     token: bytes = fid(1)
+
 
 @auto_packet
 @dataclass(repr=False)
@@ -86,8 +88,15 @@ class FilterCommand(Command):
     unknown12: Optional[bytes] = fid(12, default=None)
 
     def _lookup_hashes(self, hashes: Optional[list[bytes]]):
-        return [KNOWN_TOPICS_LOOKUP[hash] if hash in KNOWN_TOPICS_LOOKUP else hash for hash in hashes] if hashes else []
-    
+        return (
+            [
+                KNOWN_TOPICS_LOOKUP[hash] if hash in KNOWN_TOPICS_LOOKUP else hash
+                for hash in hashes
+            ]
+            if hashes
+            else []
+        )
+
     @property
     def enabled_topics(self):
         return self._lookup_hashes(self.enabled_topic_hashes)
@@ -103,11 +112,11 @@ class FilterCommand(Command):
     @property
     def paused_topics(self):
         return self._lookup_hashes(self.paused_topic_hashes)
-    
+
     @property
     def non_waking_topics(self):
         return self._lookup_hashes(self.non_waking_topic_hashes)
-    
+
     def __repr__(self):
         return f"FilterCommand(token={self.token}, enabled_topics={self.enabled_topics}, ignored_topics={self.ignored_topics}, opportunistic_topics={self.opportunistic_topics}, paused_topics={self.paused_topics}, non_waking_topics={self.non_waking_topics})"
 
@@ -126,11 +135,13 @@ class KeepAliveCommand(Command):
     unknown9: Optional[int] = fid(9, default=None, byte_len=1)
     unknown10: Optional[int] = fid(10, default=None, byte_len=1)
 
+
 @auto_packet
 @dataclass
 class KeepAliveAck(Command):
     PacketType = Packet.Type.KeepAliveAck
     unknown: Optional[int] = fid(1)
+
 
 @auto_packet
 @dataclass
@@ -143,7 +154,8 @@ class Unknown29Command(Command):
 
     def __repr__(self):
         return f"Unknown29Command(ignored)"
-    
+
+
 @auto_packet
 @dataclass
 class Unknown30Command(Command):
@@ -155,6 +167,7 @@ class Unknown30Command(Command):
 
     def __repr__(self):
         return f"Unknown30Command(ignored)"
+
 
 @auto_packet
 @dataclass
@@ -168,7 +181,8 @@ class Unknown32Command(Command):
 
     def __repr__(self):
         return f"Unknown32Command(ignored)"
-    
+
+
 @auto_packet
 @dataclass
 class SetStateCommand(Command):
@@ -176,6 +190,7 @@ class SetStateCommand(Command):
 
     state: int = fid(1)
     unknown2: int = fid(2, byte_len=4)
+
 
 @auto_packet
 @dataclass
@@ -201,29 +216,50 @@ class SendMessageCommand(Command):
 
     _token_topic_1: bytes = fid(1, default=None, repr=False)
     _token_topic_2: bytes = fid(2, default=None, repr=False)
-    
+
     def __post_init__(self):
-        if not (self.topic is not None and self.token is not None and self.outgoing is not None) and not (self._token_topic_1 is not None and self._token_topic_2 is not None):
+        if not (
+            self.topic is not None
+            and self.token is not None
+            and self.outgoing is not None
+        ) and not (self._token_topic_1 is not None and self._token_topic_2 is not None):
             raise ValueError("topic, token, and outgoing must be set.")
-        
+
         if self.outgoing == True:
             assert self.topic and self.token
-            self._token_topic_1 = sha1(self.topic.encode()).digest() if isinstance(self.topic, str) else self.topic
+            self._token_topic_1 = (
+                sha1(self.topic.encode()).digest()
+                if isinstance(self.topic, str)
+                else self.topic
+            )
             self._token_topic_2 = self.token
         elif self.outgoing == False:
             assert self.topic and self.token
             self._token_topic_1 = self.token
-            self._token_topic_2 = sha1(self.topic.encode()).digest() if isinstance(self.topic, str) else self.topic
+            self._token_topic_2 = (
+                sha1(self.topic.encode()).digest()
+                if isinstance(self.topic, str)
+                else self.topic
+            )
         else:
             assert self._token_topic_1 and self._token_topic_2
-            if len(self._token_topic_1) == 20: # SHA1 hash, topic
-                self.topic = KNOWN_TOPICS_LOOKUP[self._token_topic_1] if self._token_topic_1 in KNOWN_TOPICS_LOOKUP else self._token_topic_1
+            if len(self._token_topic_1) == 20:  # SHA1 hash, topic
+                self.topic = (
+                    KNOWN_TOPICS_LOOKUP[self._token_topic_1]
+                    if self._token_topic_1 in KNOWN_TOPICS_LOOKUP
+                    else self._token_topic_1
+                )
                 self.token = self._token_topic_2
                 self.outgoing = True
             else:
-                self.topic = KNOWN_TOPICS_LOOKUP[self._token_topic_2] if self._token_topic_2 in KNOWN_TOPICS_LOOKUP else self._token_topic_2
+                self.topic = (
+                    KNOWN_TOPICS_LOOKUP[self._token_topic_2]
+                    if self._token_topic_2 in KNOWN_TOPICS_LOOKUP
+                    else self._token_topic_2
+                )
                 self.token = self._token_topic_1
                 self.outgoing = False
+
 
 @auto_packet
 @dataclass
@@ -272,6 +308,7 @@ def command_from_packet(packet: Packet) -> Command:
     else:
         return UnknownCommand.from_packet(packet)
 
+
 @dataclass
 class CommandStream(ObjectStream[Command]):
     transport_stream: ObjectStream[Packet]
@@ -281,7 +318,6 @@ class CommandStream(ObjectStream[Command]):
 
     async def receive(self) -> Command:
         return command_from_packet(await self.transport_stream.receive())
-        
 
     async def aclose(self) -> None:
         await self.transport_stream.aclose()

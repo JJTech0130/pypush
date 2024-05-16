@@ -30,6 +30,8 @@ class Packet:
         KeepAlive = 12
         KeepAliveAck = 13
         NoStorage = 14
+        Unknown17 = 17
+        Unknown18 = 18
         SetState = 20
         Unknown29 = 29
         Unknown30 = 30
@@ -59,6 +61,13 @@ async def create_courier_connection(
     )
 
 
+async def receive_exact(stream: ByteStream, length: int) -> bytes:
+    buffer = b""
+    while len(buffer) < length:
+        buffer += await stream.receive(length - len(buffer))
+    return buffer
+
+
 @dataclass
 class PacketStream(ObjectStream[Packet]):
     transport_stream: ByteStream
@@ -84,11 +93,13 @@ class PacketStream(ObjectStream[Packet]):
         await self.transport_stream.send(self._serialize_packet(packet))
 
     async def receive(self) -> Packet:
-        packet_id = int.from_bytes(await self.transport_stream.receive(1), "big")
-        packet_length = int.from_bytes(await self.transport_stream.receive(4), "big")
+        packet_id = int.from_bytes(await receive_exact(self.transport_stream, 1), "big")
+        packet_length = int.from_bytes(
+            await receive_exact(self.transport_stream, 4), "big"
+        )
         if packet_length == 0:
             return Packet(Packet.Type(packet_id), [])
-        payload = await self.transport_stream.receive(packet_length)
+        payload = await receive_exact(self.transport_stream, packet_length)
         assert len(payload) == packet_length
         fields = []
         while len(payload) > 0:
