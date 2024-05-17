@@ -4,7 +4,7 @@ import plistlib
 import re
 import uuid
 from base64 import b64decode
-from typing import Tuple
+from typing import Tuple, Optional
 
 import httpx
 from cryptography import x509
@@ -42,7 +42,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey, name: str = str(uuid.uuid4()))
 
 
 async def activate(
-    http_client: httpx.AsyncClient = httpx.AsyncClient(),
+    http_client: Optional[httpx.AsyncClient] = None,
     device_class: str = "Windows",
     udid: str = str(uuid.uuid4()),
     serial: str = "WindowSerial",
@@ -50,6 +50,10 @@ async def activate(
     build: str = "10.6.4",
     model: str = "windows1,1",
 ) -> Tuple[x509.Certificate, rsa.RSAPrivateKey]:
+    if http_client is None:
+        # Do this here to ensure the client is not accidentally reused during tests
+        http_client = httpx.AsyncClient()
+
     private_key = rsa.generate_private_key(
         public_exponent=65537, key_size=1024, backend=default_backend()
     )

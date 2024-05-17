@@ -15,7 +15,8 @@ from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 # from pypush import apns
-from pypush.apns.new import protocol, transport
+from pypush.apns import transport
+from pypush.apns import protocol
 
 from . import _frida
 
@@ -147,10 +148,15 @@ async def start(attach):
     async with anyio.create_task_group() as tg:
         tg.start_soon(courier_proxy, "localhost")
         if attach:
-            apsd = _frida.attach_to_apsd()
-            _frida.redirect_courier(apsd, "courier.push.apple.com", "localhost")
-            _frida.redirect_courier(apsd, "courier.sandbox.push.apple.com", "localhost")
-            _frida.trust_all_hosts(apsd)
+            try:
+                apsd = _frida.attach_to_apsd()
+                _frida.redirect_courier(apsd, "courier.push.apple.com", "localhost")
+                _frida.redirect_courier(
+                    apsd, "courier.sandbox.push.apple.com", "localhost"
+                )
+                _frida.trust_all_hosts(apsd)
+            except Exception as e:
+                logging.error(f"Error attaching to apsd (did you run as root?): {e}")
         logging.info("Press Enter to exit...")
         await ainput()
         tg.cancel_scope.cancel()

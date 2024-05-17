@@ -4,8 +4,10 @@ import asyncio
 from aioapns import *
 import uuid
 import anyio
-from pypush.apns.new import _util, lifecycle, protocol
-from pypush.apns import albert
+
+# from pypush.apns import _util
+# from pypush.apns import albert, lifecycle, protocol
+from pypush import apns
 
 import logging
 from rich.logging import RichHandler
@@ -16,11 +18,24 @@ logging.basicConfig(level=logging.DEBUG, handlers=[RichHandler()], format="%(mes
 @pytest.mark.asyncio
 async def test_activate():
     global certificate, key
-    certificate, key = await albert.activate()
+    certificate, key = await apns.activate()
     assert certificate is not None
     assert key is not None
 
+
 @pytest.mark.asyncio
 async def test_lifecycle_2():
-    async with lifecycle.create_apns_connection(certificate, key) as connection:
-        await connection.receive(protocol.ConnectAck) # Just wait until the initial connection is established. Don't do this in real code plz.
+    async with apns.create_apns_connection(
+        certificate, key, courier="localhost"
+    ) as connection:
+        await connection.receive(
+            apns.protocol.ConnectAck
+        )  # Just wait until the initial connection is established. Don't do this in real code plz.
+
+
+@pytest.mark.asyncio
+async def test_shorthand():
+    async with apns.create_apns_connection(
+        *await apns.activate(), courier="localhost"
+    ) as connection:
+        await connection.receive(apns.protocol.ConnectAck)

@@ -1,5 +1,5 @@
-# __all__ = ["connection", "albert"]
+__all__ = ["protocol", "create_apns_connection", "activate"]
 
-# from . import connection
-# from . import albert
-# from . import protocol
+from . import protocol
+from .lifecycle import create_apns_connection
+from .albert import activate

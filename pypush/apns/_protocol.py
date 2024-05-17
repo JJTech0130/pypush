@@ -5,7 +5,7 @@ from dataclasses import MISSING, field
 from dataclasses import fields as dataclass_fields
 from typing import Any, TypeVar
 
-from pypush.apns.new.transport import Packet
+from pypush.apns.transport import Packet
 
 T = TypeVar("T")
 
