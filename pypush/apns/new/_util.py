@@ -14,8 +14,11 @@ class BroadcastStream(Generic[T]):
 
     async def broadcast(self, packet):
         for stream in self.streams:
-            await stream.send(packet)
-
+            try:
+                await stream.send(packet)
+            except anyio.BrokenResourceError:
+                self.streams.remove(stream)
+                
     @asynccontextmanager
     async def open_stream(self):
         send, recv = anyio.create_memory_object_stream[T]()

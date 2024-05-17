@@ -52,21 +52,23 @@ class Connection:
     async def _receive_task(self):
         assert self._conn is not None
         async for command in self._conn:
-            logging.warning(f"Received command: {command}")
+            logging.debug(f"Received command: {command}")
             await self._broadcast.broadcast(command)
         logging.warning("Receive task ended")
 
     async def _ping_task(self):
         while True:
-            await anyio.sleep(5)
+            await anyio.sleep(30)
+            logging.debug("Sending keepalive")
             await self.send(protocol.KeepAliveCommand())
+            await self.receive(protocol.KeepAliveAck)
 
     @_util.exponential_backoff
     async def reconnect(self):
         async with self._reconnect_lock:  # Prevent weird situations where multiple reconnects are happening at once
             if self._conn is not None:
+                logging.warning("Closing existing connection")
                 await self._conn.aclose()
-            logging.warning("Reconnecting")
             self._conn = protocol.CommandStream(
                 await transport.create_courier_connection(courier="localhost")
             )
@@ -90,14 +92,34 @@ class Connection:
                 )
             )
             self._tg.start_soon(self._receive_task)
+            ack = await self.receive(protocol.ConnectAck)
+            logging.debug(f"Connected with ack: {ack}")
+            assert ack.status == 0
+            if self.base_token is None:
+                self.base_token = ack.token
+            else:
+                assert ack.token == self.base_token
+
 
     async def aclose(self):
         if self._conn is not None:
             await self._conn.aclose()
         # Note: Will be reopened if task group is still running and ping task is still running
 
-    async def receive(self):
-        pass
+    T = typing.TypeVar("T", bound=protocol.Command)
+    async def receive_stream(self, filter: typing.Type[T], max: int = -1) -> typing.AsyncIterator[T]:
+        async with self._broadcast.open_stream() as stream:
+            async for command in stream:
+                if isinstance(command, filter):
+                    yield command
+                    max -= 1
+                if max == 0:
+                    break
+            
+    async def receive(self, filter: typing.Type[T]) -> T:
+        async for command in self.receive_stream(filter, 1):
+            return command
+        raise ValueError("No matching command received")
 
     async def send(self, command: protocol.Command):
         try:
