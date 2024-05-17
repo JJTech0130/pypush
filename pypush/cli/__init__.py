@@ -1,7 +1,10 @@
-import typer
-from typing_extensions import Annotated
 import logging
+
+import typer
 from rich.logging import RichHandler
+from typing_extensions import Annotated
+
+from . import proxy as _proxy
 
 logging.basicConfig(level=logging.DEBUG, handlers=[RichHandler()], format="%(message)s")
 
@@ -19,9 +22,8 @@ def proxy(
 
     Attach requires SIP to be disabled and to be running as root
     """
-    from . import apnsproxy
 
-    apnsproxy.main(attach)
+    _proxy.main(attach)
 
 
 @app.command()

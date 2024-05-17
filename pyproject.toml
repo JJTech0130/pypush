@@ -9,6 +9,8 @@ dependencies = [
     "anyio",
     "httpx",
     "cryptography",
+    "typing-extensions",
+    "exceptiongroup",
     'importlib_metadata; python_version>="3.8"',
 ]
 
