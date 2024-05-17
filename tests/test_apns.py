@@ -1,7 +1,7 @@
 import pytest
 from pypush import apns
 import asyncio
-from aioapns import *
+#from aioapns import *
 import uuid
 import anyio
 
