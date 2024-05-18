@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from hashlib import sha1
 from typing import Optional, Union
 
 from anyio.abc import ByteStream, ObjectStream
 
-from pypush.apns._protocol import auto_packet, fid
+from pypush.apns._protocol import command, fid
 from pypush.apns.transport import Packet
 
 # fmt: off
@@ -25,7 +23,7 @@ class Command:
         raise NotImplementedError
 
 
-@auto_packet
+@command
 @dataclass
 class ConnectCommand(Command):
     PacketType = Packet.Type.Connect
@@ -50,7 +48,7 @@ class ConnectCommand(Command):
     unknown26: Optional[bytes] = fid(26, default=None)
 
 
-@auto_packet
+@command
 @dataclass
 class ConnectAck(Command):
     PacketType = Packet.Type.ConnectAck
@@ -67,14 +65,14 @@ class ConnectAck(Command):
     unknown19: Optional[bytes] = fid(19)
 
 
-@auto_packet
+@command
 @dataclass
 class NoStorageCommand(Command):
     PacketType = Packet.Type.NoStorage
     token: bytes = fid(1)
 
 
-@auto_packet
+@command
 @dataclass(repr=False)
 class FilterCommand(Command):
     PacketType = Packet.Type.FilterTopics
@@ -121,7 +119,7 @@ class FilterCommand(Command):
         return f"FilterCommand(token={self.token}, enabled_topics={self.enabled_topics}, ignored_topics={self.ignored_topics}, opportunistic_topics={self.opportunistic_topics}, paused_topics={self.paused_topics}, non_waking_topics={self.non_waking_topics})"
 
 
-@auto_packet
+@command
 @dataclass
 class KeepAliveCommand(Command):
     PacketType = Packet.Type.KeepAlive
@@ -136,14 +134,14 @@ class KeepAliveCommand(Command):
     unknown10: Optional[int] = fid(10, default=None, byte_len=1)
 
 
-@auto_packet
+@command
 @dataclass
 class KeepAliveAck(Command):
     PacketType = Packet.Type.KeepAliveAck
     unknown: Optional[int] = fid(1)
 
 
-@auto_packet
+@command
 @dataclass
 class Unknown29Command(Command):
     PacketType = Packet.Type.Unknown29
@@ -156,7 +154,7 @@ class Unknown29Command(Command):
         return f"Unknown29Command(ignored)"
 
 
-@auto_packet
+@command
 @dataclass
 class Unknown30Command(Command):
     PacketType = Packet.Type.Unknown30
@@ -169,7 +167,7 @@ class Unknown30Command(Command):
         return f"Unknown30Command(ignored)"
 
 
-@auto_packet
+@command
 @dataclass
 class Unknown32Command(Command):
     PacketType = Packet.Type.Unknown32
@@ -183,7 +181,7 @@ class Unknown32Command(Command):
         return f"Unknown32Command(ignored)"
 
 
-@auto_packet
+@command
 @dataclass
 class SetStateCommand(Command):
     PacketType = Packet.Type.SetState
@@ -192,7 +190,7 @@ class SetStateCommand(Command):
     unknown2: int = fid(2, byte_len=4)
 
 
-@auto_packet
+@command
 @dataclass
 class SendMessageCommand(Command):
     PacketType = Packet.Type.SendMessage
@@ -261,7 +259,7 @@ class SendMessageCommand(Command):
                 self.outgoing = False
 
 
-@auto_packet
+@command
 @dataclass
 class SendMessageAck(Command):
     PacketType = Packet.Type.SendMessageAck
