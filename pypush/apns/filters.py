@@ -1,19 +1,11 @@
-from pypush.apns import protocol
-from typing import TypeVar, Optional, Type, Callable
+import logging
+from typing import Callable, Optional, Type, TypeVar
 
-# def chain(*filters):
-#     def filter(command: protocol.Command) -> Optional[protocol.Command]:
-#         for f in filters:
-#             command = f(command)
-#             if command is None:
-#                 return None
-#         return command
-#     return filter
+from pypush.apns import protocol
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 Filter = Callable[[T1], Optional[T2]]
-# typing.Callable[[protocol.Command], typing.Optional[T]]
 
 # Chain with proper types so that subsequent filters only need to take output type of previous filter
 T_IN = TypeVar("T_IN", bound=protocol.Command)
@@ -23,6 +15,7 @@ T_OUT = TypeVar("T_OUT", bound=protocol.Command)
 
 def chain(first: Filter[T_IN, T_MIDDLE], second: Filter[T_MIDDLE, T_OUT]):
     def filter(command: T_IN) -> Optional[T_OUT]:
+        logging.debug(f"Filtering {command} with {first} and {second}")
         filtered = first(command)
         if filtered is None:
             return None
@@ -41,3 +34,7 @@ def cmd(type: Type[T]) -> Filter[protocol.Command, T]:
         return None
 
     return filter
+
+
+ALL = lambda c: c
+NONE = lambda _: None

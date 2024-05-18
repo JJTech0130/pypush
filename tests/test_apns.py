@@ -63,14 +63,12 @@ async def test_scoped_token():
 
         token = await connection.mint_scoped_token("dev.jjtech.pypush.tests")
 
-        async with connection._filter(["dev.jjtech.pypush.tests"]):
-            test_message = f"test-message-{uuid.uuid4().hex}"
+        test_message = f"test-message-{uuid.uuid4().hex}"
 
-            await send_test_notification(token.hex(), test_message.encode())
+        await send_test_notification(token.hex(), test_message.encode())
 
-            resp = await connection._receive(
-                apns.filters.chain(
-                    apns.filters.cmd(apns.protocol.SendMessageCommand),
-                    lambda x: x if x.payload == test_message.encode() else None,
-                )
-            )
+        await connection.expect_notification(
+            "dev.jjtech.pypush.tests",
+            token,
+            lambda c: c if c.payload == test_message.encode() else None,
+        )

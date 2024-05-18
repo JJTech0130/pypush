@@ -14,7 +14,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-from . import protocol, transport, _util, filters
+from . import _util, filters, protocol, transport
 
 
 @asynccontextmanager
@@ -206,3 +206,42 @@ class Connection:
         ack = await self._receive(filters.cmd(protocol.ScopedTokenAck))
         assert ack.status == 0
         return ack.scoped_token
+
+    @asynccontextmanager
+    async def notification_stream(
+        self,
+        topic: str,
+        token: typing.Optional[bytes] = None,
+        filter: filters.Filter[
+            protocol.SendMessageCommand, protocol.SendMessageCommand
+        ] = filters.ALL,
+    ):
+        if token is None:
+            token = self.base_token
+        async with self._filter([topic]):
+            async with self._receive_stream(
+                filters.chain(
+                    filters.chain(
+                        filters.chain(
+                            filters.cmd(protocol.SendMessageCommand),
+                            lambda c: c if c.token == token else None,
+                        ),
+                        lambda c: (c if c.topic == topic else None),
+                    ),
+                    filter,
+                )
+            ) as stream:
+                yield stream
+
+    async def expect_notification(
+        self,
+        topic: str,
+        token: typing.Optional[bytes] = None,
+        filter: filters.Filter[
+            protocol.SendMessageCommand, protocol.SendMessageCommand
+        ] = filters.ALL,
+    ) -> protocol.SendMessageCommand:
+        async with self.notification_stream(topic, token, filter) as stream:
+            async for command in stream:
+                return command
+        raise ValueError("Did not receive expected notification")
