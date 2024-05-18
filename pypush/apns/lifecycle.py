@@ -7,7 +7,6 @@ import time
 import typing
 from contextlib import asynccontextmanager
 from hashlib import sha1
-from dataclasses import dataclass
 
 import anyio
 from anyio.abc import TaskGroup
@@ -77,8 +76,10 @@ class Connection:
         while True:
             await anyio.sleep(30)
             logging.debug("Sending keepalive")
-            await self.send(protocol.KeepAliveCommand())
-            await self.receive(filters.cmd(protocol.KeepAliveAck))
+            await self._send(protocol.KeepAliveCommand())
+            await self._receive(
+                filters.cmd(protocol.KeepAliveAck), backlog=False
+            )  # Explicitly disable the backlog since we don't want to receive old acks
 
     @_util.exponential_backoff
     async def reconnect(self):
@@ -86,7 +87,10 @@ class Connection:
             if self._conn is not None:
                 logging.warning("Closing existing connection")
                 await self._conn.aclose()
-            self._conn = protocol.CommandStream(
+
+            self._broadcast.backlog = []  # Clear the backlog
+
+            conn = protocol.CommandStream(
                 await transport.create_courier_connection(courier=self.courier)
             )
             cert = self.certificate.public_bytes(serialization.Encoding.DER)
@@ -98,7 +102,7 @@ class Connection:
             signature = b"\x01\x01" + self.private_key.sign(
                 nonce, padding.PKCS1v15(), hashes.SHA1()
             )
-            await self._conn.send(
+            await conn.send(
                 protocol.ConnectCommand(
                     push_token=self.base_token,
                     state=1,
@@ -108,8 +112,25 @@ class Connection:
                     signature=signature,
                 )
             )
+
+            # Don't set self._conn until we've sent the connect command
+            self._conn = conn
+
             self._tg.start_soon(self._receive_task)
-            ack = await self.receive(filters.cmd(protocol.ConnectAck))
+            ack = await self._receive(
+                filters.chain(
+                    filters.cmd(protocol.ConnectAck),
+                    lambda c: (
+                        c
+                        if (
+                            c.token == self.base_token
+                            if self.base_token is not None
+                            else True
+                        )
+                        else None
+                    ),
+                )
+            )
             logging.debug(f"Connected with ack: {ack}")
             assert ack.status == 0
             if self.base_token is None:
@@ -127,30 +148,34 @@ class Connection:
     T = typing.TypeVar("T")
 
     @asynccontextmanager
-    async def receive_stream(
-        self, filter: filters.Filter[protocol.Command, T] = lambda c: c
+    async def _receive_stream(
+        self,
+        filter: filters.Filter[protocol.Command, T] = lambda c: c,
+        backlog: bool = True,
     ):
-        async with self._broadcast.open_stream() as stream:
+        async with self._broadcast.open_stream(backlog) as stream:
             yield _util.FilteredStream(stream, filter)
 
-    async def receive(self, filter: filters.Filter[protocol.Command, T]):
-        async with self.receive_stream(filter) as stream:
+    async def _receive(
+        self, filter: filters.Filter[protocol.Command, T], backlog: bool = True
+    ):
+        async with self._receive_stream(filter, backlog) as stream:
             async for command in stream:
                 return command
         raise ValueError("Did not receive expected command")
 
-    async def send(self, command: protocol.Command):
+    async def _send(self, command: protocol.Command):
         try:
             assert self._conn is not None
             await self._conn.send(command)
         except Exception as e:
             logging.warning(f"Error sending command, reconnecting")
             await self.reconnect()
-            await self.send(command)
+            await self._send(command)
 
     async def _update_filter(self):
         assert self.base_token is not None
-        await self.send(
+        await self._send(
             protocol.FilterCommand(
                 token=self.base_token,
                 enabled_topic_hashes=[
@@ -175,9 +200,9 @@ class Connection:
     async def mint_scoped_token(self, topic: str) -> bytes:
         topic_hash = sha1(topic.encode()).digest()
         assert self.base_token is not None
-        await self.send(
+        await self._send(
             protocol.ScopedTokenCommand(token=self.base_token, topic=topic_hash)
         )
-        ack = await self.receive(filters.cmd(protocol.ScopedTokenAck))
+        ack = await self._receive(filters.cmd(protocol.ScopedTokenAck))
         assert ack.status == 0
         return ack.scoped_token

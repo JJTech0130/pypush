@@ -68,7 +68,7 @@ async def test_scoped_token():
 
             await send_test_notification(token.hex(), test_message.encode())
 
-            resp = await connection.receive(
+            resp = await connection._receive(
                 apns.filters.chain(
                     apns.filters.cmd(apns.protocol.SendMessageCommand),
                     lambda x: x if x.payload == test_message.encode() else None,

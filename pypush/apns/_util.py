@@ -30,12 +30,13 @@ class BroadcastStream(Generic[T]):
         self.backlog.append(packet)
 
     @asynccontextmanager
-    async def open_stream(self):
+    async def open_stream(self, backlog: bool = True):
         # 1000 seems like a reasonable number, if more than 1000 messages come in before someone deals with them it will
         #  start stalling the APNs connection itself
         send, recv = anyio.create_memory_object_stream[T](max_buffer_size=1000)
-        for packet in self.backlog:
-            await send.send(packet)
+        if backlog:
+            for packet in self.backlog:
+                await send.send(packet)
         self.streams.append(send)
         async with recv:
             yield recv
