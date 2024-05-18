@@ -11,7 +11,7 @@ dependencies = [
     "cryptography",
     "typing-extensions",
     "exceptiongroup",
-    'importlib_metadata; python_version>="3.8"',
+    'importlib_metadata; python_version>="3.9"',
 ]
 
 [project.scripts]
