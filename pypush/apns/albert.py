@@ -1,20 +1,18 @@
+__all__ = ["activate"]
+
 import plistlib
 import re
 import uuid
-from base64 import b64decode, b64encode
+from base64 import b64decode
+from typing import Tuple, Optional
 
-import requests
+import httpx
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 
-import logging
-logger = logging.getLogger("albert")
-
-# These keys are from https://github.com/MiUnlockCode/albertsimlockapple/blob/main/ALBERTBUGBYMIUNLOCK.php, which is licensed under the MIT license
-# If this becomes a problem, I know how to generate new keys
 FAIRPLAY_PRIVATE_KEY = b64decode(
     "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlDV3dJQkFBS0JnUUMzQktyTFBJQmFiaHByKzRTdnVRSG5iRjBzc3FSSVE2Ny8xYlRmQXJWdVVGNnA5c2RjdjcwTityOHlGeGVzRG1wVG1LaXRMUDA2c3pLTkFPMWs1SlZrOS9QMWVqejA4Qk1lOWVBYjRqdUFoVldkZkFJeWFKN3NHRmplU0wwMTVtQXZyeFRGY09NMTBGL3FTbEFSQmljY3hIalBYdHVXVnIwZkxHcmhNKy9BTVFJREFRQUJBb0dBQ0dXM2JISFBOZGI5Y1Z6dC9wNFBmMDNTakoxNXVqTVkwWFk5d1VtL2gxczZyTE84Ky8xME1ETUVHTWxFZGNtSGlXUmt3T1ZpalJIeHpOUnhFQU1JODdBcnVvZmhqZGRiTlZMdDZwcFcybkxDSzdjRURRSkZhaFRXOUdRRnpwVlJRWFhmeHI0Y3MxWDNrdXRsQjZ1WTJWR2x0eFFGWXNqNWRqdjdEK0E3MkEwQ1FRRFpqMVJHZHhiZU9vNFh6eGZBNm40MkdwWmF2VGxNM1F6R0ZvQkpnQ3FxVnUxSlFPem9vQU1SVCtOUGZnb0U4K3VzSVZWQjRJbzBiQ1VUV0xwa0V5dFRBa0VBMTFyeklwR0loRmtQdE5jLzMzZnZCRmd3VWJzalRzMVY1RzZ6NWx5L1huRzlFTmZMYmxnRW9iTG1TbXozaXJ2QlJXQURpd1V4NXpZNkZOL0RtdGk1NndKQWRpU2Nha3VmY255dnp3UVo3UndwLzYxK2VyWUpHTkZ0YjJDbXQ4Tk82QU9laGNvcEhNWlFCQ1d5MWVjbS83dUovb1ozYXZmSmRXQkkzZkd2L2twZW13SkFHTVh5b0RCanB1M2oyNmJEUno2eHRTczc2N3IrVmN0VExTTDYrTzRFYWFYbDNQRW1DcngvVSthVGpVNDVyN0RuaThaK3dkaElKRlBkbkpjZEZrd0dId0pBUFErd1ZxUmpjNGgzSHd1OEk2bGxrOXdocEs5TzcwRkxvMUZNVmRheXRFbE15cXpRMi8wNWZNYjdGNnlhV2h1K1EyR0dYdmRsVVJpQTN0WTBDc2ZNMHc9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQ=="
 )
@@ -23,7 +21,7 @@ FAIRPLAY_CERT_CHAIN = b64decode(
 )
 
 
-def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
+def _generate_csr(private_key: rsa.RSAPrivateKey, name: str = str(uuid.uuid4())) -> str:
     csr = (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
@@ -34,7 +32,7 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
                     x509.NameAttribute(NameOID.LOCALITY_NAME, "Cupertino"),
                     x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Apple Inc."),
                     x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "iPhone"),
-                    x509.NameAttribute(NameOID.COMMON_NAME, str(uuid.uuid4())),
+                    x509.NameAttribute(NameOID.COMMON_NAME, name),
                 ]
             )
         )
@@ -43,71 +41,71 @@ def _generate_csr(private_key: rsa.RSAPrivateKey) -> str:
     return csr.public_bytes(serialization.Encoding.PEM).decode("utf-8")
 
 
-# Generates an APNs push certificate by talking to Albert
-# Returns [private key PEM, certificate PEM]
-def generate_push_cert() -> tuple[str, str]:
+async def activate(
+    http_client: Optional[httpx.AsyncClient] = None,
+    device_class: str = "Windows",
+    udid: str = str(uuid.uuid4()),
+    serial: str = "WindowSerial",
+    version: str = "10.6.4",
+    build: str = "10.6.4",
+    model: str = "windows1,1",
+) -> Tuple[x509.Certificate, rsa.RSAPrivateKey]:
+    if http_client is None:
+        # Do this here to ensure the client is not accidentally reused during tests
+        http_client = httpx.AsyncClient()
+
     private_key = rsa.generate_private_key(
-        public_exponent=65537, key_size=2048, backend=default_backend()
+        public_exponent=65537, key_size=1024, backend=default_backend()
     )
     csr = _generate_csr(private_key)
 
-    activation_info = {
-        "ActivationRandomness": str(uuid.uuid4()),
-        "ActivationState": "Unactivated",
-        "BuildVersion": "10.6.4",
-        "DeviceCertRequest": csr.encode("utf-8"),
-        "DeviceClass": "Windows",
-        "ProductType": "windows1,1",
-        "ProductVersion": "10.6.4",
-        "SerialNumber": "WindowSerial",
-        "UniqueDeviceID": str(uuid.uuid4()),
-    }
+    activation_info = plistlib.dumps(
+        {
+            "ActivationRandomness": str(uuid.uuid4()),
+            "ActivationState": "Unactivated",
+            "BuildVersion": build,
+            "DeviceCertRequest": csr.encode("utf-8"),
+            "DeviceClass": device_class,
+            "ProductType": model,
+            "ProductVersion": version,
+            "SerialNumber": serial,
+            "UniqueDeviceID": udid,
+        }
+    )
 
-    logger.debug(f"Generated activation info (with UUID: {activation_info['UniqueDeviceID']})")
-    
-    activation_info = plistlib.dumps(activation_info)
-
-    # Load the private key
     fairplay_key = serialization.load_pem_private_key(
         FAIRPLAY_PRIVATE_KEY, password=None, backend=default_backend()
     )
+    assert isinstance(fairplay_key, rsa.RSAPrivateKey)
 
-    # Sign the activation info
-    signature = fairplay_key.sign(activation_info, padding.PKCS1v15(), hashes.SHA1()) # type: ignore
+    signature = fairplay_key.sign(activation_info, padding.PKCS1v15(), hashes.SHA1())
 
-    body = {
-        "ActivationInfoComplete": True,
-        "ActivationInfoXML": activation_info,
-        "FairPlayCertChain": FAIRPLAY_CERT_CHAIN,
-        "FairPlaySignature": signature,
-    }
-
-    resp = requests.post(
-        "https://albert.apple.com/WebObjects/ALUnbrick.woa/wa/deviceActivation?device=Windows",
-        data={"activation-info": plistlib.dumps(body)},
-        verify=False,
+    resp = await http_client.post(
+        f"https://albert.apple.com/deviceservices/deviceActivation?device={device_class}",
+        data={
+            "activation-info": plistlib.dumps(
+                {
+                    "ActivationInfoComplete": True,
+                    "ActivationInfoXML": activation_info,
+                    "FairPlayCertChain": FAIRPLAY_CERT_CHAIN,
+                    "FairPlaySignature": signature,
+                }
+            ).decode()
+        },
     )
 
-    protocol = re.search("<Protocol>(.*)</Protocol>", resp.text).group(1) # type: ignore
+    try:
+        protocol = re.search("<Protocol>(.*)</Protocol>", resp.text).group(1)  # type: ignore
+    except AttributeError:
+        # Search for error text between <b> and </b>
+        error = re.search("<b>(.*)</b>", resp.text).group(1)  # type: ignore
+        raise Exception(f"Failed to get certificate from Albert: {error}")
+
     protocol = plistlib.loads(protocol.encode("utf-8"))
 
-    logger.debug("Recieved push certificate from Albert")
-
     return (
-        private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-        .decode("utf-8")
-        .strip(),
-        protocol["device-activation"]["activation-record"]["DeviceCertificate"]
-        .decode("utf-8")
-        .strip(),
+        x509.load_pem_x509_certificate(
+            protocol["device-activation"]["activation-record"]["DeviceCertificate"]
+        ),
+        private_key,
     )
-
-
-if __name__ == "__main__":
-    private_key, cert = generate_push_cert()
-    print(private_key)
-    print(cert)

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pypush"
+dynamic = ["version"]
+dependencies = [
+    "anyio",
+    "httpx",
+    "cryptography",
+    "typing-extensions",
+    "exceptiongroup",
+    'importlib_metadata; python_version>="3.9"',
+]
+
+[project.scripts]
+pypush = "pypush.cli:main"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio",
+]
+cli = [
+    "frida",
+    "rich",
+    "typer"
+]
+
+[tool.setuptools_scm]
+version_file = "pypush/_version.py"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "-q"]
+testpaths = ["tests"]
