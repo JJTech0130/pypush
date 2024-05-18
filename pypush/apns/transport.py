@@ -104,8 +104,8 @@ class PacketStream(ObjectStream[Packet]):
             + payload
         )
 
-    async def send(self, packet: Packet) -> None:
-        await self.transport_stream.send(self._serialize_packet(packet))
+    async def send(self, item: Packet) -> None:
+        await self.transport_stream.send(self._serialize_packet(item))
 
     async def receive(self) -> Packet:
         packet_id = int.from_bytes(await receive_exact(self.transport_stream, 1), "big")

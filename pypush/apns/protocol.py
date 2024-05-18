@@ -267,8 +267,8 @@ def command_from_packet(packet: Packet) -> Command:
 class CommandStream(ObjectStream[Command]):
     transport_stream: ObjectStream[Packet]
 
-    async def send(self, command: Command) -> None:
-        await self.transport_stream.send(command.to_packet())
+    async def send(self, item: Command) -> None:
+        await self.transport_stream.send(item.to_packet())
 
     async def receive(self) -> Command:
         return command_from_packet(await self.transport_stream.receive())
