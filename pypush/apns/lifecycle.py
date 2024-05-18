@@ -7,6 +7,7 @@ import time
 import typing
 from contextlib import asynccontextmanager
 from hashlib import sha1
+from dataclasses import dataclass
 
 import anyio
 from anyio.abc import TaskGroup
@@ -123,17 +124,10 @@ class Connection:
 
     T = typing.TypeVar("T", bound=protocol.Command)
 
-    # async def receive_stream(
-    #     self, filter: typing.Type[T], max: int = -1
-    # ) -> typing.AsyncIterator[T]:
-    #     async with self._broadcast.open_stream() as stream:
-    #         async for command in stream:
-    #             if isinstance(command, filter):
-    #                 max -= 1
-    #                 yield command
-    #             if max == 0:
-    #                 break
-    #         logging.error("Stream ended") # BUG: Will never happen, async iterators don't autoclose
+    @asynccontextmanager
+    async def receive_stream(self, filter: typing.Type[T]):
+        async with self._broadcast.open_stream() as stream:
+            yield _util.FilteredStream(stream, filter)
 
     async def receive(self, filter: typing.Type[T]) -> T:
         async with self._broadcast.open_stream() as stream:

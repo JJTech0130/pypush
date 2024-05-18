@@ -1,9 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Type
 
 import anyio
-from anyio.abc import ObjectSendStream
+from anyio.abc import ObjectSendStream, ObjectReceiveStream
 
 T = TypeVar("T")
 
@@ -29,6 +29,25 @@ class BroadcastStream(Generic[T]):
             yield recv
             self.streams.remove(send)
             await send.aclose()
+
+
+W = TypeVar("W")
+F = TypeVar("F", covariant=True)
+
+
+class FilteredStream(ObjectReceiveStream[F]):
+    def __init__(self, source: ObjectReceiveStream[W], filter: Type[F]):
+        self.source = source
+        self.filter = filter
+
+    async def receive(self) -> F:
+        async for item in self.source:
+            if isinstance(item, self.filter):
+                return item
+        raise anyio.EndOfStream
+
+    async def aclose(self):
+        await self.source.aclose()
 
 
 def exponential_backoff(f):

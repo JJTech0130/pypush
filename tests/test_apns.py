@@ -72,13 +72,10 @@ async def test_scoped_token():
         await send_test_notification(token.hex(), test_message.encode())
         logging.debug(f"Sent message: {test_message}")
 
-        async with connection._broadcast.open_stream() as stream:
+        async with connection.receive_stream(
+            apns.protocol.SendMessageCommand
+        ) as stream:
             async for command in stream:
-                if (
-                    isinstance(command, apns.protocol.SendMessageCommand)
-                    and command.topic == "dev.jjtech.pypush.tests"
-                    and command.token == token
-                ):
-                    logging.debug(f"Got message: {command.payload.decode()}")
-                    if command.payload == test_message.encode():
-                        break
+                logging.debug(f"Got message: {command.payload.decode()}")
+                if command.payload == test_message.encode():
+                    break
