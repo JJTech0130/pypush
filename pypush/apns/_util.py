@@ -13,11 +13,13 @@ class BroadcastStream(Generic[T]):
         self.streams: list[ObjectSendStream[T]] = []
 
     async def broadcast(self, packet):
+        logging.debug(f"Broadcasting {packet} to {len(self.streams)} streams")
         for stream in self.streams:
             try:
                 await stream.send(packet)
             except anyio.BrokenResourceError:
-                self.streams.remove(stream)
+                logging.error("Broken resource error")
+                #self.streams.remove(stream)
 
     @asynccontextmanager
     async def open_stream(self):

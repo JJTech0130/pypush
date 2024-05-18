@@ -30,6 +30,8 @@ class Packet:
         KeepAlive = 12
         KeepAliveAck = 13
         NoStorage = 14
+        ScopedToken = 17
+        ScopedTokenAck = 18
         SetState = 20
         UNKNOWN = "Unknown"
 

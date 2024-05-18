@@ -228,6 +228,25 @@ class SendMessageAck(Command):
     token: Optional[bytes] = fid(1, default=None)
     unknown6: Optional[bytes] = fid(6, default=None)
 
+@command
+@dataclass
+class ScopedTokenCommand(Command):
+    PacketType = Packet.Type.ScopedToken
+
+    token: bytes = fid(1)
+    topic: bytes = fid(2)
+    app_id: Optional[bytes] = fid(3, default=None)
+
+@command
+@dataclass
+class ScopedTokenAck(Command):
+    PacketType = Packet.Type.ScopedTokenAck
+
+    status: int = fid(1)
+    scoped_token: bytes = fid(2)
+    topic: bytes = fid(3)
+    app_id: Optional[bytes] = fid(4, default=None)
+
 
 @dataclass
 class UnknownCommand(Command):
@@ -259,6 +278,8 @@ def command_from_packet(packet: Packet) -> Command:
         Packet.Type.SetState: SetStateCommand,
         Packet.Type.SendMessage: SendMessageCommand,
         Packet.Type.SendMessageAck: SendMessageAck,
+        Packet.Type.ScopedToken: ScopedTokenCommand,
+        Packet.Type.ScopedTokenAck: ScopedTokenAck,
         # Add other mappings here...
     }
     command_class = command_classes.get(packet.id, None)

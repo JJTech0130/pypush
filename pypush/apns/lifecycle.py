@@ -6,6 +6,7 @@ import random
 import time
 import typing
 from contextlib import asynccontextmanager
+from hashlib import sha1
 
 import anyio
 from anyio.abc import TaskGroup
@@ -44,6 +45,8 @@ class Connection:
         self.private_key = private_key
         self.base_token = token
 
+        self.connected = anyio.Event()
+
         self._conn = None
         self._tg = task_group
         self._broadcast = _util.BroadcastStream[protocol.Command]()
@@ -74,6 +77,8 @@ class Connection:
     @_util.exponential_backoff
     async def reconnect(self):
         async with self._reconnect_lock:  # Prevent weird situations where multiple reconnects are happening at once
+            if self.connected.is_set():
+                self.connected = anyio.Event()
             if self._conn is not None:
                 logging.warning("Closing existing connection")
                 await self._conn.aclose()
@@ -93,7 +98,7 @@ class Connection:
                 protocol.ConnectCommand(
                     push_token=self.base_token,
                     state=1,
-                    flags=69,
+                    flags=65, #69
                     certificate=cert,
                     nonce=nonce,
                     signature=signature,
@@ -107,6 +112,7 @@ class Connection:
                 self.base_token = ack.token
             else:
                 assert ack.token == self.base_token
+            self.connected.set()
 
     async def aclose(self):
         if self._conn is not None:
@@ -115,27 +121,46 @@ class Connection:
 
     T = typing.TypeVar("T", bound=protocol.Command)
 
-    async def receive_stream(
-        self, filter: typing.Type[T], max: int = -1
-    ) -> typing.AsyncIterator[T]:
+    # async def receive_stream(
+    #     self, filter: typing.Type[T], max: int = -1
+    # ) -> typing.AsyncIterator[T]:
+    #     async with self._broadcast.open_stream() as stream:
+    #         async for command in stream:
+    #             if isinstance(command, filter):
+    #                 max -= 1
+    #                 yield command
+    #             if max == 0:
+    #                 break
+    #         logging.error("Stream ended") # BUG: Will never happen, async iterators don't autoclose
+
+    async def receive(self, filter: typing.Type[T]) -> T:
         async with self._broadcast.open_stream() as stream:
             async for command in stream:
                 if isinstance(command, filter):
-                    yield command
-                    max -= 1
-                if max == 0:
-                    break
-
-    async def receive(self, filter: typing.Type[T]) -> T:
-        async for command in self.receive_stream(filter, 1):
-            return command
-        raise ValueError("No matching command received")
+                    return command
+        raise ValueError("Did not receive expected command")
 
     async def send(self, command: protocol.Command):
         try:
             assert self._conn is not None
+            if not self.connected.is_set():
+                await self.connected.wait()
             await self._conn.send(command)
         except Exception as e:
             logging.warning(f"Error sending command, reconnecting")
             await self.reconnect()
             await self.send(command)
+
+    async def filter(self, topics: list[str]):
+        await self.connected.wait()
+        assert self.base_token is not None
+        await self.send(protocol.FilterCommand(token=self.base_token, enabled_topic_hashes=[sha1(topic.encode()).digest() for topic in topics]))
+
+    async def request_scoped_token(self, topic: str) -> bytes:
+        topic_hash = sha1(topic.encode()).digest()
+        await self.connected.wait() # Need to wait for connection so that base token is set
+        assert self.base_token is not None
+        await self.send(protocol.ScopedTokenCommand(token=self.base_token, topic=topic_hash))
+        ack = await self.receive(protocol.ScopedTokenAck)
+        assert ack.status == 0
+        return ack.scoped_token
