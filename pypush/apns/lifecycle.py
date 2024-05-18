@@ -25,8 +25,9 @@ async def create_apns_connection(
     courier: typing.Optional[str] = None,
 ):
     async with anyio.create_task_group() as tg:
-        conn = Connection(tg, certificate, private_key, token, courier)\
-        # Await connected for first time here, so that base token is set
+        conn = Connection(
+            tg, certificate, private_key, token, courier
+        )  # Await connected for first time here, so that base token is set
         await conn._connected.wait()
         yield conn
         tg.cancel_scope.cancel()  # Cancel the task group when the context manager exits
@@ -47,7 +48,7 @@ class Connection:
         self.private_key = private_key
         self.base_token = token
 
-        self._connected = anyio.Event() # Set when the connection is first established
+        self._connected = anyio.Event()  # Set when the connection is first established
 
         self._conn = None
         self._tg = task_group
@@ -98,7 +99,7 @@ class Connection:
                 protocol.ConnectCommand(
                     push_token=self.base_token,
                     state=1,
-                    flags=65, #69
+                    flags=65,  # 69
                     certificate=cert,
                     nonce=nonce,
                     signature=signature,
@@ -152,12 +153,21 @@ class Connection:
 
     async def filter(self, topics: list[str]):
         assert self.base_token is not None
-        await self.send(protocol.FilterCommand(token=self.base_token, enabled_topic_hashes=[sha1(topic.encode()).digest() for topic in topics]))
+        await self.send(
+            protocol.FilterCommand(
+                token=self.base_token,
+                enabled_topic_hashes=[
+                    sha1(topic.encode()).digest() for topic in topics
+                ],
+            )
+        )
 
     async def request_scoped_token(self, topic: str) -> bytes:
         topic_hash = sha1(topic.encode()).digest()
         assert self.base_token is not None
-        await self.send(protocol.ScopedTokenCommand(token=self.base_token, topic=topic_hash))
+        await self.send(
+            protocol.ScopedTokenCommand(token=self.base_token, topic=topic_hash)
+        )
         ack = await self.receive(protocol.ScopedTokenAck)
         assert ack.status == 0
         return ack.scoped_token

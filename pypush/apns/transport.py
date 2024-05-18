@@ -40,19 +40,18 @@ class Packet:
             obj = object.__new__(cls)
             obj._value_ = value
             return obj
-    
+
         @classmethod
         def _missing_(cls, value):
             # Handle unknown values
             instance = cls.UNKNOWN
             instance._value_ = value  # Assign the unknown value
             return instance
-    
+
         def __str__(self):
             if self is Packet.Type.UNKNOWN:
                 return f"Unknown({self._value_})"
             return self.name
-
 
     id: Type
     fields: list[Field]

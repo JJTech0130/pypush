@@ -1,17 +1,12 @@
-import pytest
-from pypush import apns
-import asyncio
-
-# from aioapns import *
-import uuid
-import anyio
-
-# from pypush.apns import _util
-# from pypush.apns import albert, lifecycle, protocol
-from pypush import apns
-
 import logging
+import uuid
+from pathlib import Path
+
+import httpx
+import pytest
 from rich.logging import RichHandler
+
+from pypush import apns
 
 logging.basicConfig(level=logging.DEBUG, handlers=[RichHandler()], format="%(message)s")
 
@@ -31,6 +26,7 @@ async def test_lifecycle_2():
     ) as connection:
         pass
 
+
 @pytest.mark.asyncio
 async def test_shorthand():
     async with apns.create_apns_connection(
@@ -38,17 +34,51 @@ async def test_shorthand():
     ) as connection:
         pass
 
+
+ASSETS_DIR = Path(__file__).parent / "assets"
+
+
+async def send_test_notification(device_token, payload=b"hello, world"):
+    async with httpx.AsyncClient(
+        cert=str(ASSETS_DIR / "dev.jjtech.pypush.tests.pem"), http2=True
+    ) as client:
+        # Use the certificate and key from above
+        response = await client.post(
+            f"https://api.sandbox.push.apple.com/3/device/{device_token}",
+            content=payload,
+            headers={
+                "apns-topic": "dev.jjtech.pypush.tests",
+                "apns-push-type": "alert",
+                "apns-priority": "10",
+            },
+        )
+        assert response.status_code == 200
+
+
 @pytest.mark.asyncio
 async def test_scoped_token():
     async with apns.create_apns_connection(
         *await apns.activate(), courier="1-courier.sandbox.push.apple.com"
     ) as connection:
+
         token = await connection.request_scoped_token("dev.jjtech.pypush.tests")
-        logging.warning(f"Got token: {token.hex()}")
+
+        logging.debug(f"Got token: {token.hex()}")
         await connection.filter(["dev.jjtech.pypush.tests"])
-        logging.warning(f"waiting on topic 'dev.jjtech.pypush.tests'")
+        logging.debug(f"waiting on topic 'dev.jjtech.pypush.tests'")
+
+        test_message = f"test-message-{uuid.uuid4().hex}"
+
+        await send_test_notification(token.hex(), test_message.encode())
+        logging.debug(f"Sent message: {test_message}")
+
         async with connection._broadcast.open_stream() as stream:
             async for command in stream:
-                if isinstance(command, apns.protocol.SendMessageCommand) and command.topic == "dev.jjtech.pypush.tests" and command.token == token:
-                    logging.warning(f"Got message: {command.payload.decode()}")
-                    break
+                if (
+                    isinstance(command, apns.protocol.SendMessageCommand)
+                    and command.topic == "dev.jjtech.pypush.tests"
+                    and command.token == token
+                ):
+                    logging.debug(f"Got message: {command.payload.decode()}")
+                    if command.payload == test_message.encode():
+                        break

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from hashlib import sha1
 from typing import Optional, Union
 
-from anyio.abc import ByteStream, ObjectStream
+from anyio.abc import ObjectStream
 
 from pypush.apns._protocol import command, fid
 from pypush.apns.transport import Packet
@@ -140,6 +140,7 @@ class KeepAliveAck(Command):
     PacketType = Packet.Type.KeepAliveAck
     unknown: Optional[int] = fid(1)
 
+
 @command
 @dataclass
 class SetStateCommand(Command):
@@ -228,6 +229,7 @@ class SendMessageAck(Command):
     token: Optional[bytes] = fid(1, default=None)
     unknown6: Optional[bytes] = fid(6, default=None)
 
+
 @command
 @dataclass
 class ScopedTokenCommand(Command):
@@ -236,6 +238,7 @@ class ScopedTokenCommand(Command):
     token: bytes = fid(1)
     topic: bytes = fid(2)
     app_id: Optional[bytes] = fid(3, default=None)
+
 
 @command
 @dataclass
@@ -259,7 +262,7 @@ class UnknownCommand(Command):
 
     def to_packet(self) -> Packet:
         return Packet(id=self.id, fields=self.fields)
-    
+
     def __repr__(self):
         if self.id.value in [29, 30, 32]:
             return f"UnknownCommand(id={self.id}, fields=[SUPPRESSED])"
