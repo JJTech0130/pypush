@@ -140,47 +140,6 @@ class KeepAliveAck(Command):
     PacketType = Packet.Type.KeepAliveAck
     unknown: Optional[int] = fid(1)
 
-
-@command
-@dataclass
-class Unknown29Command(Command):
-    PacketType = Packet.Type.Unknown29
-    unknown1: Optional[bytes] = fid(1)
-    unknown2: Optional[bytes] = fid(2)
-    unknown3: Optional[bytes] = fid(3)
-    unknown4: Optional[bytes] = fid(4)
-
-    def __repr__(self):
-        return f"Unknown29Command(ignored)"
-
-
-@command
-@dataclass
-class Unknown30Command(Command):
-    PacketType = Packet.Type.Unknown30
-    unknown1: Optional[bytes] = fid(1)
-    unknown2: Optional[bytes] = fid(2)
-    unknown3: Optional[bytes] = fid(3)
-    unknown4: Optional[bytes] = fid(4)
-
-    def __repr__(self):
-        return f"Unknown30Command(ignored)"
-
-
-@command
-@dataclass
-class Unknown32Command(Command):
-    PacketType = Packet.Type.Unknown32
-    unknown1: Optional[bytes] = fid(1)
-    unknown2: Optional[bytes] = fid(2)
-    unknown3: Optional[bytes] = fid(3)
-    unknown4: Optional[bytes] = fid(4)
-    unknown5: Optional[bytes] = fid(5)
-
-    def __repr__(self):
-        return f"Unknown32Command(ignored)"
-
-
 @command
 @dataclass
 class SetStateCommand(Command):
@@ -292,9 +251,6 @@ def command_from_packet(packet: Packet) -> Command:
         Packet.Type.FilterTopics: FilterCommand,
         Packet.Type.NoStorage: NoStorageCommand,
         Packet.Type.KeepAliveAck: KeepAliveAck,
-        Packet.Type.Unknown29: Unknown29Command,
-        Packet.Type.Unknown30: Unknown30Command,
-        Packet.Type.Unknown32: Unknown32Command,
         Packet.Type.SetState: SetStateCommand,
         Packet.Type.SendMessage: SendMessageCommand,
         Packet.Type.SendMessageAck: SendMessageAck,

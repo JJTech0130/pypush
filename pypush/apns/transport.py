@@ -30,12 +30,27 @@ class Packet:
         KeepAlive = 12
         KeepAliveAck = 13
         NoStorage = 14
-        Unknown17 = 17
-        Unknown18 = 18
         SetState = 20
-        Unknown29 = 29
-        Unknown30 = 30
-        Unknown32 = 32
+        UNKNOWN = "Unknown"
+
+        def __new__(cls, value):
+            # Create a new instance of Enum
+            obj = object.__new__(cls)
+            obj._value_ = value
+            return obj
+    
+        @classmethod
+        def _missing_(cls, value):
+            # Handle unknown values
+            instance = cls.UNKNOWN
+            instance._value_ = value  # Assign the unknown value
+            return instance
+    
+        def __str__(self):
+            if self is Packet.Type.UNKNOWN:
+                return f"Unknown({self._value_})"
+            return self.name
+
 
     id: Type
     fields: list[Field]
