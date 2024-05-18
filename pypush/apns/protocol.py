@@ -240,6 +240,11 @@ class UnknownCommand(Command):
 
     def to_packet(self) -> Packet:
         return Packet(id=self.id, fields=self.fields)
+    
+    def __repr__(self):
+        if self.id.value in [29, 30, 32]:
+            return f"UnknownCommand(id={self.id}, fields=[SUPPRESSED])"
+        return f"UnknownCommand(id={self.id}, fields={self.fields})"
 
 
 # Factory function to create Command instances from Packets
