@@ -1,16 +1,20 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Generic, TypeVar, Type
+from typing import Generic, TypeVar, Type, Callable, Optional
 
 import anyio
 from anyio.abc import ObjectSendStream, ObjectReceiveStream
+
+from . import filters
 
 T = TypeVar("T")
 
 
 class BroadcastStream(Generic[T]):
-    def __init__(self):
+    def __init__(self, backlog: int = 50):
         self.streams: list[ObjectSendStream[T]] = []
+        self.backlog: list[T] = []
+        self._backlog_size = backlog
 
     async def broadcast(self, packet):
         logging.debug(f"Broadcasting {packet} to {len(self.streams)} streams")
@@ -20,12 +24,18 @@ class BroadcastStream(Generic[T]):
             except anyio.BrokenResourceError:
                 logging.error("Broken resource error")
                 # self.streams.remove(stream)
+        # If we have a backlog, add the packet to it
+        if len(self.backlog) >= self._backlog_size:
+            self.backlog.pop(0)
+        self.backlog.append(packet)
 
     @asynccontextmanager
     async def open_stream(self):
         # 1000 seems like a reasonable number, if more than 1000 messages come in before someone deals with them it will
         #  start stalling the APNs connection itself
         send, recv = anyio.create_memory_object_stream[T](max_buffer_size=1000)
+        for packet in self.backlog:
+            await send.send(packet)
         self.streams.append(send)
         async with recv:
             yield recv
@@ -34,18 +44,24 @@ class BroadcastStream(Generic[T]):
 
 
 W = TypeVar("W")
-F = TypeVar("F", covariant=True)
+F = TypeVar("F")
 
 
 class FilteredStream(ObjectReceiveStream[F]):
-    def __init__(self, source: ObjectReceiveStream[W], filter: Type[F]):
+    """
+    A stream that filters out unwanted items
+
+    filter should return None if the item should be filtered out, otherwise it should return the item or a modified version of it
+    """
+
+    def __init__(self, source: ObjectReceiveStream[W], filter: filters.Filter[W, F]):
         self.source = source
         self.filter = filter
 
     async def receive(self) -> F:
         async for item in self.source:
-            if isinstance(item, self.filter):
-                return item
+            if (filtered := self.filter(item)) is not None:
+                return filtered
         raise anyio.EndOfStream
 
     async def aclose(self):

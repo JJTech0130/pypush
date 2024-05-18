@@ -15,7 +15,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-from . import protocol, transport, _util
+from . import protocol, transport, _util, filters
 
 
 @asynccontextmanager
@@ -78,7 +78,7 @@ class Connection:
             await anyio.sleep(30)
             logging.debug("Sending keepalive")
             await self.send(protocol.KeepAliveCommand())
-            await self.receive(protocol.KeepAliveAck)
+            await self.receive(filters.cmd(protocol.KeepAliveAck))
 
     @_util.exponential_backoff
     async def reconnect(self):
@@ -109,7 +109,7 @@ class Connection:
                 )
             )
             self._tg.start_soon(self._receive_task)
-            ack = await self.receive(protocol.ConnectAck)
+            ack = await self.receive(filters.cmd(protocol.ConnectAck))
             logging.debug(f"Connected with ack: {ack}")
             assert ack.status == 0
             if self.base_token is None:
@@ -124,23 +124,19 @@ class Connection:
             await self._conn.aclose()
         # Note: Will be reopened if task group is still running and ping task is still running
 
-    T = typing.TypeVar("T", bound=protocol.Command)
+    T = typing.TypeVar("T")
 
     @asynccontextmanager
-    async def receive_stream(self, filter: typing.Type[T]):
+    async def receive_stream(
+        self, filter: filters.Filter[protocol.Command, T] = lambda c: c
+    ):
         async with self._broadcast.open_stream() as stream:
             yield _util.FilteredStream(stream, filter)
 
-    async def receive(self, filter: typing.Type[T]) -> T:
-        """
-        WARNING: If the actions between whatever triggered the thing you want to receive and this call might take a long time,
-
-        you should use `receive_stream` instead, as any messages that arrive in between will be lost!
-        """
-        async with self._broadcast.open_stream() as stream:
+    async def receive(self, filter: filters.Filter[protocol.Command, T]):
+        async with self.receive_stream(filter) as stream:
             async for command in stream:
-                if isinstance(command, filter):
-                    return command
+                return command
         raise ValueError("Did not receive expected command")
 
     async def send(self, command: protocol.Command):
@@ -182,6 +178,6 @@ class Connection:
         await self.send(
             protocol.ScopedTokenCommand(token=self.base_token, topic=topic_hash)
         )
-        ack = await self.receive(protocol.ScopedTokenAck)
+        ack = await self.receive(filters.cmd(protocol.ScopedTokenAck))
         assert ack.status == 0
         return ack.scoped_token

@@ -66,11 +66,11 @@ async def test_scoped_token():
         async with connection._filter(["dev.jjtech.pypush.tests"]):
             test_message = f"test-message-{uuid.uuid4().hex}"
 
-            # Must use a receive_stream because the notification might arrive before the HTTP response
-            async with connection.receive_stream(
-                apns.protocol.SendMessageCommand
-            ) as stream:
-                await send_test_notification(token.hex(), test_message.encode())
-                async for command in stream:
-                    if command.payload == test_message.encode():
-                        break
+            await send_test_notification(token.hex(), test_message.encode())
+
+            resp = await connection.receive(
+                apns.filters.chain(
+                    apns.filters.cmd(apns.protocol.SendMessageCommand),
+                    lambda x: x if x.payload == test_message.encode() else None,
+                )
+            )
