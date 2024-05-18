@@ -29,17 +29,14 @@ async def test_lifecycle_2():
     async with apns.create_apns_connection(
         certificate, key, courier="localhost"
     ) as connection:
-        await connection.receive(
-            apns.protocol.ConnectAck
-        )  # Just wait until the initial connection is established. Don't do this in real code plz.
-
+        pass
 
 @pytest.mark.asyncio
 async def test_shorthand():
     async with apns.create_apns_connection(
         *await apns.activate(), courier="localhost"
     ) as connection:
-        await connection.receive(apns.protocol.ConnectAck)
+        pass
 
 @pytest.mark.asyncio
 async def test_scoped_token():

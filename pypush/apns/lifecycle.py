@@ -25,7 +25,9 @@ async def create_apns_connection(
     courier: typing.Optional[str] = None,
 ):
     async with anyio.create_task_group() as tg:
-        conn = Connection(tg, certificate, private_key, token, courier)
+        conn = Connection(tg, certificate, private_key, token, courier)\
+        # Await connected for first time here, so that base token is set
+        await conn._connected.wait()
         yield conn
         tg.cancel_scope.cancel()  # Cancel the task group when the context manager exits
     await conn.aclose()  # Make sure to close the connection after the task group is cancelled
@@ -45,7 +47,7 @@ class Connection:
         self.private_key = private_key
         self.base_token = token
 
-        self.connected = anyio.Event()
+        self._connected = anyio.Event() # Set when the connection is first established
 
         self._conn = None
         self._tg = task_group
@@ -77,8 +79,6 @@ class Connection:
     @_util.exponential_backoff
     async def reconnect(self):
         async with self._reconnect_lock:  # Prevent weird situations where multiple reconnects are happening at once
-            if self.connected.is_set():
-                self.connected = anyio.Event()
             if self._conn is not None:
                 logging.warning("Closing existing connection")
                 await self._conn.aclose()
@@ -112,7 +112,8 @@ class Connection:
                 self.base_token = ack.token
             else:
                 assert ack.token == self.base_token
-            self.connected.set()
+            if not self._connected.is_set():
+                self._connected.set()
 
     async def aclose(self):
         if self._conn is not None:
@@ -143,8 +144,6 @@ class Connection:
     async def send(self, command: protocol.Command):
         try:
             assert self._conn is not None
-            if not self.connected.is_set():
-                await self.connected.wait()
             await self._conn.send(command)
         except Exception as e:
             logging.warning(f"Error sending command, reconnecting")
@@ -152,13 +151,11 @@ class Connection:
             await self.send(command)
 
     async def filter(self, topics: list[str]):
-        await self.connected.wait()
         assert self.base_token is not None
         await self.send(protocol.FilterCommand(token=self.base_token, enabled_topic_hashes=[sha1(topic.encode()).digest() for topic in topics]))
 
     async def request_scoped_token(self, topic: str) -> bytes:
         topic_hash = sha1(topic.encode()).digest()
-        await self.connected.wait() # Need to wait for connection so that base token is set
         assert self.base_token is not None
         await self.send(protocol.ScopedTokenCommand(token=self.base_token, topic=topic_hash))
         ack = await self.receive(protocol.ScopedTokenAck)
