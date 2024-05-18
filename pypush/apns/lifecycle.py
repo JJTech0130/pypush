@@ -49,6 +49,8 @@ class Connection:
         self.private_key = private_key
         self.base_token = token
 
+        self._filters: dict[str, int] = {}  # topic -> use count
+
         self._connected = anyio.Event()  # Set when the connection is first established
 
         self._conn = None
@@ -130,6 +132,11 @@ class Connection:
             yield _util.FilteredStream(stream, filter)
 
     async def receive(self, filter: typing.Type[T]) -> T:
+        """
+        WARNING: If the actions between whatever triggered the thing you want to receive and this call might take a long time,
+
+        you should use `receive_stream` instead, as any messages that arrive in between will be lost!
+        """
         async with self._broadcast.open_stream() as stream:
             async for command in stream:
                 if isinstance(command, filter):
@@ -145,18 +152,31 @@ class Connection:
             await self.reconnect()
             await self.send(command)
 
-    async def filter(self, topics: list[str]):
+    async def _update_filter(self):
         assert self.base_token is not None
         await self.send(
             protocol.FilterCommand(
                 token=self.base_token,
                 enabled_topic_hashes=[
-                    sha1(topic.encode()).digest() for topic in topics
+                    sha1(topic.encode()).digest() for topic in self._filters
                 ],
             )
         )
 
-    async def request_scoped_token(self, topic: str) -> bytes:
+    @asynccontextmanager
+    async def _filter(self, topics: list[str]):
+        assert self.base_token is not None
+        for topic in topics:
+            self._filters[topic] = self._filters.get(topic, 0) + 1
+        await self._update_filter()
+        yield
+        for topic in topics:
+            self._filters[topic] -= 1
+            if self._filters[topic] == 0:
+                del self._filters[topic]
+        await self._update_filter()
+
+    async def mint_scoped_token(self, topic: str) -> bytes:
         topic_hash = sha1(topic.encode()).digest()
         assert self.base_token is not None
         await self.send(

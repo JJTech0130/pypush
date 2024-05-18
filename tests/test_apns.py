@@ -61,21 +61,16 @@ async def test_scoped_token():
         *await apns.activate(), courier="1-courier.sandbox.push.apple.com"
     ) as connection:
 
-        token = await connection.request_scoped_token("dev.jjtech.pypush.tests")
+        token = await connection.mint_scoped_token("dev.jjtech.pypush.tests")
 
-        logging.debug(f"Got token: {token.hex()}")
-        await connection.filter(["dev.jjtech.pypush.tests"])
-        logging.debug(f"waiting on topic 'dev.jjtech.pypush.tests'")
+        async with connection._filter(["dev.jjtech.pypush.tests"]):
+            test_message = f"test-message-{uuid.uuid4().hex}"
 
-        test_message = f"test-message-{uuid.uuid4().hex}"
-
-        await send_test_notification(token.hex(), test_message.encode())
-        logging.debug(f"Sent message: {test_message}")
-
-        async with connection.receive_stream(
-            apns.protocol.SendMessageCommand
-        ) as stream:
-            async for command in stream:
-                logging.debug(f"Got message: {command.payload.decode()}")
-                if command.payload == test_message.encode():
-                    break
+            # Must use a receive_stream because the notification might arrive before the HTTP response
+            async with connection.receive_stream(
+                apns.protocol.SendMessageCommand
+            ) as stream:
+                await send_test_notification(token.hex(), test_message.encode())
+                async for command in stream:
+                    if command.payload == test_message.encode():
+                        break

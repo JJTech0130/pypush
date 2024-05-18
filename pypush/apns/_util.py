@@ -23,7 +23,9 @@ class BroadcastStream(Generic[T]):
 
     @asynccontextmanager
     async def open_stream(self):
-        send, recv = anyio.create_memory_object_stream[T]()
+        # 1000 seems like a reasonable number, if more than 1000 messages come in before someone deals with them it will
+        #  start stalling the APNs connection itself
+        send, recv = anyio.create_memory_object_stream[T](max_buffer_size=1000)
         self.streams.append(send)
         async with recv:
             yield recv
