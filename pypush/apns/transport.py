@@ -71,7 +71,7 @@ async def create_courier_connection(
         courier = "localhost"
         sni = "courier.sandbox.push.apple.com"
     else:
-        sni = "courier.push.apple.com"
+        sni = courier
 
     # TODO: Verify courier certificate
     context.check_hostname = False
