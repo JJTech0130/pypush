@@ -1,0 +1,8 @@
+name: Pyright
+on: [push, pull_request]
+jobs:
+  pyright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jakebailey/pyright-action@v2
