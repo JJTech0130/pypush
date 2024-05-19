@@ -61,17 +61,16 @@ class Packet:
 
 
 async def create_courier_connection(
+    sandbox: bool = False,
     courier: str = "1-courier.push.apple.com",
 ) -> PacketStream:
     context = ssl.create_default_context()
     context.set_alpn_protocols(ALPN)
 
-    # Special case for local testing
-    if courier == "sandbox-localhost":
-        courier = "localhost"
+    if sandbox:
         sni = "courier.sandbox.push.apple.com"
     else:
-        sni = courier
+        sni = "courier.push.apple.com"
 
     # TODO: Verify courier certificate
     context.check_hostname = False

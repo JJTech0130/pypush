@@ -22,11 +22,12 @@ async def create_apns_connection(
     certificate: x509.Certificate,
     private_key: rsa.RSAPrivateKey,
     token: typing.Optional[bytes] = None,
+    sandbox: bool = False,
     courier: typing.Optional[str] = None,
 ):
     async with anyio.create_task_group() as tg:
         conn = Connection(
-            tg, certificate, private_key, token, courier
+            tg, certificate, private_key, token, sandbox, courier
         )  # Await connected for first time here, so that base token is set
         await conn._connected.wait()
         yield conn
@@ -41,6 +42,7 @@ class Connection:
         certificate: x509.Certificate,
         private_key: rsa.RSAPrivateKey,
         token: typing.Optional[bytes] = None,
+        sandbox: bool = False,
         courier: typing.Optional[str] = None,
     ):
 
@@ -58,9 +60,11 @@ class Connection:
         self._reconnect_lock = anyio.Lock()
         self._send_lock = anyio.Lock()
 
+        self.sandbox = sandbox
         if courier is None:
             # Pick a random courier server from 1 to 50
-            courier = f"{random.randint(1, 50)}-courier.push.apple.com"
+            courier = f"{random.randint(1, 50)}-courier.push.apple.com" if not sandbox else f"{random.randint(1, 10)}-courier.sandbox.push.apple.com"
+        logging.debug(f"Using courier: {courier}")
         self.courier = courier
 
         self._tg.start_soon(self.reconnect)
@@ -92,7 +96,7 @@ class Connection:
             self._broadcast.backlog = []  # Clear the backlog
 
             conn = protocol.CommandStream(
-                await transport.create_courier_connection(courier=self.courier)
+                await transport.create_courier_connection(self.sandbox, self.courier)
             )
             cert = self.certificate.public_bytes(serialization.Encoding.DER)
             nonce = (

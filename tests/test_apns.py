@@ -26,15 +26,6 @@ async def test_lifecycle_2():
     ) as connection:
         pass
 
-
-@pytest.mark.asyncio
-async def test_shorthand():
-    async with apns.create_apns_connection(
-        *await apns.activate(), courier="localhost"
-    ) as connection:
-        pass
-
-
 ASSETS_DIR = Path(__file__).parent / "assets"
 
 
@@ -58,7 +49,7 @@ async def send_test_notification(device_token, payload=b"hello, world"):
 @pytest.mark.asyncio
 async def test_scoped_token():
     async with apns.create_apns_connection(
-        *await apns.activate(), courier="sandbox-localhost"
+        *await apns.activate(), sandbox=True
     ) as connection:
 
         token = await connection.mint_scoped_token("dev.jjtech.pypush.tests")
