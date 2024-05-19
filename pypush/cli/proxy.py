@@ -2,7 +2,6 @@ import datetime
 import logging
 import ssl
 import tempfile
-from typing import Optional
 
 import anyio
 import anyio.abc
@@ -12,11 +11,10 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding
 
 # from pypush import apns
-from pypush.apns import transport
-from pypush.apns import protocol
+from pypush.apns import protocol, transport
 
 from . import _frida
 
@@ -71,7 +69,7 @@ async def handle(client: TLSStream):
             else "1-courier.sandbox.push.apple.com"
         )
         name = f"prod-{connection_cnt}" if not sandbox else f"sandbox-{connection_cnt}"
-        async with await transport.create_courier_connection(forward) as conn:
+        async with await transport.create_courier_connection(sandbox, forward) as conn:
             logging.debug("Connected to courier")
             async with anyio.create_task_group() as tg:
                 tg.start_soon(forward_packets, client_pkt, conn, f"client-{name}")

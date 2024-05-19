@@ -30,6 +30,8 @@ class Packet:
         KeepAlive = 12
         KeepAliveAck = 13
         NoStorage = 14
+        ScopedToken = 17
+        ScopedTokenAck = 18
         SetState = 20
         UNKNOWN = "Unknown"
 
@@ -38,19 +40,18 @@ class Packet:
             obj = object.__new__(cls)
             obj._value_ = value
             return obj
-    
+
         @classmethod
         def _missing_(cls, value):
             # Handle unknown values
             instance = cls.UNKNOWN
             instance._value_ = value  # Assign the unknown value
             return instance
-    
+
         def __str__(self):
             if self is Packet.Type.UNKNOWN:
                 return f"Unknown({self._value_})"
             return self.name
-
 
     id: Type
     fields: list[Field]
@@ -60,10 +61,13 @@ class Packet:
 
 
 async def create_courier_connection(
+    sandbox: bool = False,
     courier: str = "1-courier.push.apple.com",
 ) -> PacketStream:
     context = ssl.create_default_context()
     context.set_alpn_protocols(ALPN)
+
+    sni = "courier.sandbox.push.apple.com" if sandbox else "courier.push.apple.com"
 
     # TODO: Verify courier certificate
     context.check_hostname = False
@@ -71,7 +75,11 @@ async def create_courier_connection(
 
     return PacketStream(
         await anyio.connect_tcp(
-            courier, COURIER_PORT, ssl_context=context, tls_standard_compatible=False
+            courier,
+            COURIER_PORT,
+            ssl_context=context,
+            tls_standard_compatible=False,
+            tls_hostname=sni,
         )
     )
 

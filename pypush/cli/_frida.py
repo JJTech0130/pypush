@@ -1,5 +1,6 @@
-import frida
 import logging
+
+import frida
 
 
 def attach_to_apsd() -> frida.core.Session:
