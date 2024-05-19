@@ -15,8 +15,7 @@ from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 # from pypush import apns
-from pypush.apns import transport
-from pypush.apns import protocol
+from pypush.apns import protocol, transport
 
 from . import _frida
 

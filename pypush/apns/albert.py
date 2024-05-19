@@ -4,7 +4,7 @@ import plistlib
 import re
 import uuid
 from base64 import b64decode
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import httpx
 from cryptography import x509

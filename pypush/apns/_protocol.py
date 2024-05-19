@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import MISSING, field
 from dataclasses import fields as dataclass_fields
-from typing import Any, TypeVar, get_origin, get_args, Union
+from typing import Any, TypeVar, Union, get_args, get_origin
 
 from pypush.apns.transport import Packet
 
