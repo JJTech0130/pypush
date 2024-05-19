@@ -233,6 +233,13 @@ class Connection:
             ) as stream:
                 yield stream
 
+    async def ack(self, command: protocol.SendMessageCommand, status: int = 0):
+        await self._send(
+            protocol.SendMessageAck(
+                status=status, token=command.token, id=command.id
+            )
+        )
+
     async def expect_notification(
         self,
         topic: str,
@@ -242,6 +249,6 @@ class Connection:
         ] = filters.ALL,
     ) -> protocol.SendMessageCommand:
         async with self.notification_stream(topic, token, filter) as stream:
-            async for command in stream:
-                return command
-        raise ValueError("Did not receive expected notification")
+            command = await stream.receive()
+            await self.ack(command)
+            return command

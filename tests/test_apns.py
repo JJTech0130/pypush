@@ -22,7 +22,7 @@ async def test_activate():
 @pytest.mark.asyncio
 async def test_lifecycle_2():
     async with apns.create_apns_connection(
-        certificate, key, courier="localhost"
+        certificate, key
     ) as connection:
         pass
 
@@ -58,7 +58,7 @@ async def send_test_notification(device_token, payload=b"hello, world"):
 @pytest.mark.asyncio
 async def test_scoped_token():
     async with apns.create_apns_connection(
-        *await apns.activate(), courier="1-courier.sandbox.push.apple.com"
+        *await apns.activate(), courier="sandbox-localhost"
     ) as connection:
 
         token = await connection.mint_scoped_token("dev.jjtech.pypush.tests")
