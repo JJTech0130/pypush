@@ -5,4 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          cache: 'pip'
+
+      - run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -e '.[test,cli]'
+
+      - run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
       - uses: jakebailey/pyright-action@v2
