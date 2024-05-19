@@ -56,6 +56,7 @@ class Connection:
         self._tg = task_group
         self._broadcast = _util.BroadcastStream[protocol.Command]()
         self._reconnect_lock = anyio.Lock()
+        self._send_lock = anyio.Lock()
 
         if courier is None:
             # Pick a random courier server from 1 to 50
@@ -139,6 +140,8 @@ class Connection:
                 assert ack.token == self.base_token
             if not self._connected.is_set():
                 self._connected.set()
+            
+            await self._update_filter()
 
     async def aclose(self):
         if self._conn is not None:
@@ -166,8 +169,9 @@ class Connection:
 
     async def _send(self, command: protocol.Command):
         try:
-            assert self._conn is not None
-            await self._conn.send(command)
+            async with self._send_lock:
+                assert self._conn is not None
+                await self._conn.send(command)
         except Exception as e:
             logging.warning(f"Error sending command, reconnecting")
             await self.reconnect()
