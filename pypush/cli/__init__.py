@@ -5,8 +5,11 @@ from rich.logging import RichHandler
 from typing_extensions import Annotated
 
 from . import proxy as _proxy
+from pypush import apns
+import anyio
+from asyncio import CancelledError
 
-logging.basicConfig(level=logging.DEBUG, handlers=[RichHandler()], format="%(message)s")
+logging.basicConfig(level=logging.INFO, handlers=[RichHandler()], format="%(message)s")
 
 app = typer.Typer()
 
@@ -22,12 +25,14 @@ def proxy(
 
     Attach requires SIP to be disabled and to be running as root
     """
-
-    _proxy.main(attach)
+    try:
+        _proxy.main(attach)
+    except CancelledError:
+        pass
 
 
 @app.command()
-def client(
+def notifications(
     topic: Annotated[str, typer.Argument(help="app topic to listen on")],
     sandbox: Annotated[
         bool, typer.Option("--sandbox/--production", help="APNs courier to use")
@@ -36,8 +41,26 @@ def client(
     """
     Connect to the APNs courier and listen for app notifications on the given topic
     """
-    typer.echo("Running APNs client")
-    raise NotImplementedError("Not implemented yet")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    try:
+        anyio.run(notifications_async, topic, sandbox)
+    except CancelledError:
+        pass
+
+async def notifications_async(topic: str, sandbox: bool):
+    async with apns.create_apns_connection(
+        *await apns.activate(), courier="1-courier.sandbox.push.apple.com" if sandbox else "1-courier.push.apple.com"
+    ) as connection:
+
+        token = await connection.mint_scoped_token(topic)
+
+        async with connection.notification_stream(topic, token) as stream:
+            logging.info(f"Listening for notifications on topic {topic} ({'sandbox' if sandbox else 'production'})")
+            logging.info(f"Token: {token.hex()}")
+
+            async for notification in stream:
+                await connection.ack(notification)
+                logging.info(notification.payload.decode())
 
 
 def main():
