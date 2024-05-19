@@ -21,10 +21,9 @@ async def test_activate():
 
 @pytest.mark.asyncio
 async def test_lifecycle_2():
-    async with apns.create_apns_connection(
-        certificate, key
-    ) as connection:
+    async with apns.create_apns_connection(certificate, key) as _:
         pass
+
 
 ASSETS_DIR = Path(__file__).parent / "assets"
 
@@ -51,7 +50,6 @@ async def test_scoped_token():
     async with apns.create_apns_connection(
         *await apns.activate(), sandbox=True
     ) as connection:
-
         token = await connection.mint_scoped_token("dev.jjtech.pypush.tests")
 
         test_message = f"test-message-{uuid.uuid4().hex}"

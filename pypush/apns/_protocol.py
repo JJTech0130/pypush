@@ -67,14 +67,14 @@ def command(cls: T) -> T:
                     )
 
         # Check for extra fields
-        for field in packet.fields:
-            if field.id not in [
+        for current_field in packet.fields:
+            if current_field.id not in [
                 f.metadata["packet_id"]
                 for f in dataclass_fields(cls)
                 if f.metadata is not None and "packet_id" in f.metadata
             ]:
                 logging.warning(
-                    f"Unexpected field with packet ID {field.id} in packet {packet}"
+                    f"Unexpected field with packet ID {current_field.id} in packet {packet}"
                 )
         return cls(**field_values)
 
@@ -122,15 +122,15 @@ def fid(
     :param byte_len: The length of the field in bytes (for int fields)
     :param default: The default value of the field
     """
-    if not default == MISSING and not default_factory == MISSING:
+    if default != MISSING and default_factory != MISSING:
         raise ValueError("Cannot specify both default and default_factory")
-    if not default == MISSING:
+    if default != MISSING:
         return field(
             metadata={"packet_id": packet_id, "packet_bytes": byte_len},
             default=default,
             repr=repr,
         )
-    if not default_factory == MISSING:
+    if default_factory != MISSING:
         return field(
             metadata={"packet_id": packet_id, "packet_bytes": byte_len},
             default_factory=default_factory,

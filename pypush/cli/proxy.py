@@ -2,7 +2,6 @@ import datetime
 import logging
 import ssl
 import tempfile
-from typing import Optional
 
 import anyio
 import anyio.abc
@@ -12,7 +11,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.hashes import SHA256
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding
 
 # from pypush import apns
 from pypush.apns import protocol, transport

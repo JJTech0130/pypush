@@ -87,12 +87,7 @@ class FilterCommand(Command):
 
     def _lookup_hashes(self, hashes: Optional[list[bytes]]):
         return (
-            [
-                KNOWN_TOPICS_LOOKUP[hash] if hash in KNOWN_TOPICS_LOOKUP else hash
-                for hash in hashes
-            ]
-            if hashes
-            else []
+            [KNOWN_TOPICS_LOOKUP.get(hash, hash) for hash in hashes] if hashes else []
         )
 
     @property
@@ -183,7 +178,7 @@ class SendMessageCommand(Command):
         ) and not (self._token_topic_1 is not None and self._token_topic_2 is not None):
             raise ValueError("topic, token, and outgoing must be set.")
 
-        if self.outgoing == True:
+        if self.outgoing is True:
             assert self.topic and self.token
             self._token_topic_1 = (
                 sha1(self.topic.encode()).digest()
@@ -191,7 +186,7 @@ class SendMessageCommand(Command):
                 else self.topic
             )
             self._token_topic_2 = self.token
-        elif self.outgoing == False:
+        elif self.outgoing is False:
             assert self.topic and self.token
             self._token_topic_1 = self.token
             self._token_topic_2 = (
@@ -202,18 +197,14 @@ class SendMessageCommand(Command):
         else:
             assert self._token_topic_1 and self._token_topic_2
             if len(self._token_topic_1) == 20:  # SHA1 hash, topic
-                self.topic = (
-                    KNOWN_TOPICS_LOOKUP[self._token_topic_1]
-                    if self._token_topic_1 in KNOWN_TOPICS_LOOKUP
-                    else self._token_topic_1
+                self.topic = KNOWN_TOPICS_LOOKUP.get(
+                    self._token_topic_1, self._token_topic_1
                 )
                 self.token = self._token_topic_2
                 self.outgoing = True
             else:
-                self.topic = (
-                    KNOWN_TOPICS_LOOKUP[self._token_topic_2]
-                    if self._token_topic_2 in KNOWN_TOPICS_LOOKUP
-                    else self._token_topic_2
+                self.topic = KNOWN_TOPICS_LOOKUP.get(
+                    self._token_topic_2, self._token_topic_2
                 )
                 self.token = self._token_topic_1
                 self.outgoing = False

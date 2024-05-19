@@ -32,7 +32,9 @@ async def create_apns_connection(
         await conn._connected.wait()
         yield conn
         tg.cancel_scope.cancel()  # Cancel the task group when the context manager exits
-    await conn.aclose()  # Make sure to close the connection after the task group is cancelled
+    await (
+        conn.aclose()
+    )  # Make sure to close the connection after the task group is cancelled
 
 
 class Connection:
@@ -45,7 +47,6 @@ class Connection:
         sandbox: bool = False,
         courier: typing.Optional[str] = None,
     ):
-
         self.certificate = certificate
         self.private_key = private_key
         self.base_token = token
@@ -63,7 +64,11 @@ class Connection:
         self.sandbox = sandbox
         if courier is None:
             # Pick a random courier server from 1 to 50
-            courier = f"{random.randint(1, 50)}-courier.push.apple.com" if not sandbox else f"{random.randint(1, 10)}-courier.sandbox.push.apple.com"
+            courier = (
+                f"{random.randint(1, 50)}-courier.push.apple.com"
+                if not sandbox
+                else f"{random.randint(1, 10)}-courier.sandbox.push.apple.com"
+            )
         logging.debug(f"Using courier: {courier}")
         self.courier = courier
 
@@ -144,7 +149,7 @@ class Connection:
                 assert ack.token == self.base_token
             if not self._connected.is_set():
                 self._connected.set()
-            
+
             await self._update_filter()
 
     async def aclose(self):
@@ -176,8 +181,8 @@ class Connection:
             async with self._send_lock:
                 assert self._conn is not None
                 await self._conn.send(command)
-        except Exception as e:
-            logging.warning(f"Error sending command, reconnecting")
+        except Exception:
+            logging.warning("Error sending command, reconnecting")
             await self.reconnect()
             await self._send(command)
 
@@ -226,26 +231,23 @@ class Connection:
     ):
         if token is None:
             token = self.base_token
-        async with self._filter([topic]):
-            async with self._receive_stream(
+        async with self._filter([topic]), self._receive_stream(
+            filters.chain(
                 filters.chain(
                     filters.chain(
-                        filters.chain(
-                            filters.cmd(protocol.SendMessageCommand),
-                            lambda c: c if c.token == token else None,
-                        ),
-                        lambda c: (c if c.topic == topic else None),
+                        filters.cmd(protocol.SendMessageCommand),
+                        lambda c: c if c.token == token else None,
                     ),
-                    filter,
-                )
-            ) as stream:
-                yield stream
+                    lambda c: (c if c.topic == topic else None),
+                ),
+                filter,
+            )
+        ) as stream:
+            yield stream
 
     async def ack(self, command: protocol.SendMessageCommand, status: int = 0):
         await self._send(
-            protocol.SendMessageAck(
-                status=status, token=command.token, id=command.id
-            )
+            protocol.SendMessageAck(status=status, token=command.token, id=command.id)
         )
 
     async def expect_notification(

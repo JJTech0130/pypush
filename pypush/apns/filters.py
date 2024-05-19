@@ -36,5 +36,9 @@ def cmd(type: Type[T]) -> Filter[protocol.Command, T]:
     return filter
 
 
-ALL = lambda c: c
-NONE = lambda _: None
+def ALL(c):
+    return c
+
+
+def NONE(_):
+    return None

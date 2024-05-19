@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Callable, Generic, Optional, Type, TypeVar
+from typing import Generic, TypeVar
 
 import anyio
 from anyio.abc import ObjectReceiveStream, ObjectSendStream

@@ -96,10 +96,10 @@ async def activate(
 
     try:
         protocol = re.search("<Protocol>(.*)</Protocol>", resp.text).group(1)  # type: ignore
-    except AttributeError:
+    except AttributeError as e:
         # Search for error text between <b> and </b>
         error = re.search("<b>(.*)</b>", resp.text).group(1)  # type: ignore
-        raise Exception(f"Failed to get certificate from Albert: {error}")
+        raise Exception(f"Failed to get certificate from Albert: {error}") from e
 
     protocol = plistlib.loads(protocol.encode("utf-8"))
 

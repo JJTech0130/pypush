@@ -1,13 +1,15 @@
+import contextlib
 import logging
+from asyncio import CancelledError
 
+import anyio
 import typer
 from rich.logging import RichHandler
 from typing_extensions import Annotated
 
-from . import proxy as _proxy
 from pypush import apns
-import anyio
-from asyncio import CancelledError
+
+from . import proxy as _proxy
 
 logging.basicConfig(level=logging.INFO, handlers=[RichHandler()], format="%(message)s")
 
@@ -25,10 +27,8 @@ def proxy(
 
     Attach requires SIP to be disabled and to be running as root
     """
-    try:
+    with contextlib.suppress(CancelledError):
         _proxy.main(attach)
-    except CancelledError:
-        pass
 
 
 @app.command()
@@ -42,20 +42,23 @@ def notifications(
     Connect to the APNs courier and listen for app notifications on the given topic
     """
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    try:
+    with contextlib.suppress(CancelledError):
         anyio.run(notifications_async, topic, sandbox)
-    except CancelledError:
-        pass
+
 
 async def notifications_async(topic: str, sandbox: bool):
     async with apns.create_apns_connection(
-        *await apns.activate(), courier="1-courier.sandbox.push.apple.com" if sandbox else "1-courier.push.apple.com"
+        *await apns.activate(),
+        courier="1-courier.sandbox.push.apple.com"
+        if sandbox
+        else "1-courier.push.apple.com",
     ) as connection:
-
         token = await connection.mint_scoped_token(topic)
 
         async with connection.notification_stream(topic, token) as stream:
-            logging.info(f"Listening for notifications on topic {topic} ({'sandbox' if sandbox else 'production'})")
+            logging.info(
+                f"Listening for notifications on topic {topic} ({'sandbox' if sandbox else 'production'})"
+            )
             logging.info(f"Token: {token.hex()}")
 
             async for notification in stream:

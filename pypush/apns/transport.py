@@ -67,10 +67,7 @@ async def create_courier_connection(
     context = ssl.create_default_context()
     context.set_alpn_protocols(ALPN)
 
-    if sandbox:
-        sni = "courier.sandbox.push.apple.com"
-    else:
-        sni = "courier.push.apple.com"
+    sni = "courier.sandbox.push.apple.com" if sandbox else "courier.push.apple.com"
 
     # TODO: Verify courier certificate
     context.check_hostname = False
@@ -78,7 +75,11 @@ async def create_courier_connection(
 
     return PacketStream(
         await anyio.connect_tcp(
-            courier, COURIER_PORT, ssl_context=context, tls_standard_compatible=False, tls_hostname=sni
+            courier,
+            COURIER_PORT,
+            ssl_context=context,
+            tls_standard_compatible=False,
+            tls_hostname=sni,
         )
     )
 

@@ -35,3 +35,7 @@ version_file = "pypush/_version.py"
 minversion = "6.0"
 addopts = ["-ra", "-q"]
 testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "SIM", "I"]
+ignore = ["E501", "B010"]
