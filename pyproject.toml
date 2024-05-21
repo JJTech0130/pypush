@@ -23,7 +23,7 @@ keywords = ["apple", "api", "reverse engineering", "imessage", "apns"]
 
 dependencies = [
     "anyio",
-    "httpx",
+    "httpx[http2]",
     "cryptography",
     "typing-extensions",
     "exceptiongroup",
