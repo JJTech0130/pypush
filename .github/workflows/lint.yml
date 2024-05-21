@@ -1,44 +1,41 @@
-name: Lint
-on: [push, pull_request]
+name: Lints
+
+on:
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/python-app.yml'
+      - 'pypush/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  ruff:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
+  build:
+    if: '! github.event.pull_request.draft'
+    runs-on: ${{ matrix.os }}
 
-  pyright:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with:
-          cache: 'pip'
-
-      - run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install -e '.[test,cli]'
-
-      - run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
-      - uses: jakebailey/pyright-action@v2
-
-  tests:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11, 3.12]
+        python-version: [ 3.9, "3.10", "3.11", "3.12" ]
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
-          cache: 'pip'
           python-version: ${{ matrix.python-version }}
-
-      - run: |
+      - uses: chartboost/ruff-action@v1
+      - name: Test install
+        run: |
+          python -m pip install --upgrade pip
           python -m venv .venv
           source .venv/bin/activate
-          pip install -e '.[test,cli]'
-
+          pip install -e '.[test,cli]' -U
       - run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
-      - run: pytest
+      - name: Tests
+        run: pytest
