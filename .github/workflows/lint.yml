@@ -2,7 +2,7 @@ name: Lints
 
 on:
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths:
       - '.github/workflows/lint.yml'
       - 'pypush/**'
