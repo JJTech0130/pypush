@@ -5,6 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pypush"
 dynamic = ["version"]
+authors = [
+    { name = "JJTech", email = "jjtech@jjtech.dev" },
+]
+description = "Interact with Apple Private API"
+
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 3 - Alpha",
+    "Operating System :: OS Independent",
+    "License :: Other/Proprietary License",
+]
+license = {text = "Server Side Public License (SSPL)"}
+keywords = ["apple", "api", "reverse engineering", "imessage", "apns"]
+
 dependencies = [
     "anyio",
     "httpx",
@@ -13,6 +29,10 @@ dependencies = [
     "exceptiongroup",
     'importlib_metadata; python_version>="3.9"',
 ]
+
+[project.urls]
+Homepage = "https://github.com/JJTech0130/pypush"
+Issues = "https://github.com/JJTech0130/pypush/issues"
 
 [project.scripts]
 pypush = "pypush.cli:main"

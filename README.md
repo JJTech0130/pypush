@@ -1,16 +1,21 @@
 > [!WARNING]
-> `pypush` is undergoing a major rewrite. The current version is not stable and may not work as expected.
+> `pypush` is undergoing a major rewrite. The current version is not stable and may not work as expected. Many features have been temporarily removed.
+>
+> Versioning starts at 2.0.0 due to conflicts with the original package to have the `pypush` name. Do not expect stability until 3.0.0.
 
 # pypush
-`pypush` is a POC demo of my recent iMessage reverse-engineering.
-It can currently register as a new device on an Apple ID, set up encryption keys, and ***send and receive iMessages***!
+`pypush` was originally a POC demo of my recent iMessage reverse-engineering.
+It is now being developed into a community library aiming to cover all of Apple's internal API surface.
 
-`pypush` is completely platform-independent, and does not require a Mac or other Apple device to use!
+Currently, the rewritten version supports using the client side of Apple's internal APNs API, meaning it can activate as an
+Apple device and receive push notifications. Stay tuned for future updates as we bring back the iMessage API and more!
+
+`pypush` is completely platform-independent, though it may require device identifiers to use some APIs.
 
 ## Installation
 Simple installation:
 ```bash
-pip install git+https://github.com/JJTech0130/pypush
+pip install pypush[cli]
 ```
 Editable installation (for development):
 ```bash
