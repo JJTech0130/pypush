@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ "master" ]
     paths:
-      - '.github/workflows/python-app.yml'
+      - '.github/workflows/lint.yml'
       - 'pypush/**'
       - 'tests/**'
       - 'pyproject.toml'
