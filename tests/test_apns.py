@@ -28,6 +28,7 @@ async def test_lifecycle_2():
 ASSETS_DIR = Path(__file__).parent / "assets"
 
 
+# Not a part of pypush, this is public API
 async def send_test_notification(device_token, payload=b"hello, world"):
     async with httpx.AsyncClient(
         cert=str(ASSETS_DIR / "dev.jjtech.pypush.tests.pem"), http2=True

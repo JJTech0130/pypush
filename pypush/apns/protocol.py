@@ -13,6 +13,15 @@ KNOWN_TOPICS_LOOKUP = {sha1(topic.encode()).digest():topic for topic in KNOWN_TO
 # fmt: on
 
 
+def note_topic(topic: str):
+    """
+    Add a topic to the KNOWN_TOPICS set, such that it can be recognized later.
+    This is mostly just a convenience, so that you do not have to work with SHA1 hashes directly.
+    """
+    KNOWN_TOPICS.add(topic)
+    KNOWN_TOPICS_LOOKUP[sha1(topic.encode()).digest()] = topic
+
+
 @dataclass
 class Command:
     @classmethod
@@ -148,6 +157,14 @@ class SetStateCommand(Command):
 @command
 @dataclass
 class SendMessageCommand(Command):
+    """
+    The most common form of command, used to send a message, also represents incoming messages.
+
+    May also be called a "Notification" in the context of APNs.
+
+    Important note: The `topic` field may be a string or bytes, depending on if the topic is in the `KNOWN_TOPICS` set. This should not happen if you are using the proper `Connection` API.
+    """
+
     PacketType = Packet.Type.SendMessage
 
     payload: bytes = fid(3)
