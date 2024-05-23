@@ -50,6 +50,13 @@ async def activate(
     build: str = "10.6.4",
     model: str = "windows1,1",
 ) -> Tuple[x509.Certificate, rsa.RSAPrivateKey]:
+    """
+    Activate with Apple's Albert service, obtaining an activation certificate and private key.
+
+    By default, this will activate a Windows device with a random UDID, serial, version, build, and model.
+
+    Windows activations will not function for iMessage or FaceTime.
+    """
     if http_client is None:
         # Do this here to ensure the client is not accidentally reused during tests
         http_client = httpx.AsyncClient()
