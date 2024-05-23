@@ -99,7 +99,9 @@ class Connection:
 
     @_util.exponential_backoff
     async def reconnect(self):
-        async with self._reconnect_lock:  # Prevent weird situations where multiple reconnects are happening at once
+        async with (
+            self._reconnect_lock
+        ):  # Prevent weird situations where multiple reconnects are happening at once
             if self._conn is not None:
                 logging.warning("Closing existing connection")
                 await self._conn.aclose()
@@ -172,7 +174,7 @@ class Connection:
         backlog: bool = True,
     ):
         async with self._broadcast.open_stream(backlog) as stream:
-            yield _util.FilteredStream(stream, filter)
+            yield filters.FilteredStream(stream, filter)
 
     async def _receive(
         self, filter: filters.Filter[protocol.Command, T], backlog: bool = True
@@ -234,18 +236,21 @@ class Connection:
     ):
         if token is None:
             token = await self.base_token
-        async with self._filter([topic]), self._receive_stream(
-            filters.chain(
+        async with (
+            self._filter([topic]),
+            self._receive_stream(
                 filters.chain(
                     filters.chain(
-                        filters.cmd(protocol.SendMessageCommand),
-                        lambda c: c if c.token == token else None,
+                        filters.chain(
+                            filters.cmd(protocol.SendMessageCommand),
+                            lambda c: c if c.token == token else None,
+                        ),
+                        lambda c: (c if c.topic == topic else None),
                     ),
-                    lambda c: (c if c.topic == topic else None),
-                ),
-                filter,
-            )
-        ) as stream:
+                    filter,
+                )
+            ) as stream,
+        ):
             yield stream
 
     async def ack(self, command: protocol.SendMessageCommand, status: int = 0):

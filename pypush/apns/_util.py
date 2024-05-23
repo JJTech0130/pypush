@@ -3,9 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Generic, TypeVar
 
 import anyio
-from anyio.abc import ObjectReceiveStream, ObjectSendStream
-
-from . import filters
+from anyio.abc import ObjectSendStream
 
 T = TypeVar("T")
 
@@ -42,31 +40,6 @@ class BroadcastStream(Generic[T]):
             yield recv
             self.streams.remove(send)
             await send.aclose()
-
-
-W = TypeVar("W")
-F = TypeVar("F")
-
-
-class FilteredStream(ObjectReceiveStream[F]):
-    """
-    A stream that filters out unwanted items
-
-    filter should return None if the item should be filtered out, otherwise it should return the item or a modified version of it
-    """
-
-    def __init__(self, source: ObjectReceiveStream[W], filter: filters.Filter[W, F]):
-        self.source = source
-        self.filter = filter
-
-    async def receive(self) -> F:
-        async for item in self.source:
-            if (filtered := self.filter(item)) is not None:
-                return filtered
-        raise anyio.EndOfStream
-
-    async def aclose(self):
-        await self.source.aclose()
 
 
 def exponential_backoff(f):

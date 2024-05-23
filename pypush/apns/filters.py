@@ -1,6 +1,9 @@
 import logging
 from typing import Callable, Optional, Type, TypeVar
 
+import anyio
+from anyio.abc import ObjectReceiveStream
+
 from pypush.apns import protocol
 
 T1 = TypeVar("T1")
@@ -42,3 +45,28 @@ def ALL(c):
 
 def NONE(_):
     return None
+
+
+W = TypeVar("W")
+F = TypeVar("F")
+
+
+class FilteredStream(ObjectReceiveStream[F]):
+    """
+    A stream that filters out unwanted items
+
+    filter should return None if the item should be filtered out, otherwise it should return the item or a modified version of it
+    """
+
+    def __init__(self, source: ObjectReceiveStream[W], filter: Filter[W, F]):
+        self.source = source
+        self.filter = filter
+
+    async def receive(self) -> F:
+        async for item in self.source:
+            if (filtered := self.filter(item)) is not None:
+                return filtered
+        raise anyio.EndOfStream
+
+    async def aclose(self):
+        await self.source.aclose()
