@@ -47,6 +47,10 @@ cli = [
     "rich",
     "typer"
 ]
+objc = [
+    "pyobjc-core",
+    "pyobjc-framework-Cocoa"
+]
 
 [tool.setuptools_scm]
 version_file = "pypush/_version.py"
